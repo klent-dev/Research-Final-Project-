@@ -1,10 +1,5 @@
-import { createContext, useMemo, useState } from 'react';
-
-export const ReportDraftContext = createContext({
-  draft: {},
-  updateDraft: () => {},
-  resetDraft: () => {}
-});
+import { useMemo, useState } from 'react';
+import { ReportDraftContext } from './reportDraftContext.js';
 
 export function ReportDraftProvider({ children }) {
   const [draft, setDraft] = useState({});
@@ -20,4 +15,3 @@ export function ReportDraftProvider({ children }) {
 
   return <ReportDraftContext.Provider value={value}>{children}</ReportDraftContext.Provider>;
 }
-

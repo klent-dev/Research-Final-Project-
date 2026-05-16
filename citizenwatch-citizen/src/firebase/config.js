@@ -9,5 +9,10 @@ export const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-export const firebaseApp = initializeApp(firebaseConfig);
+export const isFirebaseConfigured = Object.values(firebaseConfig).every(Boolean);
 
+export const firebaseApp = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
+
+if (!isFirebaseConfigured) {
+  console.warn('Firebase is not configured yet. Add VITE_FIREBASE_* environment variables to enable authentication.');
+}

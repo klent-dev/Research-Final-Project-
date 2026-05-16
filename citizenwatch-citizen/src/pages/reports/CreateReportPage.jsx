@@ -1,69 +1,151 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { LocationPicker } from '../../components/map/LocationPicker.jsx';
-import { ReportForm } from '../../components/reports/ReportForm.jsx';
-import { ReportPhotoInput } from '../../components/reports/ReportPhotoInput.jsx';
-import { useAuth } from '../../hooks/useAuth.js';
-import { useGeolocation } from '../../hooks/useGeolocation.js';
-import { attachReportPhoto, createInfrastructureReport } from '../../services/reportService.js';
-import { validateExifGpsProximity } from '../../services/exifValidationService.js';
-import { uploadReportPhoto } from '../../services/storageService.js';
-import { DEFAULT_GPS_RADIUS_METERS } from '../../utils/constants.js';
+import { useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  FaArrowRight,
+  FaCamera,
+  FaCameraRetro,
+  FaCalendarAlt,
+  FaFileUpload,
+  FaGavel,
+  FaInfo,
+  FaLightbulb,
+  FaMapMarkerAlt,
+  FaTimes
+} from 'react-icons/fa';
+
+const tips = [
+  'Capture both a close-up and a wide shot for context.',
+  'Ensure there is enough natural light for clarity.',
+  'Avoid blurry shots; hold the device steady.'
+];
 
 export default function CreateReportPage() {
-  const { user } = useAuth();
-  const { location, error, isLocating, requestLocation } = useGeolocation();
-  const [photo, setPhoto] = useState(null);
-  const [photoMessage, setPhotoMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState('');
+  const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
-  function handlePhotoChange(event) {
-    const [file] = event.target.files;
-    setPhoto(file);
-    setPhotoMessage(file ? 'Photo selected. EXIF GPS will be validated on submit.' : '');
+  function handleUseCamera() {
+    // TODO: Connect camera capture, Firebase Storage, EXIF, and GPS validation after UI is completed
+    console.log('Use Camera clicked');
   }
 
-  async function handleSubmit(event) {
-    event.preventDefault();
-    if (!location || !photo) return;
+  function handleChooseFile() {
+    fileInputRef.current?.click();
+  }
 
-    setIsSubmitting(true);
-    const exifResult = await validateExifGpsProximity({
-      file: photo,
-      browserLocation: location,
-      radiusMeters: DEFAULT_GPS_RADIUS_METERS
-    });
+  function handleFileChange(event) {
+    const [file] = event.target.files;
+    setSelectedFileName(file ? file.name : '');
+  }
 
-    if (!exifResult.isValid) {
-      setPhotoMessage(exifResult.reason);
-      setIsSubmitting(false);
-      return;
-    }
-
-    const formData = new FormData(event.currentTarget);
-    const reportId = await createInfrastructureReport({
-      title: formData.get('title'),
-      category: formData.get('category'),
-      description: formData.get('description'),
-      createdBy: user.uid,
-      location,
-      exif: exifResult
-    });
-
-    const photoUrl = await uploadReportPhoto({ file: photo, reportId, userId: user.uid });
-    await attachReportPhoto({ reportId, photoUrl });
-
-    navigate(`/reports/${reportId}`);
+  function handleNextStep() {
+    navigate('/reports/create/location');
   }
 
   return (
-    <main className="page">
-      <h1>New Infrastructure Report</h1>
-      {error && <p>{error}</p>}
-      <LocationPicker location={location} onUseCurrentLocation={requestLocation} isLocating={isLocating} />
-      <ReportPhotoInput onChange={handlePhotoChange} validationMessage={photoMessage} />
-      <ReportForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+    <main className="create-report-page">
+      <header className="create-report-topbar">
+        <Link className="create-report-brand" to="/home" aria-label="CitizenWatch home">
+          <FaGavel aria-hidden="true" />
+          <span>CitizenWatch</span>
+        </Link>
+        <Link className="create-report-close" to="/home" aria-label="Close create report">
+          <FaTimes aria-hidden="true" />
+        </Link>
+      </header>
+
+      <section className="create-report-content">
+        <section className="create-step-header" aria-label="Report creation progress">
+          <div>
+            <span>Step 1 of 4</span>
+            <strong>Evidence Upload</strong>
+          </div>
+          <div className="create-progress-track" aria-hidden="true">
+            <span />
+          </div>
+        </section>
+
+        <section className="evidence-card">
+          <div className="evidence-dropzone">
+            <div className="evidence-camera-mark">
+              <FaCamera aria-hidden="true" />
+            </div>
+            <h1>Capture a clear photo of the issue</h1>
+            <p>High-resolution images help responders resolve issues 40% faster.</p>
+
+            <div className="evidence-actions">
+              <button className="camera-button" onClick={handleUseCamera} type="button">
+                <FaCameraRetro aria-hidden="true" />
+                Use Camera
+              </button>
+
+              <button className="file-button" onClick={handleChooseFile} type="button">
+                <FaFileUpload aria-hidden="true" />
+                Choose File
+              </button>
+            </div>
+
+            <input
+              accept="image/*"
+              aria-label="Choose report evidence image"
+              className="sr-only"
+              onChange={handleFileChange}
+              ref={fileInputRef}
+              type="file"
+            />
+
+            {selectedFileName && <p className="selected-file-name">Selected: {selectedFileName}</p>}
+          </div>
+        </section>
+
+        <section className="metadata-card">
+          <header>
+            <span>
+              <FaInfo aria-hidden="true" />
+            </span>
+            <h2>Metadata Preview</h2>
+          </header>
+
+          <div className="metadata-row">
+            <FaMapMarkerAlt aria-hidden="true" />
+            <div>
+              <span>Current Location</span>
+              <strong>Oak Street, Neighborhood Park</strong>
+            </div>
+          </div>
+
+          <div className="metadata-row">
+            <FaCalendarAlt aria-hidden="true" />
+            <div>
+              <span>Timestamp</span>
+              <strong>Oct 24, 2023 &bull; 02:45 PM</strong>
+            </div>
+          </div>
+
+          <p className="metadata-note">
+            * GPS data will be automatically embedded into your report for precision dispatching.
+          </p>
+        </section>
+
+        <section className="pro-tips-card">
+          <header>
+            <FaLightbulb aria-hidden="true" />
+            <h2>Pro Tips</h2>
+          </header>
+          <ol>
+            {tips.map((tip) => (
+              <li key={tip}>{tip}</li>
+            ))}
+          </ol>
+        </section>
+      </section>
+
+      <section className="create-report-action-bar">
+        <button onClick={handleNextStep} type="button">
+          Next Step
+          <FaArrowRight aria-hidden="true" />
+        </button>
+      </section>
     </main>
   );
 }

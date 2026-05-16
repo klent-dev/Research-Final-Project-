@@ -1,9 +1,14 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Home from '../pages/Home.jsx';
 import Login from '../pages/Login.jsx';
-import MyReports from '../pages/MyReports.jsx';
 import Register from '../pages/Register.jsx';
 import SubmitReport from '../pages/SubmitReport.jsx';
+import PlaceholderPage from '../pages/PlaceholderPage.jsx';
+import ProfilePage from '../pages/profile/ProfilePage.jsx';
+import CreateReportPage from '../pages/reports/CreateReportPage.jsx';
+import CreateReportLocationPage from '../pages/reports/CreateReportLocationPage.jsx';
+import ReportsPage from '../pages/reports/ReportsPage.jsx';
+import { ProtectedRoute } from '../components/common/ProtectedRoute.jsx';
 
 export function AppRoutes() {
   return (
@@ -11,9 +16,22 @@ export function AppRoutes() {
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/home" element={<Home />} />
-      <Route path="/submit-report" element={<SubmitReport />} />
-      <Route path="/my-reports" element={<MyReports />} />
+
+      <Route element={<ProtectedRoute />}>
+        <Route path="/home" element={<Home />} />
+        <Route path="/dashboard" element={<Home />} />
+        <Route path="/submit-report" element={<SubmitReport />} />
+        <Route path="/reports/create" element={<CreateReportPage />} />
+        <Route path="/reports/create/location" element={<CreateReportLocationPage />} />
+        <Route path="/reports/create/details" element={<PlaceholderPage title="Report Details" description="Step 3 details placeholder for the guided report flow." />} />
+        <Route path="/my-reports" element={<ReportsPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/map" element={<PlaceholderPage title="Map" description="Map view placeholder for nearby infrastructure reports." />} />
+        <Route path="/alerts" element={<PlaceholderPage title="Alerts" description="Public safety and infrastructure alerts will appear here." />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/profile/edit" element={<PlaceholderPage title="Edit Profile" description="Profile editing form placeholder." />} />
+      </Route>
+
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
