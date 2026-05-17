@@ -4,7 +4,7 @@ import FloatingActionButton from './FloatingActionButton.jsx';
 import TopHeader from './TopHeader.jsx';
 
 const authRoutes = ['/', '/login', '/register'];
-const noHeaderRoutes = ['/profile', '/reports', '/my-reports'];
+const noHeaderRoutes = ['/profile', '/reports', '/my-reports', '/alerts', '/map'];
 const createReportRoutes = ['/reports/create', '/reports/create/location', '/reports/create/details', '/reports/create/success'];
 const bottomNavRoutes = ['/home', '/reports', '/map', '/alerts', '/profile'];
 

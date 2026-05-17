@@ -10,6 +10,8 @@ import CreateReportLocationPage from '../pages/reports/CreateReportLocationPage.
 import CreateReportDetailsPage from '../pages/reports/CreateReportDetailsPage.jsx';
 import CreateReportSuccessPage from '../pages/reports/CreateReportSuccessPage.jsx';
 import ReportsPage from '../pages/reports/ReportsPage.jsx';
+import AlertsPage from '../pages/alerts/AlertsPage.jsx';
+import MapPage from '../pages/map/MapPage.jsx';
 import { ProtectedRoute } from '../components/common/ProtectedRoute.jsx';
 
 export function AppRoutes() {
@@ -30,8 +32,8 @@ export function AppRoutes() {
         <Route path="/reports/create/review" element={<PlaceholderPage title="Review Report" description="Step 4 review placeholder for the guided report flow." />} />
         <Route path="/my-reports" element={<ReportsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
-        <Route path="/map" element={<PlaceholderPage title="Map" description="Map view placeholder for nearby infrastructure reports." />} />
-        <Route path="/alerts" element={<PlaceholderPage title="Alerts" description="Public safety and infrastructure alerts will appear here." />} />
+        <Route path="/map" element={<MapPage />} />
+        <Route path="/alerts" element={<AlertsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/edit" element={<PlaceholderPage title="Edit Profile" description="Profile editing form placeholder." />} />
       </Route>
