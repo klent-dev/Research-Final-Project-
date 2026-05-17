@@ -5,16 +5,17 @@ import TopHeader from './TopHeader.jsx';
 
 const authRoutes = ['/', '/login', '/register'];
 const noHeaderRoutes = ['/profile', '/reports', '/my-reports'];
-const createReportRoutes = ['/reports/create', '/reports/create/location'];
+const createReportRoutes = ['/reports/create', '/reports/create/location', '/reports/create/details', '/reports/create/success'];
+const bottomNavRoutes = ['/home', '/reports', '/map', '/alerts', '/profile'];
 
 export default function AppShell({ children }) {
   const { pathname } = useLocation();
   const isAuthRoute = authRoutes.includes(pathname);
   const isCreateReportRoute = createReportRoutes.includes(pathname);
   const shouldHideHeader = isAuthRoute || noHeaderRoutes.includes(pathname) || isCreateReportRoute;
-  const hideFabRoutes = ['/home', '/dashboard', '/reports', '/map', '/alerts', '/profile', '/submit-report', '/reports/create', '/reports/create/location'];
+  const hideFabRoutes = ['/home', '/dashboard', '/reports', '/map', '/alerts', '/profile', '/submit-report', '/reports/create', '/reports/create/location', '/reports/create/details', '/reports/create/success'];
   const shouldHideFab = hideFabRoutes.includes(pathname);
-  const shouldHideBottomNav = isCreateReportRoute;
+  const shouldShowBottomNav = bottomNavRoutes.includes(pathname);
 
   return (
     <div className={isAuthRoute ? 'app-shell app-shell--auth' : 'app-shell'}>
@@ -23,7 +24,7 @@ export default function AppShell({ children }) {
       {!isAuthRoute && (
         <>
           {!shouldHideFab && <FloatingActionButton />}
-          {!shouldHideBottomNav && <BottomNavigation />}
+          {shouldShowBottomNav && <BottomNavigation />}
         </>
       )}
     </div>

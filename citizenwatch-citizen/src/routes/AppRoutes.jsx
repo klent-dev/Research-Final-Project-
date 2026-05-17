@@ -7,6 +7,8 @@ import PlaceholderPage from '../pages/PlaceholderPage.jsx';
 import ProfilePage from '../pages/profile/ProfilePage.jsx';
 import CreateReportPage from '../pages/reports/CreateReportPage.jsx';
 import CreateReportLocationPage from '../pages/reports/CreateReportLocationPage.jsx';
+import CreateReportDetailsPage from '../pages/reports/CreateReportDetailsPage.jsx';
+import CreateReportSuccessPage from '../pages/reports/CreateReportSuccessPage.jsx';
 import ReportsPage from '../pages/reports/ReportsPage.jsx';
 import { ProtectedRoute } from '../components/common/ProtectedRoute.jsx';
 
@@ -23,7 +25,9 @@ export function AppRoutes() {
         <Route path="/submit-report" element={<SubmitReport />} />
         <Route path="/reports/create" element={<CreateReportPage />} />
         <Route path="/reports/create/location" element={<CreateReportLocationPage />} />
-        <Route path="/reports/create/details" element={<PlaceholderPage title="Report Details" description="Step 3 details placeholder for the guided report flow." />} />
+        <Route path="/reports/create/details" element={<CreateReportDetailsPage />} />
+        <Route path="/reports/create/success" element={<CreateReportSuccessPage />} />
+        <Route path="/reports/create/review" element={<PlaceholderPage title="Review Report" description="Step 4 review placeholder for the guided report flow." />} />
         <Route path="/my-reports" element={<ReportsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/map" element={<PlaceholderPage title="Map" description="Map view placeholder for nearby infrastructure reports." />} />
