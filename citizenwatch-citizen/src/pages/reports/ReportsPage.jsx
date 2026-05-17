@@ -2,42 +2,16 @@ import { Link } from 'react-router-dom';
 import {
   FaBars,
   FaBullhorn,
-  FaCalendarAlt,
   FaCheckCircle,
   FaClipboardList,
-  FaGavel
+  FaGavel,
+  FaRegFileAlt
 } from 'react-icons/fa';
 import PageContainer from '../../components/PageContainer.jsx';
 import communityImage from '../../assets/images/Community.png';
-import infrastructureImage from '../../assets/images/Infrastructure.png';
-import responseImage from '../../assets/images/Response.png';
 
-const reports = [
-  {
-    title: 'Road Damage on Escario St.',
-    description: 'Pothole reported near the intersection...',
-    date: 'Oct 12, 2026',
-    status: 'RESOLVED',
-    tone: 'resolved',
-    image: responseImage
-  },
-  {
-    title: 'Sudden Flooding near JY',
-    description: 'Drainage blockage causing water spill...',
-    date: 'Oct 10, 2026',
-    status: 'VERIFIED',
-    tone: 'verified',
-    image: infrastructureImage
-  },
-  {
-    title: 'Street Light Issue',
-    description: 'Flickering light on the main walk...',
-    date: 'Oct 08, 2026',
-    status: 'UNDER REVIEW',
-    tone: 'review',
-    image: communityImage
-  }
-];
+// TODO: Load reports from Firestore
+const reports = [];
 
 export default function ReportsPage() {
   return (
@@ -62,7 +36,7 @@ export default function ReportsPage() {
             <FaClipboardList aria-hidden="true" />
           </span>
           <p>Total Reports</p>
-          <strong>12</strong>
+          <strong>0</strong>
         </article>
 
         <article className="reports-summary-card">
@@ -70,7 +44,7 @@ export default function ReportsPage() {
             <FaCheckCircle aria-hidden="true" />
           </span>
           <p>Resolved</p>
-          <strong>05</strong>
+          <strong>0</strong>
         </article>
       </section>
 
@@ -90,24 +64,29 @@ export default function ReportsPage() {
         </header>
 
         <div className="reports-list">
-          {reports.map((report) => (
-            <article className="reports-list-card" key={report.title}>
-              <img src={report.image} alt="" />
-              <div className="reports-list-card__body">
-                <div>
-                  <h3>{report.title}</h3>
-                  <span className={`reports-status-pill reports-status-pill--${report.tone}`}>
-                    {report.status}
-                  </span>
+          {reports.length > 0 ? (
+            reports.map((report) => (
+              <article className="reports-list-card" key={report.title}>
+                <img src={report.image} alt="" />
+                <div className="reports-list-card__body">
+                  <div>
+                    <h3>{report.title}</h3>
+                    <span className={`reports-status-pill reports-status-pill--${report.tone}`}>
+                      {report.status}
+                    </span>
+                  </div>
+                  <p>{report.description}</p>
+                  <time>{report.date}</time>
                 </div>
-                <p>{report.description}</p>
-                <time>
-                  <FaCalendarAlt aria-hidden="true" />
-                  {report.date}
-                </time>
-              </div>
-            </article>
-          ))}
+              </article>
+            ))
+          ) : (
+            <div className="reports-empty-state">
+              <FaRegFileAlt aria-hidden="true" />
+              <h3>No reports submitted yet.</h3>
+              <p>Your submitted infrastructure reports will appear here.</p>
+            </div>
+          )}
         </div>
       </section>
     </PageContainer>

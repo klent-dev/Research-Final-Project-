@@ -11,24 +11,23 @@ import {
   FaRegChartBar,
   FaRegCheckCircle,
   FaRegFileAlt,
+  FaRegFolderOpen,
   FaShieldAlt,
   FaSignOutAlt
 } from 'react-icons/fa';
 import { HiOutlineBadgeCheck } from 'react-icons/hi';
 import PageContainer from '../../components/PageContainer.jsx';
 import communityImage from '../../assets/images/Community.png';
-import infrastructureImage from '../../assets/images/Infrastructure.png';
-import responseImage from '../../assets/images/Response.png';
 
 const citizenName = 'Klent Ian Ca\u00f1ada';
 const maskedPassword = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
 const membershipText = 'Barangay Lahug \u2022 Member since: 2026';
 
 const stats = [
-  { label: 'Submitted', value: '12', icon: FaRegFileAlt, tone: 'green' },
-  { label: 'Verified', value: '08', icon: HiOutlineBadgeCheck, tone: 'purple' },
-  { label: 'Resolved', value: '05', icon: FaRegCheckCircle, tone: 'green' },
-  { label: 'Accuracy', value: '92%', icon: FaRegChartBar, tone: 'purple' }
+  { label: 'Submitted', value: '0', icon: FaRegFileAlt, tone: 'green' },
+  { label: 'Verified', value: '0', icon: HiOutlineBadgeCheck, tone: 'purple' },
+  { label: 'Resolved', value: '0', icon: FaRegCheckCircle, tone: 'green' },
+  { label: 'Accuracy', value: '--', icon: FaRegChartBar, tone: 'purple' }
 ];
 
 const accountRows = [
@@ -41,29 +40,8 @@ const accountRows = [
 
 const securityRows = ['Verified Citizen', 'GPS Reporting Enabled', 'EXIF Data Validation'];
 
-const reports = [
-  {
-    title: 'Road Damage on Escario St.',
-    date: 'Oct 12, 2026',
-    status: 'RESOLVED',
-    image: responseImage,
-    tone: 'resolved'
-  },
-  {
-    title: 'Sudden Flooding near JY',
-    date: 'Oct 10, 2026',
-    status: 'VERIFIED',
-    image: infrastructureImage,
-    tone: 'verified'
-  },
-  {
-    title: 'Street Light Issue (Blink)',
-    date: 'Oct 08, 2026',
-    status: 'UNDER REVIEW',
-    image: communityImage,
-    tone: 'review'
-  }
-];
+// TODO: Load reports from Firestore
+const reports = [];
 
 const settings = [
   { label: 'Notifications', icon: FaBell },
@@ -142,18 +120,26 @@ export default function ProfilePage() {
       <section className="profile-section">
         <h2>Recent Reports</h2>
         <div className="profile-reports-card">
-          {reports.map((report) => (
-            <article className="profile-report-item" key={report.title}>
-              <img src={report.image} alt="" />
-              <div>
-                <h3>{report.title}</h3>
-                <time>{report.date}</time>
-              </div>
-              <span className={`profile-status-pill profile-status-pill--${report.tone}`}>
-                {report.status}
-              </span>
-            </article>
-          ))}
+          {reports.length > 0 ? (
+            reports.map((report) => (
+              <article className="profile-report-item" key={report.title}>
+                <img src={report.image} alt="" />
+                <div>
+                  <h3>{report.title}</h3>
+                  <time>{report.date}</time>
+                </div>
+                <span className={`profile-status-pill profile-status-pill--${report.tone}`}>
+                  {report.status}
+                </span>
+              </article>
+            ))
+          ) : (
+            <div className="profile-empty-reports">
+              <FaRegFolderOpen aria-hidden="true" />
+              <h3>No recent reports.</h3>
+              <p>Your latest infrastructure reports will appear here.</p>
+            </div>
+          )}
         </div>
       </section>
 

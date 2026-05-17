@@ -1,4 +1,8 @@
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import L from 'leaflet';
+import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 import {
   FaBullhorn,
   FaChartLine,
@@ -14,10 +18,18 @@ import {
 } from 'react-icons/fa';
 import PageContainer from '../../components/PageContainer.jsx';
 
+const LAHUG_CENTER = {
+  lat: 10.3403,
+  lng: 123.9065
+};
+
+// TODO: Load reports from Firestore
+const nearbyReports = [];
+
 const impactStats = [
-  { label: 'Submitted', value: '12' },
-  { label: 'Verified', value: '08' },
-  { label: 'Resolved', value: '05' }
+  { label: 'Submitted', value: '0' },
+  { label: 'Verified', value: '0' },
+  { label: 'Resolved', value: '0' }
 ];
 
 const categories = [
@@ -28,7 +40,74 @@ const categories = [
   { label: 'Waste', icon: FaTrash }
 ];
 
+const userLocationIcon = L.divIcon({
+  className: 'home-user-map-marker',
+  html: '',
+  iconAnchor: [8, 8],
+  iconSize: [16, 16]
+});
+
+function HomeMapBridge({ mapRef }) {
+  const map = useMap();
+
+  useEffect(() => {
+    mapRef.current = map;
+    window.setTimeout(() => map.invalidateSize(), 0);
+
+    return () => {
+      if (mapRef.current === map) {
+        mapRef.current = null;
+      }
+    };
+  }, [map, mapRef]);
+
+  return null;
+}
+
 export default function CitizenHomePage() {
+  const [userLocation, setUserLocation] = useState(null);
+  const mapRef = useRef(null);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (cancelled) {
+          return;
+        }
+
+        const nextLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+
+        setUserLocation(nextLocation);
+        mapRef.current?.setView([nextLocation.lat, nextLocation.lng], 14);
+      },
+      () => {},
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 60000
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (userLocation) {
+      mapRef.current?.setView([userLocation.lat, userLocation.lng], 14);
+    }
+  }, [userLocation]);
+
   return (
     <PageContainer className="citizen-home">
       <section className="citizen-greeting">
@@ -95,19 +174,40 @@ export default function CitizenHomePage() {
         </header>
 
         <div className="citizen-map-preview">
-          <div className="citizen-map-board">
-            <span className="citizen-map-pin citizen-map-pin--one"><FaMapMarkerAlt /></span>
-            <span className="citizen-map-pin citizen-map-pin--two"><FaMapMarkerAlt /></span>
-            <span className="citizen-map-pin citizen-map-pin--three"><FaMapMarkerAlt /></span>
-            <span className="citizen-map-pin citizen-map-pin--four"><FaMapMarkerAlt /></span>
-            <span className="citizen-map-label citizen-map-label--flood">
-              <FaCircle aria-hidden="true" />
-              Active Flooding
-            </span>
-            <span className="citizen-map-label citizen-map-label--pothole">
-              <FaCircle aria-hidden="true" />
-              Pothole Resolved
-            </span>
+          <div className="citizen-map-board citizen-map-board--live">
+            <MapContainer
+              attributionControl={false}
+              center={[LAHUG_CENTER.lat, LAHUG_CENTER.lng]}
+              className="home-leaflet-preview"
+              dragging
+              scrollWheelZoom={false}
+              zoom={14}
+              zoomControl={false}
+            >
+              <HomeMapBridge mapRef={mapRef} />
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              {userLocation && (
+                <Marker icon={userLocationIcon} position={[userLocation.lat, userLocation.lng]} />
+              )}
+            </MapContainer>
+
+            {nearbyReports.length === 0 && (
+              <div className="citizen-map-empty-state">
+                <FaMapMarkerAlt aria-hidden="true" />
+                <h3>No nearby reports available.</h3>
+                <p>Live district activity will appear here.</p>
+              </div>
+            )}
+
+            {nearbyReports.map((report) => (
+              <span className="citizen-map-label" key={report.id}>
+                <FaMapMarkerAlt aria-hidden="true" />
+                {report.title}
+              </span>
+            ))}
           </div>
           <Link className="citizen-map-add" to="/reports/create" aria-label="Create report">
             <FaPlus aria-hidden="true" />

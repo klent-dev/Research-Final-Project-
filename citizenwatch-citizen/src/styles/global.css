@@ -3076,6 +3076,42 @@ textarea {
   width: clamp(14rem, 48vw, 20rem);
 }
 
+.citizen-map-board--live {
+  background: #dbeee7;
+  border-radius: 0;
+  box-shadow: none;
+  height: 100%;
+  inset: 0;
+  left: auto;
+  overflow: hidden;
+  position: absolute;
+  top: auto;
+  transform: none;
+  width: 100%;
+}
+
+.home-leaflet-preview {
+  height: 100%;
+  inset: 0;
+  position: absolute;
+  width: 100%;
+  z-index: 1;
+}
+
+.home-leaflet-preview .leaflet-tile {
+  filter: saturate(0.85) hue-rotate(18deg) brightness(1.02);
+}
+
+.home-user-map-marker {
+  background: #16a34a;
+  border: 3px solid #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 0 0 0.45rem rgba(22, 163, 74, 0.18), 0 8px 18px rgba(15, 23, 42, 0.18);
+  display: block;
+  height: 1rem;
+  width: 1rem;
+}
+
 .citizen-map-pin {
   color: #0f8f73;
   font-size: 1.65rem;
@@ -3602,6 +3638,33 @@ textarea {
   color: #64748b;
   display: block;
   font-size: 0.8rem;
+}
+
+.profile-empty-reports {
+  align-items: center;
+  display: grid;
+  justify-items: center;
+  padding: clamp(1.5rem, 7vw, 2rem) 1rem;
+  text-align: center;
+}
+
+.profile-empty-reports svg {
+  color: #047857;
+  font-size: clamp(1.8rem, 8vw, 2.35rem);
+  margin-bottom: 0.7rem;
+}
+
+.profile-empty-reports h3 {
+  color: var(--text);
+  font-size: clamp(0.98rem, 4vw, 1.15rem);
+  margin: 0 0 0.35rem;
+}
+
+.profile-empty-reports p {
+  color: var(--muted);
+  font-size: clamp(0.8rem, 3.3vw, 0.92rem);
+  line-height: 1.45;
+  margin: 0;
 }
 
 .profile-status-pill {
@@ -5206,6 +5269,37 @@ textarea {
   gap: clamp(0.85rem, 4vw, 1.05rem);
 }
 
+.reports-empty-state {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.78);
+  border-radius: clamp(1.05rem, 5vw, 1.55rem);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.055);
+  display: grid;
+  justify-items: center;
+  padding: clamp(1.5rem, 7vw, 2rem) 1rem;
+  text-align: center;
+}
+
+.reports-empty-state svg {
+  color: #047857;
+  font-size: clamp(1.8rem, 8vw, 2.4rem);
+  margin-bottom: 0.75rem;
+}
+
+.reports-empty-state h3 {
+  color: var(--text);
+  font-size: clamp(1rem, 4vw, 1.18rem);
+  margin: 0 0 0.35rem;
+}
+
+.reports-empty-state p {
+  color: var(--muted);
+  font-size: clamp(0.82rem, 3.4vw, 0.95rem);
+  line-height: 1.45;
+  margin: 0;
+}
+
 .reports-list-card {
   align-items: center;
   background: #ffffff;
@@ -5291,6 +5385,44 @@ textarea {
   .reports-page {
     padding-bottom: calc(8rem + env(safe-area-inset-bottom));
   }
+}
+
+.citizen-map-empty-state {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(226, 232, 240, 0.86);
+  border-radius: 1.15rem;
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.14);
+  color: #047857;
+  display: grid;
+  justify-items: center;
+  left: 50%;
+  max-width: min(19rem, calc(100% - 3rem));
+  padding: clamp(1rem, 4vw, 1.25rem);
+  position: absolute;
+  text-align: center;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-3deg);
+  width: 100%;
+  z-index: 4;
+}
+
+.citizen-map-empty-state svg {
+  font-size: clamp(1.85rem, 7vw, 2.4rem);
+  margin-bottom: 0.55rem;
+}
+
+.citizen-map-empty-state h3 {
+  color: var(--text);
+  font-size: clamp(0.95rem, 3.8vw, 1.12rem);
+  margin: 0 0 0.3rem;
+}
+
+.citizen-map-empty-state p {
+  color: #475569;
+  font-size: clamp(0.78rem, 3.2vw, 0.9rem);
+  line-height: 1.4;
+  margin: 0;
 }
 
 @media (max-width: 380px) {

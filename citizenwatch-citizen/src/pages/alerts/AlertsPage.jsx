@@ -1,13 +1,10 @@
 import { useMemo, useState } from 'react';
 import {
   FaBars,
-  FaCheckCircle,
-  FaClipboardCheck,
   FaClipboardList,
   FaExclamationTriangle,
   FaGavel,
   FaInfoCircle,
-  FaShieldAlt
 } from 'react-icons/fa';
 import PageContainer from '../../components/PageContainer.jsx';
 import communityImage from '../../assets/images/Community.png';
@@ -15,50 +12,8 @@ import '../../styles/alerts.css';
 
 const filters = ['All', 'Reports', 'Nearby', 'System'];
 
-const alerts = [
-  {
-    id: 1,
-    title: 'Report Verified',
-    message: 'Your road damage report on Escario St. has been verified.',
-    time: '9:30 AM',
-    category: 'Reports',
-    status: 'Today',
-    icon: FaClipboardCheck,
-    tone: 'reports',
-    unread: true
-  },
-  {
-    id: 2,
-    title: 'Status Update',
-    message: 'Your flooding report near JY is now under review.',
-    time: '4:15 PM',
-    category: 'Reports',
-    status: 'Yesterday',
-    icon: FaCheckCircle,
-    tone: 'reports'
-  },
-  {
-    id: 3,
-    title: 'Nearby Warning',
-    message: 'Heavy flooding reported near Barangay Lahug. Commuters advised to reroute.',
-    category: 'Nearby',
-    priority: 'High Priority',
-    distance: '2 km away',
-    icon: FaExclamationTriangle,
-    tone: 'nearby',
-    unread: true
-  },
-  {
-    id: 4,
-    title: 'System Notice',
-    message: 'EXIF and GPS validation are active for safer reporting across the platform.',
-    time: 'May 12',
-    category: 'System',
-    status: 'Info',
-    icon: FaShieldAlt,
-    tone: 'system'
-  }
-];
+// TODO: Load reports from Firestore
+const alerts = [];
 
 export default function AlertsPage() {
   const [activeFilter, setActiveFilter] = useState('All');
@@ -93,9 +48,9 @@ export default function AlertsPage() {
             <span className="alerts-summary-icon alerts-summary-icon--green">
               <FaClipboardList aria-hidden="true" />
             </span>
-            <span className="alerts-new-badge">NEW</span>
+            {alerts.length > 0 && <span className="alerts-new-badge">NEW</span>}
           </div>
-          <strong>3</strong>
+          <strong>0</strong>
           <p>New Updates</p>
         </article>
 
@@ -105,7 +60,7 @@ export default function AlertsPage() {
               <FaExclamationTriangle aria-hidden="true" />
             </span>
           </div>
-          <strong>2</strong>
+          <strong>0</strong>
           <p>Nearby Warnings</p>
         </article>
       </section>
@@ -169,7 +124,7 @@ export default function AlertsPage() {
           <div className="alerts-empty-state">
             <FaInfoCircle aria-hidden="true" />
             <h2>No alerts yet</h2>
-            <p>Updates about your reports and nearby incidents will appear here.</p>
+            <p>Updates and notifications will appear here.</p>
           </div>
         )}
       </section>
