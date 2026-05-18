@@ -3,9 +3,6 @@ import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import {
   FaBars,
   FaCrosshairs,
@@ -28,23 +25,13 @@ import {
   filterReports,
   formatDistance,
   formatReportAge,
-  getCategoryTone,
   getReportDistanceKm,
   getStatusTone,
   loadMapReports,
   sortReportsByDistance
 } from '../../services/mapService.js';
+import { ReportMapMarker } from '../../utils/mapMarkers.js';
 import '../../styles/map.css';
-
-if (L.Icon?.Default?.prototype?._getIconUrl) {
-  delete L.Icon.Default.prototype._getIconUrl;
-}
-
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow
-});
 
 const filters = ['All', 'Road Damage', 'Drainage', 'Street Light', 'Flooding', 'Resolved'];
 
@@ -62,15 +49,6 @@ const userLocationIcon = L.divIcon({
   iconAnchor: [10, 10],
   iconSize: [20, 20]
 });
-
-function createReportIcon(category) {
-  return L.divIcon({
-    className: `community-leaflet-marker community-leaflet-marker--${getCategoryTone(category)}`,
-    html: '<span></span>',
-    iconAnchor: [22, 22],
-    iconSize: [44, 44]
-  });
-}
 
 function MapBridge({ mapRef }) {
   const map = useMap();
@@ -120,7 +98,6 @@ class MapErrorBoundary extends Component {
 export default function MapPage() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [reports, setReports] = useState([]);
-  const [selectedReport, setSelectedReport] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [mapMessage, setMapMessage] = useState('');
   const mapRef = useRef(null);
@@ -139,7 +116,6 @@ export default function MapPage() {
 
       if (!ignore) {
         setReports(loadedReports);
-        setSelectedReport(loadedReports[0] ?? null);
       }
     }
 
@@ -149,12 +125,6 @@ export default function MapPage() {
       ignore = true;
     };
   }, []);
-
-  useEffect(() => {
-    if (selectedReport && !filteredReports.some((report) => report.id === selectedReport.id)) {
-      setSelectedReport(filteredReports[0] ?? null);
-    }
-  }, [filteredReports, selectedReport]);
 
   function handleZoomIn() {
     mapRef.current?.zoomIn();
@@ -198,8 +168,6 @@ export default function MapPage() {
   function handleFocusFilters() {
     document.querySelector('.community-map-filters')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
-
-  const selectedTone = getStatusTone(selectedReport?.status);
 
   return (
     <PageContainer className="community-map-page">
@@ -249,17 +217,21 @@ export default function MapPage() {
 
             {filteredReports.map((report) => (
               <Marker
-                eventHandlers={{
-                  click: () => setSelectedReport(report)
-                }}
-                icon={createReportIcon(report.category)}
+                icon={ReportMapMarker(report.urgency)}
                 key={report.id}
                 position={[report.location.lat, report.location.lng]}
               >
-                <Popup>
-                  <strong>{report.title}</strong>
-                  <br />
-                  {report.location.address}
+                <Popup className="report-map-popup" closeButton offset={[0, -12]}>
+                  <div className="map-popup-card">
+                    <div className="map-popup-header">
+                      <strong>{report.issueType || report.category}</strong>
+                      <span className={`community-status-pill community-status-pill--${getStatusTone(report.status)}`}>
+                        {report.status}
+                      </span>
+                    </div>
+                    <p>{report.location?.address || 'Location detected'}</p>
+                    {report.description && <small>{report.description}</small>}
+                  </div>
                 </Popup>
               </Marker>
             ))}
@@ -273,22 +245,6 @@ export default function MapPage() {
         </MapErrorBoundary>
 
         {mapMessage && <p className="community-map-message">{mapMessage}</p>}
-
-        {selectedReport && (
-          <article className="community-map-popup">
-            <div>
-              <h2>{selectedReport.category}</h2>
-              <span className={`community-status-pill community-status-pill--${selectedTone}`}>
-                {selectedReport.status}
-              </span>
-            </div>
-            <strong>{selectedReport.location.address}</strong>
-            <p>{selectedReport.description}</p>
-            <span>
-              <FaMapMarkerAlt aria-hidden="true" />
-            </span>
-          </article>
-        )}
 
         <div className="community-map-controls" aria-label="Map controls">
           <button onClick={handleZoomIn} type="button" aria-label="Zoom in">

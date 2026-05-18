@@ -1,4 +1,7 @@
+import { normalizeUrgency } from '../utils/severity.js';
+
 export const REPORTS_STORAGE_KEY = 'citizenwatch_reports';
+export const ALERTS_STORAGE_KEY = 'citizenwatch_alerts';
 export const REPORT_DRAFT_STORAGE_KEY = 'citizenwatch_report_draft';
 export const LAST_SUBMITTED_REPORT_KEY = 'citizenwatch_last_submitted_report_id';
 
@@ -66,7 +69,7 @@ function normalizeReport(report) {
     issueType,
     category: issueType,
     title: report.title || `${issueType} Report`,
-    urgency: report.urgency || 'Medium',
+    urgency: normalizeUrgency(report.urgency),
     description: report.description || 'No description provided.',
     status,
     createdAt: report.createdAt || now,
@@ -111,12 +114,31 @@ export function getReportById(id) {
   return getReports().find((report) => report.id === id) || null;
 }
 
+export function deleteReport(id) {
+  const reports = getReports();
+  const nextReports = reports.filter((report) => report.id !== id);
+
+  // TODO: Replace localStorage with Firestore backend
+  writeJson(window.localStorage, REPORTS_STORAGE_KEY, nextReports);
+  deleteLinkedAlerts(id);
+
+  if (canUseStorage(window.sessionStorage)) {
+    const lastSubmittedId = window.sessionStorage.getItem(LAST_SUBMITTED_REPORT_KEY);
+    if (lastSubmittedId === id) {
+      window.sessionStorage.removeItem(LAST_SUBMITTED_REPORT_KEY);
+    }
+  }
+
+  return nextReports;
+}
+
 export function clearReports() {
   if (!canUseStorage(window.localStorage)) {
     return;
   }
 
   window.localStorage.removeItem(REPORTS_STORAGE_KEY);
+  window.localStorage.removeItem(ALERTS_STORAGE_KEY);
 
   if (canUseStorage(window.sessionStorage)) {
     window.sessionStorage.removeItem(LAST_SUBMITTED_REPORT_KEY);
@@ -259,4 +281,15 @@ export function buildReportFromDraft(draft) {
     photoPreview: draft.photoPreview,
     createdBy: DEFAULT_CREATED_BY
   });
+}
+
+function deleteLinkedAlerts(reportId) {
+  const alerts = readJson(window.localStorage, ALERTS_STORAGE_KEY, []);
+
+  if (!Array.isArray(alerts)) {
+    return;
+  }
+
+  const nextAlerts = alerts.filter((alert) => alert.reportId !== reportId);
+  writeJson(window.localStorage, ALERTS_STORAGE_KEY, nextAlerts);
 }

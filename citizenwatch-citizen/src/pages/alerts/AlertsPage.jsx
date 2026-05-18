@@ -93,22 +93,23 @@ export default function AlertsPage() {
 
             return (
               <article className={`alert-card alert-card--${alert.tone}`} key={alert.id}>
-                {alert.tone === 'nearby' ? (
-                  <span className="nearby-alert-indicator" aria-label="High priority nearby alert">
-                    !
-                  </span>
-                ) : (
-                  alert.unread && <span className="alert-unread-dot" aria-label="Unread alert" />
-                )}
-
                 <span className={`alert-icon alert-icon--${alert.tone}`}>
                   <Icon aria-hidden="true" />
                 </span>
 
                 <div className="alert-card__content">
-                  <header>
+                  <header className="alert-card-header">
                     <h2>{alert.title}</h2>
-                    {alert.time && <time>{alert.time}</time>}
+                    <div className="alert-time-wrap">
+                      {alert.time && <time className="alert-time">{alert.time}</time>}
+                      {alert.tone === 'nearby' ? (
+                        <span className="nearby-alert-indicator" aria-label="Priority nearby alert">
+                          !
+                        </span>
+                      ) : (
+                        alert.unread && <span className="alert-unread-dot" aria-label="Unread alert" />
+                      )}
+                    </div>
                   </header>
 
                   <p>{alert.message}</p>

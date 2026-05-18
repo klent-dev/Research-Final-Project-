@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   FaBars,
@@ -7,15 +8,31 @@ import {
   FaGavel,
   FaRegFileAlt
 } from 'react-icons/fa';
+import { FiTrash2 } from 'react-icons/fi';
 import PageContainer from '../../components/PageContainer.jsx';
 import communityImage from '../../assets/images/Community.png';
 import responseImage from '../../assets/images/Response.png';
-import { formatReportDate, getReports, getStatusColor } from '../../services/localReportService.js';
+import {
+  deleteReport,
+  formatReportDate,
+  getReports,
+  getStatusColor
+} from '../../services/localReportService.js';
 
 export default function ReportsPage() {
   // TODO: Replace localStorage with Firestore backend
-  const reports = getReports();
+  const [reports, setReports] = useState(() => getReports());
   const resolvedReports = reports.filter((report) => report.status.toUpperCase().includes('RESOLVED'));
+
+  function handleDeleteReport(reportId) {
+    const confirmed = window.confirm('Are you sure you want to delete this report?');
+
+    if (!confirmed) {
+      return;
+    }
+
+    setReports(deleteReport(reportId));
+  }
 
   return (
     <PageContainer className="reports-page">
@@ -48,7 +65,7 @@ export default function ReportsPage() {
             <FaCheckCircle aria-hidden="true" />
           </span>
           <p>Resolved</p>
-          <strong>{resolvedReports.length.toString().padStart(2, '0')}</strong>
+          <strong>{resolvedReports.length}</strong>
         </article>
       </section>
 
@@ -75,9 +92,19 @@ export default function ReportsPage() {
                 <div className="reports-list-card__body">
                   <div>
                     <h3>{report.title}</h3>
-                    <span className={`reports-status-pill reports-status-pill--${getStatusColor(report.status)}`}>
-                      {report.status}
-                    </span>
+                    <div className="reports-card-actions">
+                      <span className={`reports-status-pill reports-status-pill--${getStatusColor(report.status)}`}>
+                        {report.status}
+                      </span>
+                      <button
+                        aria-label="Delete report"
+                        className="reports-delete-button"
+                        onClick={() => handleDeleteReport(report.id)}
+                        type="button"
+                      >
+                        <FiTrash2 aria-hidden="true" />
+                      </button>
+                    </div>
                   </div>
                   <p>{report.trackingId} &bull; {report.description}</p>
                   <time>{formatReportDate(report.createdAt)}</time>

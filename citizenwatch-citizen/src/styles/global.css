@@ -1402,7 +1402,6 @@ textarea {
   color: var(--warning);
 }
 
-.severity-badge--high,
 .severity-badge--critical {
   background: rgba(220, 38, 38, 0.12);
   color: var(--danger);
@@ -2000,7 +1999,7 @@ textarea {
   width: 58px;
 }
 
-.report-card--high .report-card__priority {
+.report-card--critical .report-card__priority {
   background: var(--danger);
 }
 
@@ -3155,6 +3154,104 @@ textarea {
   filter: saturate(0.85) hue-rotate(18deg) brightness(1.02);
 }
 
+.report-map-pin-marker {
+  background: transparent;
+  border: 0;
+}
+
+.report-map-pin-marker.leaflet-div-icon {
+  background: transparent;
+  border: 0;
+}
+
+.report-severity-pin {
+  display: block;
+  height: 28px;
+  position: relative;
+  transform-origin: 50% 96%;
+  transition: filter var(--transition), transform var(--transition);
+  width: 22px;
+}
+
+.report-severity-pin__head {
+  align-items: center;
+  background: var(--pin-color, #16a34a);
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px var(--pin-ring, rgba(22, 163, 74, 0.16)), 0 8px 14px var(--pin-shadow, rgba(22, 163, 74, 0.28));
+  display: inline-flex;
+  height: 22px;
+  justify-content: center;
+  left: 50%;
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  width: 22px;
+  z-index: 2;
+}
+
+.report-severity-pin__dot {
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  display: block;
+  height: 6px;
+  width: 6px;
+}
+
+.report-severity-pin__stem {
+  background: linear-gradient(180deg, var(--pin-color, #16a34a), #1f2937);
+  bottom: 1px;
+  clip-path: polygon(46% 0, 54% 0, 72% 100%, 28% 100%);
+  height: 12px;
+  left: 50%;
+  opacity: 0.92;
+  position: absolute;
+  transform: translateX(-50%);
+  width: 7px;
+  z-index: 1;
+}
+
+.report-map-pin-marker--critical {
+  --pin-color: #dc2626;
+  --pin-ring: rgba(220, 38, 38, 0.22);
+  --pin-shadow: rgba(220, 38, 38, 0.38);
+}
+
+.report-map-pin-marker--medium {
+  --pin-color: #f59e0b;
+  --pin-ring: rgba(245, 158, 11, 0.20);
+  --pin-shadow: rgba(245, 158, 11, 0.32);
+}
+
+.report-map-pin-marker--low {
+  --pin-color: #16a34a;
+  --pin-ring: rgba(22, 163, 74, 0.18);
+  --pin-shadow: rgba(22, 163, 74, 0.30);
+}
+
+.report-map-pin-marker:hover .report-severity-pin,
+.report-map-pin-marker:focus .report-severity-pin {
+  filter: drop-shadow(0 0.4rem 0.85rem var(--pin-shadow, rgba(22, 163, 74, 0.28)));
+  transform: scale(1.08) translateY(-0.08rem);
+}
+
+.report-map-pin-marker--critical .report-severity-pin {
+  animation: severityCriticalPulse 2.1s ease-in-out infinite;
+}
+
+.home-preview-map-marker {
+  background: #16a34a;
+  border: 3px solid #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 0 0 0.45rem rgba(22, 163, 74, 0.18), 0 8px 18px rgba(15, 23, 42, 0.18);
+  display: block;
+  height: 1rem;
+  width: 1rem;
+}
+
+.home-preview-map-marker.leaflet-div-icon {
+  border: 3px solid #ffffff;
+}
+
 .home-user-map-marker {
   background: #16a34a;
   border: 3px solid #ffffff;
@@ -3163,6 +3260,17 @@ textarea {
   display: block;
   height: 1rem;
   width: 1rem;
+}
+
+@keyframes severityCriticalPulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 rgba(220, 38, 38, 0));
+  }
+
+  50% {
+    filter: drop-shadow(0 0 0.55rem rgba(220, 38, 38, 0.46));
+  }
 }
 
 .citizen-map-pin {
@@ -5578,6 +5686,35 @@ textarea {
   display: flex;
   gap: 0.65rem;
   justify-content: space-between;
+}
+
+.reports-card-actions {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 0.4rem;
+}
+
+.reports-delete-button {
+  align-items: center;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.12);
+  border-radius: 999px;
+  color: #dc2626;
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: clamp(1.8rem, 7vw, 2.05rem);
+  justify-content: center;
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+  width: clamp(1.8rem, 7vw, 2.05rem);
+}
+
+.reports-delete-button:hover,
+.reports-delete-button:focus-visible {
+  background: rgba(220, 38, 38, 0.12);
+  box-shadow: 0 8px 16px rgba(220, 38, 38, 0.12);
+  transform: translateY(-1px);
 }
 
 .reports-list-card h3 {

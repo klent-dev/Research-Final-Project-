@@ -14,6 +14,7 @@ import {
 import responseImage from '../../assets/images/Response.png';
 import { useReportDraft } from '../../context/ReportDraftContext.jsx';
 import { buildReportFromDraft, saveReport } from '../../services/localReportService.js';
+import { SEVERITY_LEVELS, normalizeUrgency } from '../../utils/severity.js';
 
 const issueTypes = [
   { label: 'Road Damage', icon: FaRoad },
@@ -23,12 +24,12 @@ const issueTypes = [
   { label: 'Other', icon: FaPlus }
 ];
 
-const urgencyLevels = ['Low', 'Medium', 'High', 'Critical'];
+const urgencyLevels = SEVERITY_LEVELS;
 
 export default function CreateReportDetailsPage() {
   const { draft, resetDraft, updateIssueDetails } = useReportDraft();
   const [selectedIssueType, setSelectedIssueType] = useState(draft.issueType || 'Road Damage');
-  const [selectedUrgency, setSelectedUrgency] = useState(draft.urgency || 'Medium');
+  const [selectedUrgency, setSelectedUrgency] = useState(normalizeUrgency(draft.urgency));
   const [description, setDescription] = useState(draft.description || '');
   const [stepError, setStepError] = useState('');
   const navigate = useNavigate();

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import L from 'leaflet';
 import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -18,6 +17,7 @@ import {
 } from 'react-icons/fa';
 import PageContainer from '../../components/PageContainer.jsx';
 import { getReports } from '../../services/localReportService.js';
+import { HomePreviewMarker } from '../../utils/mapMarkers.js';
 
 const LAHUG_CENTER = {
   lat: 10.3403,
@@ -31,20 +31,6 @@ const categories = [
   { label: 'Flooding', icon: FaTint },
   { label: 'Waste', icon: FaTrash }
 ];
-
-const userLocationIcon = L.divIcon({
-  className: 'home-user-map-marker',
-  html: '',
-  iconAnchor: [8, 8],
-  iconSize: [16, 16]
-});
-
-const reportLocationIcon = L.divIcon({
-  className: 'home-user-map-marker',
-  html: '',
-  iconAnchor: [8, 8],
-  iconSize: [16, 16]
-});
 
 function HomeMapBridge({ mapRef }) {
   const map = useMap();
@@ -73,11 +59,11 @@ export default function CitizenHomePage() {
     { label: 'Submitted', value: reports.length.toString() },
     {
       label: 'Verified',
-      value: reports.filter((report) => report.status.toUpperCase().includes('VERIFIED')).length.toString().padStart(2, '0')
+      value: reports.filter((report) => report.status.toUpperCase().includes('VERIFIED')).length.toString()
     },
     {
       label: 'Resolved',
-      value: reports.filter((report) => report.status.toUpperCase().includes('RESOLVED')).length.toString().padStart(2, '0')
+      value: reports.filter((report) => report.status.toUpperCase().includes('RESOLVED')).length.toString()
     }
   ];
 
@@ -206,11 +192,11 @@ export default function CitizenHomePage() {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
               {userLocation && (
-                <Marker icon={userLocationIcon} position={[userLocation.lat, userLocation.lng]} />
+                <Marker icon={HomePreviewMarker} position={[userLocation.lat, userLocation.lng]} />
               )}
               {nearbyReports.map((report) => (
                 <Marker
-                  icon={reportLocationIcon}
+                  icon={HomePreviewMarker}
                   key={report.id}
                   position={[report.location.lat, report.location.lng]}
                 />

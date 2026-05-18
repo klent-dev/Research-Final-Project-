@@ -17,7 +17,7 @@ import UploadArea from '../components/UploadArea.jsx';
 import VerificationCard from '../components/VerificationCard.jsx';
 
 const categories = ['Road Damage', 'Drainage', 'Streetlight', 'Bridge', 'Flooding', 'Other'];
-const severities = ['Low', 'Medium', 'High', 'Critical'];
+const severities = ['Low', 'Medium', 'Critical'];
 
 export default function SubmitReport() {
   return (

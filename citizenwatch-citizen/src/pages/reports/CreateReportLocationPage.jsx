@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import {
   FaArrowLeft,
   FaArrowRight,
@@ -16,28 +12,12 @@ import {
   FaMapMarkerAlt
 } from 'react-icons/fa';
 import { useReportDraft } from '../../context/ReportDraftContext.jsx';
-
-if (L.Icon?.Default?.prototype?._getIconUrl) {
-  delete L.Icon.Default.prototype._getIconUrl;
-}
-
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow
-});
+import { getMarkerBySeverity } from '../../utils/mapMarkers.js';
 
 const LAHUG_CENTER = {
   lat: 10.3403,
   lng: 123.9065
 };
-
-const reportLocationIcon = L.divIcon({
-  className: 'create-location-marker',
-  html: '<span></span>',
-  iconAnchor: [24, 24],
-  iconSize: [48, 48]
-});
 
 function LocationMapBridge({ mapRef }) {
   const map = useMap();
@@ -161,7 +141,7 @@ export default function CreateReportLocationPage() {
           />
 
           {hasLocation && (
-            <Marker icon={reportLocationIcon} position={[reportLocation.lat, reportLocation.lng]}>
+            <Marker icon={getMarkerBySeverity('Low')} position={[reportLocation.lat, reportLocation.lng]}>
               <Popup>{reportLocation.address}</Popup>
             </Marker>
           )}

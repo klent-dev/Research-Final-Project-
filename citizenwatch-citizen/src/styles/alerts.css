@@ -259,32 +259,28 @@
 
 .alert-unread-dot {
   background: #16a34a;
-  border: 3px solid #ffffff;
   border-radius: 999px;
-  height: 0.85rem;
-  position: absolute;
-  right: 1rem;
-  top: 0.9rem;
-  width: 0.85rem;
+  display: inline-block;
+  flex: 0 0 auto;
+  height: 0.45rem;
+  width: 0.45rem;
 }
 
 .nearby-alert-indicator {
   align-items: center;
   color: #dc2626;
   display: inline-flex;
+  flex: 0 0 auto;
   font-size: 0.9rem;
   font-weight: 950;
   line-height: 1;
-  position: absolute;
-  right: 1rem;
-  top: 1rem;
 }
 
 .alert-card__content {
   min-width: 0;
 }
 
-.alert-card__content header {
+.alert-card-header {
   align-items: flex-start;
   display: flex;
   gap: 0.75rem;
@@ -292,9 +288,23 @@
   margin-bottom: 0.35rem;
 }
 
+.alert-card-header h2 {
+  flex: 1;
+  min-width: 0;
+}
+
+.alert-time-wrap {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.35rem;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
 .alert-card h2 {
   color: var(--text);
-  font-size: clamp(1rem, 4.2vw, 1.22rem);
+  font-size: clamp(0.92rem, 3.8vw, 1.08rem);
   letter-spacing: -0.025em;
   line-height: 1.15;
   margin: 0;
@@ -305,7 +315,7 @@
   color: #dc2626;
 }
 
-.alert-card time,
+.alert-time,
 .alert-priority-mark {
   flex: 0 0 auto;
   font-size: clamp(0.62rem, 2.7vw, 0.74rem);

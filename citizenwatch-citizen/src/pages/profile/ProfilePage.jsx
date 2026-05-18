@@ -51,13 +51,13 @@ export default function ProfilePage() {
     { label: 'Submitted', value: reports.length.toString(), icon: FaRegFileAlt, tone: 'green' },
     {
       label: 'Verified',
-      value: reports.filter((report) => report.status.toUpperCase().includes('VERIFIED')).length.toString().padStart(2, '0'),
+      value: reports.filter((report) => report.status.toUpperCase().includes('VERIFIED')).length.toString(),
       icon: HiOutlineBadgeCheck,
       tone: 'purple'
     },
     {
       label: 'Resolved',
-      value: reports.filter((report) => report.status.toUpperCase().includes('RESOLVED')).length.toString().padStart(2, '0'),
+      value: reports.filter((report) => report.status.toUpperCase().includes('RESOLVED')).length.toString(),
       icon: FaRegCheckCircle,
       tone: 'green'
     },
