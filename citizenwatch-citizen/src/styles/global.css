@@ -2766,6 +2766,7 @@ textarea {
   font-weight: 950;
   height: clamp(2.45rem, 9vw, 3.1rem);
   justify-content: center;
+  text-decoration: none;
   width: clamp(2.45rem, 9vw, 3.1rem);
 }
 

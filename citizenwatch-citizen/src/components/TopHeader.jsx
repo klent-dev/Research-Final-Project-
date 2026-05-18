@@ -15,7 +15,7 @@ export default function TopHeader() {
         <button type="button" aria-label="Search reports">
           <FaSearch aria-hidden="true" />
         </button>
-        <span className="citizen-avatar" aria-label="Citizen profile">C</span>
+        <Link className="citizen-avatar" to="/profile" aria-label="Citizen profile">C</Link>
       </div>
     </header>
   );

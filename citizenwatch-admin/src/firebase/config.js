@@ -9,5 +9,17 @@ export const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-export const firebaseApp = initializeApp(firebaseConfig);
+export const requiredFirebaseEnvKeys = [
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_AUTH_DOMAIN',
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_STORAGE_BUCKET',
+  'VITE_FIREBASE_MESSAGING_SENDER_ID',
+  'VITE_FIREBASE_APP_ID'
+];
+
+export const missingFirebaseEnvKeys = requiredFirebaseEnvKeys.filter((key) => !import.meta.env[key]);
+export const isFirebaseConfigured = missingFirebaseEnvKeys.length === 0;
+
+export const firebaseApp = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
 
