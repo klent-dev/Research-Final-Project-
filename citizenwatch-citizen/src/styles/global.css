@@ -4072,6 +4072,17 @@ textarea {
   white-space: nowrap;
 }
 
+.create-step-error {
+  color: #dc2626 !important;
+  font-size: clamp(0.78rem, 3vw, 0.9rem) !important;
+  font-weight: 800;
+  line-height: 1.35 !important;
+  margin-top: 0.9rem !important;
+  max-width: 410px !important;
+  text-align: center;
+  width: 100%;
+}
+
 .selected-photo-card {
   align-items: center;
   background: rgba(236, 253, 245, 0.82);

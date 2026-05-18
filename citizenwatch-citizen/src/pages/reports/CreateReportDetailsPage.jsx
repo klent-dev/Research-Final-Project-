@@ -12,13 +12,8 @@ import {
   FaLightbulb
 } from 'react-icons/fa';
 import responseImage from '../../assets/images/Response.png';
-import {
-  buildReportFromDraft,
-  clearReportDraft,
-  getReportDraft,
-  saveReport,
-  saveReportDraft
-} from '../../services/localReportService.js';
+import { useReportDraft } from '../../context/ReportDraftContext.jsx';
+import { buildReportFromDraft, saveReport } from '../../services/localReportService.js';
 
 const issueTypes = [
   { label: 'Road Damage', icon: FaRoad },
@@ -31,17 +26,18 @@ const issueTypes = [
 const urgencyLevels = ['Low', 'Medium', 'High', 'Critical'];
 
 export default function CreateReportDetailsPage() {
-  const draft = getReportDraft();
+  const { draft, resetDraft, updateIssueDetails } = useReportDraft();
   const [selectedIssueType, setSelectedIssueType] = useState(draft.issueType || 'Road Damage');
   const [selectedUrgency, setSelectedUrgency] = useState(draft.urgency || 'Medium');
   const [description, setDescription] = useState(draft.description || '');
+  const [stepError, setStepError] = useState('');
   const navigate = useNavigate();
   const photoPreview = draft.photoPreview || responseImage;
   const locationLabel = draft.location?.address || 'Location pending';
 
   function handleSaveDraft() {
     // TODO: Re-enable Firebase draft persistence after UI is completed
-    saveReportDraft({
+    updateIssueDetails({
       issueType: selectedIssueType,
       urgency: selectedUrgency,
       description
@@ -50,16 +46,46 @@ export default function CreateReportDetailsPage() {
   }
 
   function handleNextStep() {
-    const nextDraft = saveReportDraft({
+    if (!selectedIssueType || !selectedUrgency || !description.trim()) {
+      setStepError('Please complete the issue type, urgency, and description before submitting.');
+      return;
+    }
+
+    const nextDraft = {
+      ...draft,
       issueType: selectedIssueType,
       urgency: selectedUrgency,
-      description
-    });
+      description: description.trim()
+    };
+    updateIssueDetails(nextDraft);
     const savedReport = saveReport(buildReportFromDraft(nextDraft));
 
-    clearReportDraft();
+    resetDraft();
     console.log('Report saved locally:', savedReport.trackingId);
     navigate('/reports/create/success');
+  }
+
+  function handleIssueTypeChange(issueType) {
+    setSelectedIssueType(issueType);
+    setStepError('');
+    updateIssueDetails({ issueType, urgency: selectedUrgency, description });
+  }
+
+  function handleUrgencyChange(urgency) {
+    setSelectedUrgency(urgency);
+    setStepError('');
+    updateIssueDetails({ issueType: selectedIssueType, urgency, description });
+  }
+
+  function handleDescriptionChange(event) {
+    const nextDescription = event.target.value;
+    setDescription(nextDescription);
+    setStepError('');
+    updateIssueDetails({
+      issueType: selectedIssueType,
+      urgency: selectedUrgency,
+      description: nextDescription
+    });
   }
 
   return (
@@ -97,7 +123,7 @@ export default function CreateReportDetailsPage() {
               <button
                 className={selectedIssueType === item.label ? 'details-chip active' : 'details-chip'}
                 key={item.label}
-                onClick={() => setSelectedIssueType(item.label)}
+                onClick={() => handleIssueTypeChange(item.label)}
                 type="button"
               >
                 <item.icon aria-hidden="true" />
@@ -114,7 +140,7 @@ export default function CreateReportDetailsPage() {
               <button
                 className={selectedUrgency === level ? 'details-chip active' : 'details-chip'}
                 key={level}
-                onClick={() => setSelectedUrgency(level)}
+                onClick={() => handleUrgencyChange(level)}
                 type="button"
               >
                 {level}
@@ -127,11 +153,12 @@ export default function CreateReportDetailsPage() {
           <label htmlFor="issue-description">Describe the issue</label>
           <textarea
             id="issue-description"
-            onChange={(event) => setDescription(event.target.value)}
+            onChange={handleDescriptionChange}
             placeholder="Please provide details to help our team identify the problem..."
             rows="5"
             value={description}
           />
+          {stepError && <p className="create-step-error">{stepError}</p>}
         </section>
       </section>
 

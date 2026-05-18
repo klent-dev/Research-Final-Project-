@@ -13,7 +13,7 @@ import {
   FaTrash,
   FaTimes
 } from 'react-icons/fa';
-import { getReportDraft, saveReportDraft } from '../../services/localReportService.js';
+import { useReportDraft } from '../../context/ReportDraftContext.jsx';
 
 const tips = [
   'Capture both a close-up and a wide shot for context.',
@@ -34,9 +34,10 @@ function formatFileSize(file) {
 }
 
 export default function CreateReportPage() {
-  const [draft, setDraft] = useState(() => getReportDraft());
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(() => getReportDraft().photoPreview || '');
+  const { draft, updateDraft, updatePhoto } = useReportDraft();
+  const [selectedFile, setSelectedFile] = useState(() => draft.selectedFile || null);
+  const [previewUrl, setPreviewUrl] = useState(() => draft.photoPreview || '');
+  const [stepError, setStepError] = useState('');
   // TODO: Replace with real EXIF/GPS metadata after report submission
   const hasMetadata = Boolean(draft?.location || draft?.evidenceCapturedAt);
   const currentLocation = hasMetadata && draft?.location?.address
@@ -97,16 +98,11 @@ export default function CreateReportPage() {
     objectUrlRef.current = nextPreviewUrl;
     setSelectedFile(file);
     setPreviewUrl(nextPreviewUrl);
+    setStepError('');
 
     const reader = new FileReader();
     reader.onload = () => {
-      const nextDraft = saveReportDraft({
-        fileName: file.name,
-        fileSize: formatFileSize(file),
-        photoPreview: typeof reader.result === 'string' ? reader.result : '',
-        evidenceCapturedAt: new Date().toISOString()
-      });
-      setDraft(nextDraft);
+      updatePhoto(file, typeof reader.result === 'string' ? reader.result : '');
     };
     reader.readAsDataURL(file);
   }
@@ -125,19 +121,21 @@ export default function CreateReportPage() {
     setSelectedFile(null);
     setPreviewUrl('');
 
-    const nextDraft = saveReportDraft({
+    updateDraft({
+      selectedFile: null,
       fileName: '',
       fileSize: '',
       photoPreview: '',
       evidenceCapturedAt: ''
     });
-    setDraft(nextDraft);
   }
 
   function handleNextStep() {
-    saveReportDraft({
-      fileName: selectedFileName
-    });
+    if (!draft.photoPreview && !previewUrl) {
+      setStepError('Please choose or capture a photo before continuing.');
+      return;
+    }
+
     navigate('/reports/create/location');
   }
 
@@ -192,6 +190,8 @@ export default function CreateReportPage() {
               ref={fileInputRef}
               type="file"
             />
+
+            {stepError && <p className="create-step-error">{stepError}</p>}
 
             {selectedFileName && (
               <div className="selected-photo-card">

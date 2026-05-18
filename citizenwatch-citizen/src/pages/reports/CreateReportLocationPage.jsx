@@ -15,7 +15,7 @@ import {
   FaLocationArrow,
   FaMapMarkerAlt
 } from 'react-icons/fa';
-import { getReportDraft, saveReportDraft } from '../../services/localReportService.js';
+import { useReportDraft } from '../../context/ReportDraftContext.jsx';
 
 if (L.Icon?.Default?.prototype?._getIconUrl) {
   delete L.Icon.Default.prototype._getIconUrl;
@@ -58,8 +58,9 @@ function LocationMapBridge({ mapRef }) {
 
 export default function CreateReportLocationPage() {
   const navigate = useNavigate();
+  const { draft, updateLocation } = useReportDraft();
   // TODO: Connect browser Geolocation API and reverse geocoding
-  const [reportLocation, setReportLocation] = useState(() => getReportDraft().location || null);
+  const [reportLocation, setReportLocation] = useState(() => draft.location || null);
   const [locationError, setLocationError] = useState('');
   const mapRef = useRef(null);
   const hasLocation = Boolean(
@@ -82,12 +83,13 @@ export default function CreateReportLocationPage() {
           lng: position.coords.longitude,
           accuracy: Math.round(position.coords.accuracy),
           address: 'Location detected',
+          source: 'gps',
           // TODO: Add reverse geocoding for human-readable address
           subAddress: `Lat: ${position.coords.latitude.toFixed(5)}, Lng: ${position.coords.longitude.toFixed(5)}`
         };
 
         setReportLocation(nextLocation);
-        saveReportDraft({ location: nextLocation });
+        updateLocation(nextLocation);
         setLocationError('');
         mapRef.current?.flyTo([nextLocation.lat, nextLocation.lng], 16, {
           animate: true,
@@ -111,7 +113,7 @@ export default function CreateReportLocationPage() {
     }
 
     // TODO: Connect real GPS verification and map coordinates after UI is completed
-    saveReportDraft({ location: reportLocation });
+    updateLocation(reportLocation);
     navigate('/reports/create/details');
   }
 
