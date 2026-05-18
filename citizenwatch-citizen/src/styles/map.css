@@ -52,9 +52,10 @@
 .community-map-title h1 {
   color: var(--text);
   font-size: clamp(1.75rem, 8vw, 2.4rem);
-  letter-spacing: -0.055em;
-  line-height: 1;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
   margin: 0 0 0.35rem;
+  text-wrap: balance;
 }
 
 .community-map-title p {

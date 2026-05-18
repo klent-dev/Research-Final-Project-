@@ -111,7 +111,10 @@ export default function CitizenHomePage() {
   return (
     <PageContainer className="citizen-home">
       <section className="citizen-greeting">
-        <h1>Good morning, Citizen</h1>
+        <span className="citizen-greeting__chip">Community Dashboard</span>
+        <h1>
+          Good morning,<span className="citizen-greeting__name">Citizen</span>
+        </h1>
         <p>Your contribution keeps our neighborhood safe and functional.</p>
       </section>
 

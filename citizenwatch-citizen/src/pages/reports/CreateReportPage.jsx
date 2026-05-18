@@ -21,6 +21,15 @@ const tips = [
 
 export default function CreateReportPage() {
   const [selectedFileName, setSelectedFileName] = useState('');
+  // TODO: Replace with real EXIF/GPS metadata after report submission
+  const reportData = null;
+  const hasMetadata = Boolean(reportData?.location || reportData?.timestamp);
+  const currentLocation = hasMetadata && reportData?.location
+    ? reportData.location
+    : 'Location not available yet';
+  const timestamp = hasMetadata && reportData?.timestamp
+    ? reportData.timestamp
+    : 'Waiting for report submission';
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -110,7 +119,7 @@ export default function CreateReportPage() {
             <FaMapMarkerAlt aria-hidden="true" />
             <div>
               <span>Current Location</span>
-              <strong>Oak Street, Neighborhood Park</strong>
+              <strong>{currentLocation}</strong>
             </div>
           </div>
 
@@ -118,7 +127,7 @@ export default function CreateReportPage() {
             <FaCalendarAlt aria-hidden="true" />
             <div>
               <span>Timestamp</span>
-              <strong>Oct 24, 2023 &bull; 02:45 PM</strong>
+              <strong>{timestamp}</strong>
             </div>
           </div>
 

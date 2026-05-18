@@ -1,4 +1,11 @@
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import L from 'leaflet';
+import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import {
   FaArrowLeft,
   FaArrowRight,
@@ -9,17 +16,100 @@ import {
   FaMapMarkerAlt
 } from 'react-icons/fa';
 
+if (L.Icon?.Default?.prototype?._getIconUrl) {
+  delete L.Icon.Default.prototype._getIconUrl;
+}
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow
+});
+
+const LAHUG_CENTER = {
+  lat: 10.3403,
+  lng: 123.9065
+};
+
+const reportLocationIcon = L.divIcon({
+  className: 'create-location-marker',
+  html: '<span></span>',
+  iconAnchor: [24, 24],
+  iconSize: [48, 48]
+});
+
+function LocationMapBridge({ mapRef }) {
+  const map = useMap();
+
+  useEffect(() => {
+    mapRef.current = map;
+    window.setTimeout(() => map.invalidateSize(), 0);
+
+    return () => {
+      if (mapRef.current === map) {
+        mapRef.current = null;
+      }
+    };
+  }, [map, mapRef]);
+
+  return null;
+}
+
 export default function CreateReportLocationPage() {
   const navigate = useNavigate();
+  // TODO: Connect browser Geolocation API and reverse geocoding
+  const [reportLocation, setReportLocation] = useState(null);
+  const [locationError, setLocationError] = useState('');
+  const mapRef = useRef(null);
+  const hasLocation = Boolean(reportLocation?.lat && reportLocation?.lng && reportLocation?.address);
+
+  function requestUserLocation() {
+    if (!navigator.geolocation) {
+      setLocationError('GPS is not supported by this browser.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const nextLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: Math.round(position.coords.accuracy),
+          address: 'Location detected',
+          // TODO: Add reverse geocoding for human-readable address
+          subAddress: `Lat: ${position.coords.latitude.toFixed(5)}, Lng: ${position.coords.longitude.toFixed(5)}`
+        };
+
+        setReportLocation(nextLocation);
+        setLocationError('');
+        mapRef.current?.flyTo([nextLocation.lat, nextLocation.lng], 16, {
+          animate: true,
+          duration: 0.8
+        });
+      },
+      () => {
+        setLocationError('Unable to access GPS. You may edit the address manually.');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    );
+  }
 
   function handleConfirmLocation() {
+    if (!hasLocation) {
+      return;
+    }
+
     // TODO: Connect real GPS verification and map coordinates after UI is completed
     navigate('/reports/create/details');
   }
 
   function handleEditAddress() {
     // TODO: Add manual address edit form after UI is completed
-    console.log('Edit Address Manually clicked');
+    console.log('Edit address manually clicked');
   }
 
   return (
@@ -45,24 +135,45 @@ export default function CreateReportLocationPage() {
         </div>
       </section>
 
-      <section className="location-map-preview" aria-label="Static location map preview">
-        <div className="gps-verified-pill">
-          <FaCheckCircle aria-hidden="true" />
-          <span>GPS Verified</span>
-          <strong>&plusmn; 2.4m</strong>
+      <section className="location-map-preview" aria-label="Live location map preview">
+        <MapContainer
+          attributionControl={false}
+          center={[LAHUG_CENTER.lat, LAHUG_CENTER.lng]}
+          className="create-location-leaflet-map"
+          scrollWheelZoom
+          zoom={14}
+          zoomControl={false}
+        >
+          <LocationMapBridge mapRef={mapRef} />
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+
+          {hasLocation && (
+            <Marker icon={reportLocationIcon} position={[reportLocation.lat, reportLocation.lng]}>
+              <Popup>{reportLocation.address}</Popup>
+            </Marker>
+          )}
+        </MapContainer>
+
+        <div className={hasLocation ? 'gps-verified-pill' : 'gps-verified-pill gps-verified-pill--waiting'}>
+          {hasLocation && <FaCheckCircle aria-hidden="true" />}
+          <span>{hasLocation ? 'GPS Verified' : 'Waiting for GPS'}</span>
+          {hasLocation && <strong>&plusmn; {reportLocation.accuracy}m</strong>}
         </div>
 
-        <div className="location-map-water location-map-water--top" />
-        <div className="location-map-water location-map-water--bottom" />
-        <div className="location-map-park" />
-        <span className="location-map-dot location-map-dot--one" />
-        <span className="location-map-dot location-map-dot--two" />
-
-        <div className="location-pin-anchor">
-          <span>
+        {!hasLocation && (
+          <div className="location-map-empty-state">
             <FaMapMarkerAlt aria-hidden="true" />
-          </span>
-        </div>
+            <h2>Waiting for location access</h2>
+            <p>Allow GPS or edit address manually to continue.</p>
+            <button onClick={requestUserLocation} type="button">
+              Use Current Location
+            </button>
+            {locationError && <small>{locationError}</small>}
+          </div>
+        )}
       </section>
 
       <section className="detected-location-card">
@@ -73,8 +184,8 @@ export default function CreateReportLocationPage() {
             <FaLocationArrow aria-hidden="true" />
           </span>
           <div>
-            <h1>452 Market Street</h1>
-            <p>San Francisco, CA 94104</p>
+            <h1>{hasLocation ? reportLocation.address : 'Location not selected yet'}</h1>
+            <p>{hasLocation ? reportLocation.subAddress : 'Your detected report location will appear here.'}</p>
           </div>
         </div>
 
@@ -85,7 +196,12 @@ export default function CreateReportLocationPage() {
           </p>
         </div>
 
-        <button className="confirm-location-button" onClick={handleConfirmLocation} type="button">
+        <button
+          className="confirm-location-button"
+          disabled={!hasLocation}
+          onClick={handleConfirmLocation}
+          type="button"
+        >
           Confirm Location
           <FaArrowRight aria-hidden="true" />
         </button>

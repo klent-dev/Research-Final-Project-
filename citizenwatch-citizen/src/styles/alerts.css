@@ -51,9 +51,10 @@
 .alerts-title h1 {
   color: var(--text);
   font-size: clamp(1.7rem, 8vw, 2.35rem);
-  letter-spacing: -0.055em;
-  line-height: 1;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
   margin: 0 0 0.35rem;
+  text-wrap: balance;
 }
 
 .alerts-title p {
