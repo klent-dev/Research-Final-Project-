@@ -38,6 +38,7 @@ export default function AlertsPage() {
       </header>
 
       <section className="alerts-title">
+        <span className="alerts-title__chip">Alert Center</span>
         <h1>Alerts</h1>
         <p>Stay updated on your reports and nearby issues</p>
       </section>

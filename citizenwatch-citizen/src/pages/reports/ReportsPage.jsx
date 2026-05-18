@@ -26,6 +26,7 @@ export default function ReportsPage() {
       </header>
 
       <section className="reports-title">
+        <span className="reports-title__chip">Report Center</span>
         <h1>My Reports</h1>
         <p>Track your submitted infrastructure reports</p>
       </section>

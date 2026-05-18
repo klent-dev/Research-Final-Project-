@@ -213,6 +213,7 @@ export default function MapPage() {
       </header>
 
       <section className="community-map-title">
+        <span className="community-map-title__chip">Community Map</span>
         <h1>Community Map</h1>
         <p>View nearby infrastructure reports and hazard locations</p>
       </section>
