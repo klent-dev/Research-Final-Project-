@@ -9,11 +9,14 @@ import {
 } from 'react-icons/fa';
 import PageContainer from '../../components/PageContainer.jsx';
 import communityImage from '../../assets/images/Community.png';
-
-// TODO: Load reports from Firestore
-const reports = [];
+import responseImage from '../../assets/images/Response.png';
+import { formatReportDate, getReports, getStatusColor } from '../../services/localReportService.js';
 
 export default function ReportsPage() {
+  // TODO: Replace localStorage with Firestore backend
+  const reports = getReports();
+  const resolvedReports = reports.filter((report) => report.status.toUpperCase().includes('RESOLVED'));
+
   return (
     <PageContainer className="reports-page">
       <header className="reports-topbar">
@@ -37,7 +40,7 @@ export default function ReportsPage() {
             <FaClipboardList aria-hidden="true" />
           </span>
           <p>Total Reports</p>
-          <strong>0</strong>
+          <strong>{reports.length}</strong>
         </article>
 
         <article className="reports-summary-card">
@@ -45,7 +48,7 @@ export default function ReportsPage() {
             <FaCheckCircle aria-hidden="true" />
           </span>
           <p>Resolved</p>
-          <strong>0</strong>
+          <strong>{resolvedReports.length.toString().padStart(2, '0')}</strong>
         </article>
       </section>
 
@@ -67,17 +70,17 @@ export default function ReportsPage() {
         <div className="reports-list">
           {reports.length > 0 ? (
             reports.map((report) => (
-              <article className="reports-list-card" key={report.title}>
-                <img src={report.image} alt="" />
+              <article className="reports-list-card" key={report.id}>
+                <img src={report.photoPreview || responseImage} alt="" />
                 <div className="reports-list-card__body">
                   <div>
                     <h3>{report.title}</h3>
-                    <span className={`reports-status-pill reports-status-pill--${report.tone}`}>
+                    <span className={`reports-status-pill reports-status-pill--${getStatusColor(report.status)}`}>
                       {report.status}
                     </span>
                   </div>
-                  <p>{report.description}</p>
-                  <time>{report.date}</time>
+                  <p>{report.trackingId} &bull; {report.description}</p>
+                  <time>{formatReportDate(report.createdAt)}</time>
                 </div>
               </article>
             ))

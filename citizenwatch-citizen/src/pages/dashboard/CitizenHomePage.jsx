@@ -17,20 +17,12 @@ import {
   FaTrash
 } from 'react-icons/fa';
 import PageContainer from '../../components/PageContainer.jsx';
+import { getReports } from '../../services/localReportService.js';
 
 const LAHUG_CENTER = {
   lat: 10.3403,
   lng: 123.9065
 };
-
-// TODO: Load reports from Firestore
-const nearbyReports = [];
-
-const impactStats = [
-  { label: 'Submitted', value: '0' },
-  { label: 'Verified', value: '0' },
-  { label: 'Resolved', value: '0' }
-];
 
 const categories = [
   { label: 'Road Damage', icon: FaRoad, active: true },
@@ -41,6 +33,13 @@ const categories = [
 ];
 
 const userLocationIcon = L.divIcon({
+  className: 'home-user-map-marker',
+  html: '',
+  iconAnchor: [8, 8],
+  iconSize: [16, 16]
+});
+
+const reportLocationIcon = L.divIcon({
   className: 'home-user-map-marker',
   html: '',
   iconAnchor: [8, 8],
@@ -67,6 +66,20 @@ function HomeMapBridge({ mapRef }) {
 export default function CitizenHomePage() {
   const [userLocation, setUserLocation] = useState(null);
   const mapRef = useRef(null);
+  // TODO: Replace localStorage with Firestore backend
+  const reports = getReports();
+  const nearbyReports = reports.filter((report) => report.location?.lat && report.location?.lng).slice(0, 3);
+  const impactStats = [
+    { label: 'Submitted', value: reports.length.toString() },
+    {
+      label: 'Verified',
+      value: reports.filter((report) => report.status.toUpperCase().includes('VERIFIED')).length.toString().padStart(2, '0')
+    },
+    {
+      label: 'Resolved',
+      value: reports.filter((report) => report.status.toUpperCase().includes('RESOLVED')).length.toString().padStart(2, '0')
+    }
+  ];
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -195,6 +208,13 @@ export default function CitizenHomePage() {
               {userLocation && (
                 <Marker icon={userLocationIcon} position={[userLocation.lat, userLocation.lng]} />
               )}
+              {nearbyReports.map((report) => (
+                <Marker
+                  icon={reportLocationIcon}
+                  key={report.id}
+                  position={[report.location.lat, report.location.lng]}
+                />
+              ))}
             </MapContainer>
 
             {nearbyReports.length === 0 && (
@@ -205,10 +225,17 @@ export default function CitizenHomePage() {
               </div>
             )}
 
-            {nearbyReports.map((report) => (
-              <span className="citizen-map-label" key={report.id}>
+            {nearbyReports.slice(0, 2).map((report, index) => (
+              <span
+                className="citizen-map-label"
+                key={report.id}
+                style={{
+                  left: index === 0 ? '26%' : '44%',
+                  top: index === 0 ? '34%' : '58%'
+                }}
+              >
                 <FaMapMarkerAlt aria-hidden="true" />
-                {report.title}
+                {report.issueType}
               </span>
             ))}
           </div>

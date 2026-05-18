@@ -7,10 +7,12 @@ import {
   FaHome,
   FaQuestionCircle
 } from 'react-icons/fa';
-
-const trackingId = '#INF-8842';
+import { getLastSubmittedReport } from '../../services/localReportService.js';
 
 export default function CreateReportSuccessPage() {
+  const submittedReport = getLastSubmittedReport();
+  const trackingId = submittedReport?.trackingId || '#INF-0000';
+
   async function handleCopyTrackingId() {
     try {
       await navigator.clipboard?.writeText(trackingId);

@@ -12,6 +12,7 @@ import {
   FaMapMarkerAlt,
   FaTimes
 } from 'react-icons/fa';
+import { getReportDraft, saveReportDraft } from '../../services/localReportService.js';
 
 const tips = [
   'Capture both a close-up and a wide shot for context.',
@@ -20,15 +21,21 @@ const tips = [
 ];
 
 export default function CreateReportPage() {
-  const [selectedFileName, setSelectedFileName] = useState('');
+  const [draft, setDraft] = useState(() => getReportDraft());
+  const [selectedFileName, setSelectedFileName] = useState(() => getReportDraft().fileName || '');
   // TODO: Replace with real EXIF/GPS metadata after report submission
-  const reportData = null;
-  const hasMetadata = Boolean(reportData?.location || reportData?.timestamp);
-  const currentLocation = hasMetadata && reportData?.location
-    ? reportData.location
+  const hasMetadata = Boolean(draft?.location || draft?.evidenceCapturedAt);
+  const currentLocation = hasMetadata && draft?.location?.address
+    ? draft.location.address
     : 'Location not available yet';
-  const timestamp = hasMetadata && reportData?.timestamp
-    ? reportData.timestamp
+  const timestamp = hasMetadata && draft?.evidenceCapturedAt
+    ? new Date(draft.evidenceCapturedAt).toLocaleString('en-US', {
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
     : 'Waiting for report submission';
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
@@ -45,9 +52,33 @@ export default function CreateReportPage() {
   function handleFileChange(event) {
     const [file] = event.target.files;
     setSelectedFileName(file ? file.name : '');
+
+    if (!file) {
+      const nextDraft = saveReportDraft({
+        fileName: '',
+        photoPreview: '',
+        evidenceCapturedAt: ''
+      });
+      setDraft(nextDraft);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const nextDraft = saveReportDraft({
+        fileName: file.name,
+        photoPreview: typeof reader.result === 'string' ? reader.result : '',
+        evidenceCapturedAt: new Date().toISOString()
+      });
+      setDraft(nextDraft);
+    };
+    reader.readAsDataURL(file);
   }
 
   function handleNextStep() {
+    saveReportDraft({
+      fileName: selectedFileName
+    });
     navigate('/reports/create/location');
   }
 

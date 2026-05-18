@@ -15,6 +15,7 @@ import {
   FaLocationArrow,
   FaMapMarkerAlt
 } from 'react-icons/fa';
+import { getReportDraft, saveReportDraft } from '../../services/localReportService.js';
 
 if (L.Icon?.Default?.prototype?._getIconUrl) {
   delete L.Icon.Default.prototype._getIconUrl;
@@ -58,7 +59,7 @@ function LocationMapBridge({ mapRef }) {
 export default function CreateReportLocationPage() {
   const navigate = useNavigate();
   // TODO: Connect browser Geolocation API and reverse geocoding
-  const [reportLocation, setReportLocation] = useState(null);
+  const [reportLocation, setReportLocation] = useState(() => getReportDraft().location || null);
   const [locationError, setLocationError] = useState('');
   const mapRef = useRef(null);
   const hasLocation = Boolean(reportLocation?.lat && reportLocation?.lng && reportLocation?.address);
@@ -81,6 +82,7 @@ export default function CreateReportLocationPage() {
         };
 
         setReportLocation(nextLocation);
+        saveReportDraft({ location: nextLocation });
         setLocationError('');
         mapRef.current?.flyTo([nextLocation.lat, nextLocation.lng], 16, {
           animate: true,
@@ -104,6 +106,7 @@ export default function CreateReportLocationPage() {
     }
 
     // TODO: Connect real GPS verification and map coordinates after UI is completed
+    saveReportDraft({ location: reportLocation });
     navigate('/reports/create/details');
   }
 

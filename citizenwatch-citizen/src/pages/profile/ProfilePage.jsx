@@ -18,17 +18,12 @@ import {
 import { HiOutlineBadgeCheck } from 'react-icons/hi';
 import PageContainer from '../../components/PageContainer.jsx';
 import communityImage from '../../assets/images/Community.png';
+import responseImage from '../../assets/images/Response.png';
+import { formatReportDate, getReports, getStatusColor } from '../../services/localReportService.js';
 
 const citizenName = 'Klent Ian Ca\u00f1ada';
 const maskedPassword = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
 const membershipText = 'Barangay Lahug \u2022 Member since: 2026';
-
-const stats = [
-  { label: 'Submitted', value: '0', icon: FaRegFileAlt, tone: 'green' },
-  { label: 'Verified', value: '0', icon: HiOutlineBadgeCheck, tone: 'purple' },
-  { label: 'Resolved', value: '0', icon: FaRegCheckCircle, tone: 'green' },
-  { label: 'Accuracy', value: '--', icon: FaRegChartBar, tone: 'purple' }
-];
 
 const accountRows = [
   ['Full Name', citizenName],
@@ -40,9 +35,6 @@ const accountRows = [
 
 const securityRows = ['Verified Citizen', 'GPS Reporting Enabled', 'EXIF Data Validation'];
 
-// TODO: Load reports from Firestore
-const reports = [];
-
 const settings = [
   { label: 'Notifications', icon: FaBell },
   { label: 'Privacy', icon: FaShieldAlt },
@@ -53,6 +45,24 @@ const settings = [
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+  // TODO: Replace localStorage with Firestore backend
+  const reports = getReports();
+  const stats = [
+    { label: 'Submitted', value: reports.length.toString(), icon: FaRegFileAlt, tone: 'green' },
+    {
+      label: 'Verified',
+      value: reports.filter((report) => report.status.toUpperCase().includes('VERIFIED')).length.toString().padStart(2, '0'),
+      icon: HiOutlineBadgeCheck,
+      tone: 'purple'
+    },
+    {
+      label: 'Resolved',
+      value: reports.filter((report) => report.status.toUpperCase().includes('RESOLVED')).length.toString().padStart(2, '0'),
+      icon: FaRegCheckCircle,
+      tone: 'green'
+    },
+    { label: 'Accuracy', value: reports.length > 0 ? '100%' : '--', icon: FaRegChartBar, tone: 'purple' }
+  ];
 
   function handleLogout() {
     // TODO: Re-enable Firebase authentication after UI is completed
@@ -121,14 +131,14 @@ export default function ProfilePage() {
         <h2>Recent Reports</h2>
         <div className="profile-reports-card">
           {reports.length > 0 ? (
-            reports.map((report) => (
-              <article className="profile-report-item" key={report.title}>
-                <img src={report.image} alt="" />
+            reports.slice(0, 3).map((report) => (
+              <article className="profile-report-item" key={report.id}>
+                <img src={report.photoPreview || responseImage} alt="" />
                 <div>
                   <h3>{report.title}</h3>
-                  <time>{report.date}</time>
+                  <time>{formatReportDate(report.createdAt)}</time>
                 </div>
-                <span className={`profile-status-pill profile-status-pill--${report.tone}`}>
+                <span className={`profile-status-pill profile-status-pill--${getStatusColor(report.status)}`}>
                   {report.status}
                 </span>
               </article>

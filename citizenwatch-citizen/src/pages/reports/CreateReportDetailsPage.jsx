@@ -12,6 +12,13 @@ import {
   FaLightbulb
 } from 'react-icons/fa';
 import responseImage from '../../assets/images/Response.png';
+import {
+  buildReportFromDraft,
+  clearReportDraft,
+  getReportDraft,
+  saveReport,
+  saveReportDraft
+} from '../../services/localReportService.js';
 
 const issueTypes = [
   { label: 'Road Damage', icon: FaRoad },
@@ -24,17 +31,34 @@ const issueTypes = [
 const urgencyLevels = ['Low', 'Medium', 'High', 'Critical'];
 
 export default function CreateReportDetailsPage() {
-  const [selectedIssueType, setSelectedIssueType] = useState('Road Damage');
-  const [selectedUrgency, setSelectedUrgency] = useState('Medium');
-  const [description, setDescription] = useState('');
+  const draft = getReportDraft();
+  const [selectedIssueType, setSelectedIssueType] = useState(draft.issueType || 'Road Damage');
+  const [selectedUrgency, setSelectedUrgency] = useState(draft.urgency || 'Medium');
+  const [description, setDescription] = useState(draft.description || '');
   const navigate = useNavigate();
+  const photoPreview = draft.photoPreview || responseImage;
+  const locationLabel = draft.location?.address || 'Location pending';
 
   function handleSaveDraft() {
     // TODO: Re-enable Firebase draft persistence after UI is completed
+    saveReportDraft({
+      issueType: selectedIssueType,
+      urgency: selectedUrgency,
+      description
+    });
     console.log('Save Draft clicked');
   }
 
   function handleNextStep() {
+    const nextDraft = saveReportDraft({
+      issueType: selectedIssueType,
+      urgency: selectedUrgency,
+      description
+    });
+    const savedReport = saveReport(buildReportFromDraft(nextDraft));
+
+    clearReportDraft();
+    console.log('Report saved locally:', savedReport.trackingId);
     navigate('/reports/create/success');
   }
 
@@ -59,10 +83,10 @@ export default function CreateReportDetailsPage() {
 
       <section className="create-details-content">
         <section className="details-photo-card">
-          <img src={responseImage} alt="Road damage preview" />
+          <img src={photoPreview} alt="Report evidence preview" />
           <span>
             <FaMapMarkerAlt aria-hidden="true" />
-            Main St &amp; 4th Ave
+            {locationLabel}
           </span>
         </section>
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   FaBars,
   FaClipboardList,
@@ -8,23 +8,30 @@ import {
 } from 'react-icons/fa';
 import PageContainer from '../../components/PageContainer.jsx';
 import communityImage from '../../assets/images/Community.png';
+import { formatRelativeTime, getReports } from '../../services/localReportService.js';
 import '../../styles/alerts.css';
 
 const filters = ['All', 'Reports', 'Nearby', 'System'];
 
-// TODO: Load reports from Firestore
-const alerts = [];
-
 export default function AlertsPage() {
   const [activeFilter, setActiveFilter] = useState('All');
+  // TODO: Replace localStorage with Firestore backend
+  const reports = getReports();
+  const alerts = reports.map((report) => ({
+    id: `report-${report.id}`,
+    title: 'Report Submitted',
+    message: `Your ${report.issueType} report has been received and is under review.`,
+    time: formatRelativeTime(report.createdAt),
+    category: 'Reports',
+    status: 'Today',
+    tone: 'reports',
+    icon: FaClipboardList,
+    unread: true
+  }));
 
-  const filteredAlerts = useMemo(() => {
-    if (activeFilter === 'All') {
-      return alerts;
-    }
-
-    return alerts.filter((alert) => alert.category === activeFilter);
-  }, [activeFilter]);
+  const filteredAlerts = activeFilter === 'All'
+    ? alerts
+    : alerts.filter((alert) => alert.category === activeFilter);
 
   return (
     <PageContainer className="alerts-page">
@@ -51,7 +58,7 @@ export default function AlertsPage() {
             </span>
             {alerts.length > 0 && <span className="alerts-new-badge">NEW</span>}
           </div>
-          <strong>0</strong>
+          <strong>{alerts.length}</strong>
           <p>New Updates</p>
         </article>
 

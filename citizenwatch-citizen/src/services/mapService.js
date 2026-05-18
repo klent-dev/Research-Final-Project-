@@ -1,4 +1,5 @@
 import { getMapReports } from './reportService.js';
+import { getReports } from './localReportService.js';
 
 export const DEFAULT_MAP_CENTER = {
   lng: 123.8854,
@@ -13,22 +14,31 @@ export function hasValidCoordinates(report) {
 }
 
 export function normalizeReport(report) {
+  const category = report.category || report.issueType || 'Other';
+
   return {
     ...report,
-    title: report.title || `${report.category || 'Infrastructure'} Report`,
-    category: report.category || 'Other',
+    title: report.title || `${category} Report`,
+    category,
+    issueType: report.issueType || category,
     status: report.status || 'SUBMITTED',
     description: report.description || 'Infrastructure issue reported nearby.',
     location: {
       ...report.location,
-      lat: Number(report.location.lat),
-      lng: Number(report.location.lng),
-      address: report.location.address || 'Location pending'
+      lat: Number(report.location?.lat),
+      lng: Number(report.location?.lng),
+      address: report.location?.address || 'Location pending'
     }
   };
 }
 
 export async function loadMapReports() {
+  const localReports = getReports().filter(hasValidCoordinates).map(normalizeReport);
+
+  if (localReports.length > 0) {
+    return localReports;
+  }
+
   try {
     const reports = await getMapReports();
     const validReports = reports.filter(hasValidCoordinates).map(normalizeReport);
