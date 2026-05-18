@@ -62,7 +62,7 @@ export function AdminLayout() {
 
         <nav className="sidebar-nav" aria-label="Admin navigation">
           {ADMIN_NAVIGATION.map((item) => (
-            <NavLink key={item.path} to={item.path} end={item.path === '/'}>
+            <NavLink key={item.path} to={item.path} end>
               <span aria-hidden="true"><SidebarIcon name={item.icon} /></span>
               {item.label}
             </NavLink>
