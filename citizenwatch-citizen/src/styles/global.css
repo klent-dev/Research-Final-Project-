@@ -4061,6 +4061,95 @@ textarea {
   white-space: nowrap;
 }
 
+.selected-photo-card {
+  align-items: center;
+  background: rgba(236, 253, 245, 0.82);
+  border: 1px solid rgba(22, 163, 74, 0.16);
+  border-radius: clamp(0.9rem, 4vw, 1.2rem);
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  margin-top: 1rem;
+  max-width: 410px;
+  overflow: hidden;
+  padding: 0.65rem;
+  text-align: left;
+  width: 100%;
+}
+
+.selected-photo-card img {
+  aspect-ratio: 1;
+  border-radius: 0.85rem;
+  height: clamp(3.25rem, 14vw, 4.1rem);
+  object-fit: cover;
+  width: clamp(3.25rem, 14vw, 4.1rem);
+}
+
+.selected-photo-card__details {
+  min-width: 0;
+}
+
+.selected-photo-card__details span,
+.selected-photo-card__details small {
+  color: #64748b;
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.selected-photo-card__details strong {
+  color: var(--text);
+  display: block;
+  font-size: clamp(0.82rem, 3.5vw, 0.95rem);
+  font-weight: 900;
+  line-height: 1.25;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected-photo-card__actions {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.selected-photo-card__actions button {
+  align-items: center;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: clamp(0.72rem, 3vw, 0.82rem);
+  font-weight: 900;
+  justify-content: center;
+  min-height: 2.15rem;
+  transition: background var(--transition), border-color var(--transition), transform var(--transition);
+}
+
+.selected-photo-card__actions button:first-child {
+  background: #ffffff;
+  border: 1px solid rgba(20, 83, 45, 0.22);
+  color: #047857;
+  padding: 0 0.85rem;
+}
+
+.selected-photo-card__remove {
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+  width: 2.15rem;
+}
+
+.selected-photo-card__actions button:hover,
+.selected-photo-card__actions button:focus-visible {
+  transform: translateY(-1px);
+}
+
 .sr-only {
   height: 1px;
   margin: -1px;

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FaArrowRight,
@@ -10,6 +10,7 @@ import {
   FaInfo,
   FaLightbulb,
   FaMapMarkerAlt,
+  FaTrash,
   FaTimes
 } from 'react-icons/fa';
 import { getReportDraft, saveReportDraft } from '../../services/localReportService.js';
@@ -20,9 +21,22 @@ const tips = [
   'Avoid blurry shots; hold the device steady.'
 ];
 
+function formatFileSize(file) {
+  if (!file?.size) {
+    return '';
+  }
+
+  if (file.size < 1024 * 1024) {
+    return `${Math.max(1, Math.round(file.size / 1024))} KB`;
+  }
+
+  return `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function CreateReportPage() {
   const [draft, setDraft] = useState(() => getReportDraft());
-  const [selectedFileName, setSelectedFileName] = useState(() => getReportDraft().fileName || '');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(() => getReportDraft().photoPreview || '');
   // TODO: Replace with real EXIF/GPS metadata after report submission
   const hasMetadata = Boolean(draft?.location || draft?.evidenceCapturedAt);
   const currentLocation = hasMetadata && draft?.location?.address
@@ -38,7 +52,17 @@ export default function CreateReportPage() {
     })
     : 'Waiting for report submission';
   const fileInputRef = useRef(null);
+  const objectUrlRef = useRef('');
+  const scrollPositionRef = useRef(0);
   const navigate = useNavigate();
+  const selectedFileName = selectedFile?.name || draft.fileName || '';
+  const selectedFileSize = selectedFile ? formatFileSize(selectedFile) : draft.fileSize || '';
+
+  useEffect(() => () => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+    }
+  }, []);
 
   function handleUseCamera() {
     // TODO: Connect camera capture, Firebase Storage, EXIF, and GPS validation after UI is completed
@@ -46,33 +70,68 @@ export default function CreateReportPage() {
   }
 
   function handleChooseFile() {
+    scrollPositionRef.current = window.scrollY;
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     fileInputRef.current?.click();
   }
 
   function handleFileChange(event) {
     const [file] = event.target.files;
-    setSelectedFileName(file ? file.name : '');
+    fileInputRef.current?.blur();
+
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: scrollPositionRef.current, left: 0, behavior: 'auto' });
+    });
 
     if (!file) {
-      const nextDraft = saveReportDraft({
-        fileName: '',
-        photoPreview: '',
-        evidenceCapturedAt: ''
-      });
-      setDraft(nextDraft);
       return;
     }
+
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(file);
+    objectUrlRef.current = nextPreviewUrl;
+    setSelectedFile(file);
+    setPreviewUrl(nextPreviewUrl);
 
     const reader = new FileReader();
     reader.onload = () => {
       const nextDraft = saveReportDraft({
         fileName: file.name,
+        fileSize: formatFileSize(file),
         photoPreview: typeof reader.result === 'string' ? reader.result : '',
         evidenceCapturedAt: new Date().toISOString()
       });
       setDraft(nextDraft);
     };
     reader.readAsDataURL(file);
+  }
+
+  function handleRemovePhoto() {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = '';
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.blur();
+    }
+
+    setSelectedFile(null);
+    setPreviewUrl('');
+
+    const nextDraft = saveReportDraft({
+      fileName: '',
+      fileSize: '',
+      photoPreview: '',
+      evidenceCapturedAt: ''
+    });
+    setDraft(nextDraft);
   }
 
   function handleNextStep() {
@@ -134,7 +193,29 @@ export default function CreateReportPage() {
               type="file"
             />
 
-            {selectedFileName && <p className="selected-file-name">Selected: {selectedFileName}</p>}
+            {selectedFileName && (
+              <div className="selected-photo-card">
+                {previewUrl && <img src={previewUrl} alt="Selected report evidence preview" />}
+                <div className="selected-photo-card__details">
+                  <span>Selected photo</span>
+                  <strong title={selectedFileName}>{selectedFileName}</strong>
+                  {selectedFileSize && <small>{selectedFileSize}</small>}
+                </div>
+                <div className="selected-photo-card__actions">
+                  <button onClick={handleChooseFile} type="button">
+                    Change Photo
+                  </button>
+                  <button
+                    aria-label="Remove selected photo"
+                    className="selected-photo-card__remove"
+                    onClick={handleRemovePhoto}
+                    type="button"
+                  >
+                    <FaTrash aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
