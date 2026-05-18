@@ -62,7 +62,12 @@ export default function CreateReportLocationPage() {
   const [reportLocation, setReportLocation] = useState(() => getReportDraft().location || null);
   const [locationError, setLocationError] = useState('');
   const mapRef = useRef(null);
-  const hasLocation = Boolean(reportLocation?.lat && reportLocation?.lng && reportLocation?.address);
+  const hasLocation = Boolean(
+    Number.isFinite(Number(reportLocation?.lat)) &&
+    Number.isFinite(Number(reportLocation?.lng)) &&
+    reportLocation?.address
+  );
+  const hasAccuracy = Number.isFinite(Number(reportLocation?.accuracy));
 
   function requestUserLocation() {
     if (!navigator.geolocation) {
@@ -163,7 +168,7 @@ export default function CreateReportLocationPage() {
         <div className={hasLocation ? 'gps-verified-pill' : 'gps-verified-pill gps-verified-pill--waiting'}>
           {hasLocation && <FaCheckCircle aria-hidden="true" />}
           <span>{hasLocation ? 'GPS Verified' : 'Waiting for GPS'}</span>
-          {hasLocation && <strong>&plusmn; {reportLocation.accuracy}m</strong>}
+          {hasLocation && hasAccuracy && <strong>&plusmn; {reportLocation.accuracy}m</strong>}
         </div>
 
         {!hasLocation && (

@@ -11,7 +11,7 @@ import { getLastSubmittedReport } from '../../services/localReportService.js';
 
 export default function CreateReportSuccessPage() {
   const submittedReport = getLastSubmittedReport();
-  const trackingId = submittedReport?.trackingId || '#INF-0000';
+  const trackingId = submittedReport?.trackingId || 'Pending';
 
   async function handleCopyTrackingId() {
     try {
