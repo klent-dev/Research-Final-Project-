@@ -21,7 +21,7 @@ export function normalizeReport(report) {
     title: report.title || `${category} Report`,
     category,
     issueType: report.issueType || category,
-    status: report.status || 'SUBMITTED',
+    status: report.status || 'submitted',
     description: report.description || 'Infrastructure issue reported nearby.',
     location: {
       ...report.location,
@@ -59,21 +59,39 @@ export function filterReports(reports, activeFilter) {
     return reports;
   }
 
-  if (activeFilter === 'Resolved') {
-    return reports.filter((report) => report.status?.toUpperCase() === 'RESOLVED');
+  return reports.filter((report) => getVisibleCategory(report.category || report.issueType) === activeFilter);
+}
+
+export function getVisibleCategory(category = '') {
+  const normalized = category.toLowerCase();
+
+  if (normalized.includes('drain') || normalized.includes('sewage') || normalized.includes('water')) {
+    return 'Drainage';
   }
 
-  return reports.filter((report) => report.category === activeFilter);
+  if (normalized.includes('street') || normalized.includes('light')) {
+    return 'Street Light';
+  }
+
+  if (normalized.includes('flood')) {
+    return 'Flooding';
+  }
+
+  if (normalized.includes('waste') || normalized.includes('trash') || normalized.includes('garbage') || normalized.includes('dump')) {
+    return 'Waste';
+  }
+
+  return 'Others';
 }
 
 export function getStatusTone(status = '') {
-  const normalized = status.toUpperCase();
+  const normalized = status.toLowerCase();
 
-  if (normalized.includes('RESOLVED')) {
+  if (normalized.includes('resolved')) {
     return 'resolved';
   }
 
-  if (normalized.includes('VERIFIED')) {
+  if (normalized.includes('verified')) {
     return 'verified';
   }
 

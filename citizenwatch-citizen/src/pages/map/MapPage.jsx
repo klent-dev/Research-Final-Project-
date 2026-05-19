@@ -13,7 +13,6 @@ import {
   FaPlus,
   FaRoad,
   FaTint,
-  FaTools,
   FaTrashAlt,
   FaWater
 } from 'react-icons/fa';
@@ -25,6 +24,7 @@ import {
   filterReports,
   formatDistance,
   formatReportAge,
+  getVisibleCategory,
   getReportDistanceKm,
   getStatusTone,
   loadMapReports,
@@ -33,14 +33,14 @@ import {
 import { ReportMapMarker } from '../../utils/mapMarkers.js';
 import '../../styles/map.css';
 
-const filters = ['All', 'Road Damage', 'Drainage', 'Street Light', 'Flooding', 'Resolved'];
+const filters = ['All', 'Drainage', 'Street Light', 'Flooding', 'Waste', 'Others'];
 
 const categoryIcons = {
-  'Road Damage': FaTools,
   Drainage: FaTint,
   'Street Light': FaLightbulb,
   Flooding: FaWater,
-  Waste: FaTrashAlt
+  Waste: FaTrashAlt,
+  Others: FaRoad
 };
 
 const userLocationIcon = L.divIcon({
@@ -270,7 +270,7 @@ export default function MapPage() {
         <div className="community-nearby-list">
           {nearbyReports.length > 0 ? (
             nearbyReports.map((report) => {
-              const Icon = categoryIcons[report.category] || FaRoad;
+              const Icon = categoryIcons[getVisibleCategory(report.category)] || FaRoad;
               const tone = getStatusTone(report.status);
               const distance = getReportDistanceKm(userLocation, report);
 

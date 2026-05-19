@@ -5,33 +5,38 @@ import {
   FaArrowRight,
   FaMapMarkerAlt,
   FaPlus,
-  FaRoad,
   FaTimes,
   FaTint,
   FaTrashAlt,
+  FaWater,
   FaLightbulb
 } from 'react-icons/fa';
 import responseImage from '../../assets/images/Response.png';
 import { useReportDraft } from '../../context/ReportDraftContext.jsx';
 import { buildReportFromDraft, saveReport } from '../../services/localReportService.js';
+import { createInfrastructureReport, attachReportPhoto } from '../../services/reportService.js';
+import { uploadReportPhoto } from '../../services/storageService.js';
+import { useAuth } from '../../hooks/useAuth.js';
 import { SEVERITY_LEVELS, normalizeUrgency } from '../../utils/severity.js';
 
 const issueTypes = [
-  { label: 'Road Damage', icon: FaRoad },
   { label: 'Drainage', icon: FaTint },
   { label: 'Street Light', icon: FaLightbulb },
+  { label: 'Flooding', icon: FaWater },
   { label: 'Waste', icon: FaTrashAlt },
-  { label: 'Other', icon: FaPlus }
+  { label: 'Others', icon: FaPlus }
 ];
 
 const urgencyLevels = SEVERITY_LEVELS;
 
 export default function CreateReportDetailsPage() {
   const { draft, resetDraft, updateIssueDetails } = useReportDraft();
-  const [selectedIssueType, setSelectedIssueType] = useState(draft.issueType || 'Road Damage');
+  const { user } = useAuth();
+  const [selectedIssueType, setSelectedIssueType] = useState(draft.issueType || 'Drainage');
   const [selectedUrgency, setSelectedUrgency] = useState(normalizeUrgency(draft.urgency));
   const [description, setDescription] = useState(draft.description || '');
   const [stepError, setStepError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const photoPreview = draft.photoPreview || responseImage;
   const locationLabel = draft.location?.address || 'Location pending';
@@ -51,7 +56,7 @@ export default function CreateReportDetailsPage() {
     console.log('Save Draft clicked');
   }
 
-  function handleNextStep() {
+  async function handleNextStep() {
     if (!draft.photoPreview || !hasLocation) {
       setStepError('Please complete the evidence upload and location verification before submitting.');
       return;
@@ -62,6 +67,9 @@ export default function CreateReportDetailsPage() {
       return;
     }
 
+    setIsSubmitting(true);
+    setStepError('');
+
     const nextDraft = {
       ...draft,
       issueType: selectedIssueType,
@@ -69,11 +77,51 @@ export default function CreateReportDetailsPage() {
       description: description.trim()
     };
     updateIssueDetails(nextDraft);
-    const savedReport = saveReport(buildReportFromDraft(nextDraft));
 
-    resetDraft();
-    console.log('Report saved locally:', savedReport.trackingId);
-    navigate('/reports/create/success');
+    const reporterId = user?.uid || 'anonymous-citizen';
+    const reporterName = user?.displayName || user?.email || 'Citizen Reporter';
+    const localReport = buildReportFromDraft({
+      ...nextDraft,
+      createdBy: reporterId
+    });
+
+    try {
+      const reportId = await createInfrastructureReport({
+        trackingId: localReport.trackingId,
+        category: selectedIssueType,
+        issueType: selectedIssueType,
+        severity: selectedUrgency,
+        urgency: selectedUrgency,
+        description: description.trim(),
+        location: nextDraft.location,
+        photoPreview: nextDraft.photoPreview,
+        evidenceImage: nextDraft.photoPreview,
+        reporterId,
+        reporterName,
+        createdBy: reporterId
+      });
+
+      if (nextDraft.selectedFile) {
+        const photoUrl = await uploadReportPhoto({
+          file: nextDraft.selectedFile,
+          reportId,
+          userId: reporterId
+        });
+        await attachReportPhoto({ reportId, photoUrl });
+      }
+
+      saveReport({ ...localReport, id: reportId });
+      resetDraft();
+      navigate('/reports/create/success');
+    } catch (error) {
+      console.warn('Firestore report submission failed. Saving report locally instead.', error);
+      const savedReport = saveReport(localReport);
+      resetDraft();
+      console.log('Report saved locally:', savedReport.trackingId);
+      navigate('/reports/create/success');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function handleIssueTypeChange(issueType) {
@@ -177,8 +225,8 @@ export default function CreateReportDetailsPage() {
         <button className="details-save-button" onClick={handleSaveDraft} type="button">
           Save Draft
         </button>
-        <button className="details-next-button" onClick={handleNextStep} type="button">
-          Submit Report
+        <button className="details-next-button" disabled={isSubmitting} onClick={handleNextStep} type="button">
+          {isSubmitting ? 'Submitting...' : 'Submit Report'}
           <FaArrowRight aria-hidden="true" />
         </button>
       </section>

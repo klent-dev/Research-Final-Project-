@@ -8,12 +8,11 @@ export const REPORT_STATUS = {
 };
 
 export const REPORT_CATEGORIES = [
-  'Road Damage',
-  'Streetlight Issue',
-  'Drainage Problem',
-  'Garbage Collection',
-  'Public Safety',
-  'Other'
+  'Drainage',
+  'Street Light',
+  'Flooding',
+  'Waste',
+  'Others'
 ];
 
 export const DEFAULT_GPS_RADIUS_METERS = Number(import.meta.env.VITE_REPORT_GPS_RADIUS_METERS ?? 100);

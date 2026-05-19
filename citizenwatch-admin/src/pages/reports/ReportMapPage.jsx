@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 
@@ -7,46 +7,47 @@ const GIS_CENTER = {
   lng: 123.8854
 };
 
-const activeIncidents = [
-  {
-    id: 'inc-001',
-    level: 'Critical',
-    title: 'Water Main Burst',
-    location: 'Quezon Ave, Brgy. Central',
-    time: '2m ago'
-  },
-  {
-    id: 'inc-002',
-    level: 'Pending',
-    title: 'Downed Power Line',
-    location: 'St. Tobias St.',
-    time: '14m ago'
-  }
-];
-
 const mapIncidents = [
   {
     id: 'map-inc-001',
-    category: 'Critical Infrastructure',
+    category: 'Drainage',
     position: [10.3157, 123.8854],
-    title: 'Critical Infrastructure Failure'
+    title: 'Clogged Drainage Canal'
   },
   {
     id: 'map-inc-002',
-    category: 'Utility',
+    category: 'Street Lighting',
     position: [10.3248, 123.8924],
-    title: 'Downed Power Line'
+    title: 'Broken Street Light'
   },
   {
     id: 'map-inc-003',
-    category: 'Road',
+    category: 'Road Maintenance',
     position: [10.3062, 123.8788],
     title: 'Road Surface Hazard'
+  },
+  {
+    id: 'map-inc-004',
+    category: 'Waste Management',
+    position: [10.3194, 123.8762],
+    title: 'Uncollected Waste'
+  },
+  {
+    id: 'map-inc-005',
+    category: 'Flooding',
+    position: [10.3104, 123.8981],
+    title: 'Flooded Street'
+  },
+  {
+    id: 'map-inc-006',
+    category: 'Utility',
+    position: [10.3291, 123.8815],
+    title: 'Utility Report'
   }
 ];
 
-const layerOptions = ['Density Heatmap', 'Report Clustering', 'Live Traffic Flow'];
-const categories = ['Utility', 'Road', 'Waste', 'Safety'];
+const primaryCategories = ['Drainage', 'Street Lighting', 'Flooding', 'Road Maintenance', 'Waste Management'];
+const categoryOptions = ['All', ...primaryCategories, 'Others'];
 
 const criticalIncidentIcon = L.divIcon({
   className: 'gis-leaflet-marker gis-leaflet-marker--critical',
@@ -98,7 +99,33 @@ function GisMapBridge({ mapRef }) {
   return null;
 }
 
-function GisMap({ mapRef }) {
+function getVisibleCategory(category = '') {
+  const normalized = category.toLowerCase();
+
+  if (normalized.includes('drain') || normalized.includes('sewage') || normalized.includes('water')) {
+    return 'Drainage';
+  }
+
+  if (normalized.includes('street') || normalized.includes('light')) {
+    return 'Street Lighting';
+  }
+
+  if (normalized.includes('flood')) {
+    return 'Flooding';
+  }
+
+  if (normalized.includes('road') || normalized.includes('pothole') || normalized.includes('maintenance')) {
+    return 'Road Maintenance';
+  }
+
+  if (normalized.includes('waste') || normalized.includes('trash') || normalized.includes('garbage') || normalized.includes('dump')) {
+    return 'Waste Management';
+  }
+
+  return 'Others';
+}
+
+function GisMap({ mapRef, incidents }) {
   function handleZoomIn() {
     mapRef.current?.zoomIn();
   }
@@ -127,7 +154,7 @@ function GisMap({ mapRef }) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {mapIncidents.map((incident, index) => (
+        {incidents.map((incident, index) => (
           <Marker
             icon={index === 0 ? criticalIncidentIcon : utilityIncidentIcon}
             key={incident.id}
@@ -153,6 +180,15 @@ function GisMap({ mapRef }) {
 
 export default function ReportMapPage() {
   const mapRef = useRef(null);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+
+  const filteredIncidents = useMemo(() => {
+    if (selectedCategory === 'All') {
+      return mapIncidents;
+    }
+
+    return mapIncidents.filter((incident) => getVisibleCategory(incident.category) === selectedCategory);
+  }, [selectedCategory]);
 
   return (
     <main className="gis-tracking-page">
@@ -174,44 +210,25 @@ export default function ReportMapPage() {
 
       <section className="gis-shell">
         <section className="gis-map-area">
-          <GisMap mapRef={mapRef} />
+          <GisMap incidents={filteredIncidents} mapRef={mapRef} />
 
-          <aside className="map-layers-panel">
+          <aside className="map-categories-panel">
             <header>
-              <h2>Map Layers</h2>
-              <Icon name="layers" />
+              <h2>Categories</h2>
             </header>
-            <div className="layer-options">
-              {layerOptions.map((layer, index) => (
-                <label key={layer}>
-                  <span>{layer}</span>
-                  <input defaultChecked={index === 0} type="checkbox" />
-                </label>
+            <div className="gis-category-list">
+              {categoryOptions.map((category) => (
+                <button
+                  className={selectedCategory === category ? 'active' : ''}
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  type="button"
+                >
+                  {category}
+                </button>
               ))}
             </div>
-            <h3>Categories</h3>
-            <div className="gis-category-grid">
-              {categories.map((category) => (
-                <span key={category}>{category}</span>
-              ))}
-            </div>
-          </aside>
-
-          <aside className="active-incidents-panel">
-            <header>
-              <h2>Active Incidents</h2>
-              <span>5 Live</span>
-            </header>
-            {activeIncidents.map((incident) => (
-              <article key={incident.id}>
-                <div>
-                  <strong>{incident.level}</strong>
-                  <time>{incident.time}</time>
-                </div>
-                <h3>{incident.title}</h3>
-                <p>{incident.location}</p>
-              </article>
-            ))}
+            <p>{selectedCategory === 'All' ? 'Showing all categories' : `Showing ${filteredIncidents.length} reports`}</p>
           </aside>
         </section>
 

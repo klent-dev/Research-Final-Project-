@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FaBullhorn,
@@ -16,14 +16,67 @@ import {
   formatStatusLabel,
   formatReportDate,
   getReports,
-  getStatusColor
+  getStatusColor,
+  markReportSynced
 } from '../../services/localReportService.js';
+import { createInfrastructureReport } from '../../services/reportService.js';
+import { isFirebaseConfigured } from '../../firebase/config.js';
+import { useAuth } from '../../hooks/useAuth.js';
 
 export default function ReportsPage() {
-  // TODO: Replace localStorage with Firestore backend
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [reports, setReports] = useState(() => getReports());
-  const resolvedReports = reports.filter((report) => report.status.toUpperCase().includes('RESOLVED'));
+  const [syncMessage, setSyncMessage] = useState('');
+  const resolvedReports = reports.filter((report) => report.status === 'resolved');
+
+  useEffect(() => {
+    if (!isFirebaseConfigured) {
+      setSyncMessage('Firebase is not configured. Reports are saved locally only.');
+      return;
+    }
+
+    let ignore = false;
+
+    async function syncLocalReports() {
+      const localReports = getReports().filter((report) => !report.syncedToFirestore);
+
+      if (localReports.length === 0) {
+        setSyncMessage('');
+        return;
+      }
+
+      try {
+        for (const report of localReports) {
+          const firestoreReportId = await createInfrastructureReport({
+            ...report,
+            reporterId: user?.uid || report.reporterId || report.createdBy || 'anonymous-citizen',
+            reporterName: user?.displayName || user?.email || report.reporterName || 'Citizen Reporter',
+            createdBy: user?.uid || report.createdBy || 'anonymous-citizen'
+          });
+
+          if (!ignore) {
+            setReports(markReportSynced(report.id, firestoreReportId));
+          }
+        }
+
+        if (!ignore) {
+          setSyncMessage('Reports synced to the LGU dashboard.');
+        }
+      } catch (error) {
+        console.warn('Unable to sync local reports to Firestore.', error);
+        if (!ignore) {
+          setSyncMessage('Unable to sync reports to the LGU dashboard. Check Firebase configuration.');
+        }
+      }
+    }
+
+    syncLocalReports();
+
+    return () => {
+      ignore = true;
+    };
+  }, [user]);
 
   function handleDeleteReport(event, reportId) {
     event.stopPropagation();
@@ -95,6 +148,8 @@ export default function ReportsPage() {
           <h2>Recent Submissions</h2>
           <button type="button">View All</button>
         </header>
+
+        {syncMessage && <p className="reports-sync-message">{syncMessage}</p>}
 
         <div className="reports-list">
           {reports.length > 0 ? (

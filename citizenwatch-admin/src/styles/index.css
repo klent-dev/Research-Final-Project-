@@ -1658,8 +1658,7 @@ select:focus-visible {
   width: 42px;
 }
 
-.map-layers-panel,
-.active-incidents-panel {
+.map-categories-panel {
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid #d7e2e8;
   border-radius: 10px;
@@ -1671,119 +1670,56 @@ select:focus-visible {
   z-index: 5;
 }
 
-.map-layers-panel {
+.map-categories-panel {
   top: 1.5rem;
 }
 
-.active-incidents-panel {
-  top: 310px;
-}
-
-.map-layers-panel header,
-.active-incidents-panel header {
+.map-categories-panel header {
   align-items: center;
   display: flex;
   justify-content: space-between;
   margin-bottom: 0.8rem;
 }
 
-.map-layers-panel h2,
-.active-incidents-panel h2 {
+.map-categories-panel h2 {
   font-size: 1rem;
   margin: 0;
 }
 
-.map-layers-panel header svg {
-  color: #64748b;
-  height: 18px;
-  width: 18px;
-}
-
-.layer-options {
+.gis-category-list {
   display: grid;
-  gap: 0.65rem;
+  gap: 0.55rem;
 }
 
-.layer-options label {
+.gis-category-list button {
   align-items: center;
-  color: #475569;
-  display: flex;
-  font-size: 0.84rem;
-  justify-content: space-between;
-}
-
-.layer-options input {
-  accent-color: #007a36;
-  height: 18px;
-  width: 18px;
-}
-
-.map-layers-panel h3 {
-  color: #64748b;
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  margin: 1.1rem 0 0.6rem;
-  text-transform: uppercase;
-}
-
-.gis-category-grid {
-  display: grid;
-  gap: 0.5rem;
-  grid-template-columns: 1fr 1fr;
-}
-
-.gis-category-grid span {
   background: #edf3f6;
   border: 1px solid #d7e2e8;
   border-radius: 999px;
-  color: #334155;
-  font-size: 0.72rem;
-  font-weight: 800;
-  padding: 0.35rem 0.7rem;
-}
-
-.active-incidents-panel header span {
-  background: #fee2e2;
-  border-radius: 4px;
-  color: #ef4444;
-  font-size: 0.66rem;
-  font-weight: 900;
-  padding: 0.24rem 0.42rem;
-  text-transform: uppercase;
-}
-
-.active-incidents-panel article {
-  border: 1px solid #e5edf1;
-  border-radius: 8px;
-  margin-top: 0.75rem;
-  padding: 0.85rem;
-}
-
-.active-incidents-panel article div {
-  align-items: center;
+  color: #475569;
+  cursor: pointer;
   display: flex;
-  justify-content: space-between;
+  font-size: 0.82rem;
+  font-weight: 800;
+  justify-content: center;
+  padding: 0.48rem 0.8rem;
+  text-align: center;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
-.active-incidents-panel strong {
-  color: #ef4444;
-  font-size: 0.68rem;
-  text-transform: uppercase;
+.gis-category-list button:hover,
+.gis-category-list button.active {
+  background: #007a36;
+  border-color: #007a36;
+  color: #ffffff;
 }
 
-.active-incidents-panel time,
-.active-incidents-panel p {
+.map-categories-panel p {
   color: #64748b;
   font-size: 0.72rem;
-}
-
-.active-incidents-panel h3 {
-  font-size: 0.88rem;
-  margin: 0.35rem 0 0.15rem;
-}
-
-.active-incidents-panel p {
-  margin: 0;
+  font-weight: 800;
+  margin: 0.85rem 0 0;
+  text-transform: uppercase;
 }
 
 .incident-detail-panel {
@@ -2126,12 +2062,64 @@ select:focus-visible {
   margin-left: auto;
 }
 
+.reports-filter-select,
+.reports-status-filter {
+  align-items: center;
+  background: #dfe7ec;
+  border-radius: 999px;
+  color: #0f172a;
+  display: inline-flex;
+  font-weight: 800;
+  min-height: 38px;
+  padding: 0 0.35rem 0 1rem;
+}
+
+.reports-filter-select--wide {
+  max-width: 21rem;
+}
+
+.reports-filter-select span,
+.reports-status-filter span {
+  color: #64748b;
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin-right: 0.45rem;
+  text-transform: uppercase;
+}
+
+.reports-filter-select select,
+.reports-status-filter select {
+  background: transparent;
+  border: 0;
+  color: #0f172a;
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 34px;
+  max-width: 14rem;
+  padding: 0;
+  width: auto;
+}
+
+.reports-filter-select--wide select {
+  max-width: 16rem;
+}
+
 .reports-table-card {
   background: #ffffff;
   border: 1px solid #d7e2e8;
   border-radius: 8px;
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
   overflow-x: auto;
+}
+
+.reports-demo-banner {
+  background: #ecfdf5;
+  border-bottom: 1px solid rgba(22, 163, 74, 0.18);
+  color: #047857;
+  font-size: 0.86rem;
+  font-weight: 850;
+  padding: 0.85rem 1.5rem;
 }
 
 .reports-table-card table {
@@ -2206,6 +2194,23 @@ select:focus-visible {
   background: linear-gradient(135deg, #fef3c7, #ef4444 48%, #64748b);
 }
 
+.report-thumb-image,
+.report-detail-evidence-image {
+  border-radius: 6px;
+  display: block;
+  object-fit: cover;
+}
+
+.report-thumb-image {
+  height: 42px;
+  width: 58px;
+}
+
+.report-detail-evidence-image {
+  height: 168px;
+  width: 100%;
+}
+
 .severity-chip,
 .report-status {
   border-radius: 999px;
@@ -2253,12 +2258,354 @@ select:focus-visible {
   color: #475569;
 }
 
+.report-status--under-review {
+  color: #0f766e;
+}
+
+.report-status--verified,
+.report-status--resolved {
+  color: #16a34a;
+}
+
+.report-status--in-progress {
+  color: #2563eb;
+}
+
+.report-status--rejected {
+  color: #dc2626;
+}
+
 .reports-table-card td > button {
   background: transparent;
   border: 0;
   color: #007a36;
   cursor: pointer;
   font-weight: 900;
+}
+
+.reports-table-state {
+  color: #64748b;
+  display: grid;
+  font-weight: 800;
+  min-height: 220px;
+  place-items: center;
+}
+
+.reports-table-state--error {
+  color: #dc2626;
+}
+
+.report-detail-overlay {
+  animation: reportOverlayIn 180ms ease-out;
+  background: rgba(15, 23, 42, 0.38);
+  backdrop-filter: blur(3px);
+  inset: 0;
+  position: fixed;
+  z-index: 50;
+}
+
+.report-detail-drawer {
+  animation: reportDrawerIn 220ms ease-out;
+  background: #f1f5f9;
+  box-shadow: -18px 0 48px rgba(15, 23, 42, 0.22);
+  display: grid;
+  gap: 1rem;
+  height: 100vh;
+  margin-left: auto;
+  max-width: min(440px, 100vw);
+  overflow-y: auto;
+  padding: 1rem;
+  width: 36vw;
+}
+
+.report-detail-header {
+  align-items: start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.report-detail-header strong {
+  color: #0f172a;
+  font-size: 1rem;
+  margin-right: 0.55rem;
+}
+
+.report-detail-header p {
+  align-items: center;
+  color: #475569;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  gap: 0.55rem;
+  margin: 0.35rem 0 0;
+}
+
+.report-detail-header .report-status {
+  font-size: 0.78rem;
+}
+
+.report-detail-header button {
+  background: transparent;
+  border: 0;
+  color: #0f172a;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.2rem;
+}
+
+.report-detail-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.report-detail-card h3,
+.report-detail-copy span,
+.report-detail-meta span {
+  color: #64748b;
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.report-detail-card small {
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.report-detail-evidence {
+  border-radius: 6px;
+  height: 168px;
+  overflow: hidden;
+  position: relative;
+}
+
+.report-detail-evidence::before {
+  background:
+    radial-gradient(circle at 80% 20%, #fbbf24 0 16px, rgba(251, 191, 36, 0.32) 17px 42px, transparent 43px),
+    linear-gradient(170deg, transparent 0 45%, rgba(15, 23, 42, 0.55) 46% 48%, transparent 49%),
+    linear-gradient(180deg, #dbeafe 0 38%, #f8fafc 39% 54%, #64748b 55% 100%);
+  content: "";
+  inset: 0;
+  position: absolute;
+}
+
+.report-detail-evidence::after {
+  background:
+    radial-gradient(circle at center, #111827 0 16px, transparent 17px),
+    radial-gradient(circle at center, transparent 0 28px, #1f2937 29px 35px, transparent 36px);
+  bottom: 18px;
+  content: "";
+  height: 76px;
+  left: 50%;
+  position: absolute;
+  transform: translateX(-50%) scaleX(1.45);
+  width: 110px;
+}
+
+.report-detail-meta {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.report-detail-meta strong {
+  color: #0f172a;
+  display: block;
+  font-size: 0.82rem;
+  margin-top: 0.22rem;
+}
+
+.report-detail-copy p {
+  color: #334155;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  margin: 0.22rem 0 0;
+}
+
+.report-detail-map {
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  height: 164px;
+  overflow: hidden;
+  position: relative;
+}
+
+.report-detail-leaflet-map,
+.report-detail-leaflet-map .leaflet-container {
+  border-radius: inherit;
+}
+
+.report-detail-leaflet-map {
+  height: 100%;
+  width: 100%;
+  z-index: 1;
+}
+
+.report-detail-leaflet-map .leaflet-control-attribution {
+  font-size: 0.58rem;
+  opacity: 0.74;
+}
+
+.report-detail-leaflet-marker.community-leaflet-marker {
+  align-items: center;
+  animation: communityPinPulse 2.1s ease-in-out infinite;
+  background: #ffffff;
+  border: 3px solid currentColor;
+  border-radius: 999px;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.16);
+  color: #16a34a;
+  cursor: pointer;
+  display: inline-flex;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
+}
+
+.report-detail-leaflet-marker.community-leaflet-marker span {
+  background: currentColor;
+  border-radius: 999px;
+  display: block;
+  height: 11px;
+  width: 11px;
+}
+
+.report-detail-leaflet-marker.leaflet-div-icon {
+  border: 0;
+}
+
+.report-detail-map-controls {
+  bottom: 0.55rem;
+  display: grid;
+  gap: 0.35rem;
+  position: absolute;
+  right: 0.55rem;
+  z-index: 2;
+}
+
+.report-detail-map-controls button {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+  cursor: pointer;
+  font-weight: 900;
+  height: 28px;
+  width: 28px;
+}
+
+@keyframes communityPinPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+.report-detail-card label {
+  color: #0f172a;
+  display: grid;
+  font-size: 0.78rem;
+  font-weight: 800;
+  gap: 0.45rem;
+}
+
+.report-detail-card select,
+.report-detail-card textarea {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #334155;
+  min-height: 38px;
+  padding: 0.55rem 0.7rem;
+}
+
+.report-detail-card textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.report-detail-actions {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.report-detail-actions button {
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  cursor: pointer;
+  font-weight: 900;
+  min-height: 42px;
+}
+
+.report-detail-actions button:last-child {
+  background: #007a36;
+  border-color: #007a36;
+  color: #ffffff;
+}
+
+.report-detail-actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.report-activity-log {
+  display: grid;
+  gap: 0.85rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.report-activity-log li {
+  border-left: 2px solid #cbd5e1;
+  padding-left: 0.75rem;
+}
+
+.report-activity-log strong,
+.report-activity-log span {
+  display: block;
+}
+
+.report-activity-log strong {
+  color: #0f172a;
+  font-size: 0.8rem;
+}
+
+.report-activity-log span {
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+@keyframes reportOverlayIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes reportDrawerIn {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
 }
 
 .reports-table-card footer {
@@ -2301,6 +2648,31 @@ select:focus-visible {
 .reports-table-card nav button.active {
   background: #007a36;
   color: #ffffff;
+}
+
+.reports-delete-bar {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.reports-delete-bar span {
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.reports-delete-bar button {
+  background: #dc2626;
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 900;
+  min-height: 42px;
+  padding: 0 1.2rem;
 }
 
 .settings-page {
@@ -3486,6 +3858,11 @@ select:focus-visible {
     min-width: 140px;
   }
 
+  .report-detail-drawer {
+    max-width: 100vw;
+    width: 100vw;
+  }
+
   .command-dashboard {
     grid-template-columns: 1fr;
     overflow: visible;
@@ -3555,8 +3932,7 @@ select:focus-visible {
     padding-top: 1rem;
   }
 
-  .map-layers-panel,
-  .active-incidents-panel {
+  .map-categories-panel {
     left: 1rem;
     position: relative;
     top: auto;

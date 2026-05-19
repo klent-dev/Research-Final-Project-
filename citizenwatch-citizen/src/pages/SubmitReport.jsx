@@ -16,7 +16,7 @@ import StepIndicator from '../components/StepIndicator.jsx';
 import UploadArea from '../components/UploadArea.jsx';
 import VerificationCard from '../components/VerificationCard.jsx';
 
-const categories = ['Road Damage', 'Drainage', 'Streetlight', 'Bridge', 'Flooding', 'Other'];
+const categories = ['Drainage', 'Street Light', 'Flooding', 'Waste', 'Others'];
 const severities = ['Low', 'Medium', 'Critical'];
 
 export default function SubmitReport() {

@@ -25,11 +25,11 @@ const LAHUG_CENTER = {
 };
 
 const categories = [
-  { label: 'Road Damage', icon: FaRoad, active: true },
-  { label: 'Drainage', icon: FaTint },
+  { label: 'Drainage', icon: FaTint, active: true },
   { label: 'Street Light', icon: FaLightbulb },
   { label: 'Flooding', icon: FaTint },
-  { label: 'Waste', icon: FaTrash }
+  { label: 'Waste', icon: FaTrash },
+  { label: 'Others', icon: FaRoad }
 ];
 
 function HomeMapBridge({ mapRef }) {

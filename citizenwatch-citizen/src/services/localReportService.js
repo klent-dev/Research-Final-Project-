@@ -55,7 +55,7 @@ function toDate(value) {
 }
 
 function normalizeStatus(status) {
-  return status || 'under_review';
+  return status || 'submitted';
 }
 
 function normalizeReport(report) {
@@ -84,7 +84,11 @@ function normalizeReport(report) {
     },
     photoPreview: report.photoPreview || '',
     photoUrl: report.photoPreview || report.photoUrl || '',
-    createdBy: report.createdBy || DEFAULT_CREATED_BY
+    createdBy: report.createdBy || DEFAULT_CREATED_BY,
+    reporterId: report.reporterId || report.createdBy || DEFAULT_CREATED_BY,
+    reporterName: report.reporterName || '',
+    firestoreReportId: report.firestoreReportId || '',
+    syncedToFirestore: Boolean(report.syncedToFirestore || report.firestoreReportId)
   };
 }
 
@@ -110,6 +114,24 @@ export function saveReport(report) {
   setLastSubmittedReportId(nextReport.id);
 
   return nextReport;
+}
+
+export function markReportSynced(localReportId, firestoreReportId) {
+  const reports = getReports();
+  const updatedAt = new Date().toISOString();
+  const nextReports = reports.map((report) =>
+    report.id === localReportId
+      ? normalizeReport({
+        ...report,
+        firestoreReportId,
+        syncedToFirestore: true,
+        updatedAt
+      })
+      : report
+  );
+
+  writeJson(window.localStorage, REPORTS_STORAGE_KEY, nextReports);
+  return nextReports;
 }
 
 export function getReportById(id) {
@@ -290,7 +312,7 @@ export function buildReportFromDraft(draft) {
     issueType: draft.issueType,
     urgency: draft.urgency,
     description: draft.description,
-    status: 'under_review',
+    status: 'submitted',
     createdAt: now,
     updatedAt: now,
     location: draft.location,
