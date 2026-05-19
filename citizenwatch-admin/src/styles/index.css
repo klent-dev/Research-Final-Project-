@@ -470,6 +470,17 @@ select:focus-visible {
   margin: 0.25rem 0 0;
 }
 
+.command-sync-message {
+  background: #ffffff;
+  border: 1px solid #dbe6e1;
+  border-radius: 999px;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin: 0;
+  padding: 0.45rem 0.75rem;
+}
+
 .command-heading-actions {
   align-items: center;
   display: flex;
@@ -586,6 +597,14 @@ select:focus-visible {
   border-left-color: #94a3b8;
 }
 
+.command-kpi-card--warning {
+  border-left-color: #f59e0b;
+}
+
+.command-kpi-card--success {
+  border-left-color: #078234;
+}
+
 .command-kpi-card span {
   color: #64748b;
   display: block;
@@ -613,6 +632,31 @@ select:focus-visible {
   position: absolute;
   right: 1rem;
   top: 1rem;
+}
+
+.command-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.command-filter-row select {
+  background: #ffffff;
+  border: 1px solid #dbe6e1;
+  border-radius: 8px;
+  color: #0f172a;
+  font-weight: 800;
+  min-height: 42px;
+  min-width: 190px;
+  padding: 0 0.8rem;
+}
+
+.command-progress-card {
+  background: #ffffff;
+  border: 1px solid #dbe6e1;
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  padding: 1rem;
 }
 
 .command-kpi-card--danger small {
@@ -771,6 +815,19 @@ select:focus-visible {
   color: #ef4444;
 }
 
+.admin-leaflet-marker--utility {
+  color: #22c55e;
+}
+
+.admin-leaflet-marker--safety {
+  color: #64748b;
+}
+
+.admin-leaflet-marker--selected {
+  color: #f59e0b;
+  transform: scale(1.12);
+}
+
 .admin-leaflet-marker.leaflet-div-icon {
   border: 0;
 }
@@ -849,10 +906,22 @@ select:focus-visible {
 }
 
 .urgent-item {
+  background: transparent;
+  border: 0;
   border-top: 1px solid #e5edf1;
+  cursor: pointer;
   display: grid;
   gap: 0.36rem;
   padding: 0.9rem 0;
+  text-align: left;
+  width: 100%;
+}
+
+.urgent-item--active {
+  background: #f8fafc;
+  margin: 0 -0.65rem;
+  padding-left: 0.65rem;
+  padding-right: 0.65rem;
 }
 
 .urgent-item div {
@@ -1027,6 +1096,139 @@ select:focus-visible {
   margin: 0.35rem 0 0;
 }
 
+.urgent-empty-state {
+  border-top: 1px solid #e5edf1;
+  padding: 1rem 0;
+}
+
+.urgent-empty-state h3 {
+  color: #0f172a;
+  font-size: 0.92rem;
+  margin: 0;
+}
+
+.urgent-empty-state p {
+  color: #64748b;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  margin: 0.25rem 0 0;
+}
+
+.command-selected-report {
+  border-top: 1px solid #e5edf1;
+  padding: 1rem;
+}
+
+.command-selected-report span {
+  background: #fee2e2;
+  border-radius: 999px;
+  color: #dc2626;
+  display: inline-flex;
+  font-size: 0.66rem;
+  font-weight: 900;
+  padding: 0.2rem 0.5rem;
+  text-transform: uppercase;
+}
+
+.command-selected-report h3 {
+  color: #0f172a;
+  font-size: 0.96rem;
+  margin: 0.65rem 0 0.25rem;
+}
+
+.command-selected-report p,
+.command-selected-report small {
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.progress-summary-card {
+  background: #ffffff;
+  border: 1px solid #d7e2e8;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  margin-bottom: 1rem;
+  padding: 1.1rem;
+}
+
+.progress-summary-card header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.progress-summary-card h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.progress-summary-card p {
+  color: #64748b;
+  font-size: 0.84rem;
+  margin: 0.2rem 0 0;
+}
+
+.progress-summary-card header strong {
+  color: #007a36;
+  font-size: 1.25rem;
+}
+
+.progress-stacked-bar {
+  background: #edf3f6;
+  border-radius: 999px;
+  display: flex;
+  height: 16px;
+  overflow: hidden;
+}
+
+.progress-stacked-bar__segment--pending {
+  background: #94a3b8;
+}
+
+.progress-stacked-bar__segment--in-progress {
+  background: #f59e0b;
+}
+
+.progress-stacked-bar__segment--completed {
+  background: #007a36;
+}
+
+.progress-summary-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  margin-top: 0.85rem;
+}
+
+.progress-summary-list span {
+  align-items: center;
+  color: #475569;
+  display: inline-flex;
+  font-size: 0.84rem;
+  gap: 0.35rem;
+}
+
+.progress-dot {
+  border-radius: 999px;
+  display: inline-flex;
+  height: 10px;
+  width: 10px;
+}
+
+.progress-dot--pending {
+  background: #94a3b8;
+}
+
+.progress-dot--in-progress {
+  background: #f59e0b;
+}
+
+.progress-dot--completed {
+  background: #007a36;
+}
+
 .infra-heading button {
   align-items: center;
   background: #007a36;
@@ -1166,6 +1368,10 @@ select:focus-visible {
   background: #e8f3f1;
 }
 
+.asset-table-card tbody tr {
+  cursor: pointer;
+}
+
 .asset-table-card td strong {
   color: #0f172a;
   display: block;
@@ -1203,9 +1409,98 @@ select:focus-visible {
   color: #475569;
 }
 
+.asset-status--pending {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.asset-status--in-progress {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.asset-status--completed {
+  background: #dbeee7;
+  color: #007a36;
+}
+
+.asset-status--rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .asset-health strong {
   font-size: 0.76rem;
   margin-bottom: 0.35rem;
+}
+
+.report-progress-cell strong {
+  font-size: 0.8rem;
+}
+
+.report-progress-cell span {
+  background: #d7dee4;
+  border-radius: 999px;
+  display: block;
+  height: 7px;
+  margin-top: 0.35rem;
+  overflow: hidden;
+  width: 120px;
+}
+
+.report-progress-cell i {
+  display: block;
+  height: 100%;
+}
+
+.report-progress-cell--pending i {
+  background: #94a3b8;
+}
+
+.report-progress-cell--in-progress i {
+  background: #f59e0b;
+}
+
+.report-progress-cell--completed i {
+  background: #007a36;
+}
+
+.report-rejected-note {
+  color: #b91c1c;
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.35;
+  margin: 0;
+  max-width: 260px;
+}
+
+.severity-pill {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 0.32rem 0.65rem;
+  text-transform: uppercase;
+}
+
+.severity-pill--critical {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.severity-pill--high {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.severity-pill--medium {
+  background: #fef3c7;
+  color: #a16207;
+}
+
+.severity-pill--low {
+  background: #dbeee7;
+  color: #007a36;
 }
 
 .asset-health span {
@@ -1376,6 +1671,34 @@ select:focus-visible {
   display: grid;
   gap: 0.7rem;
   grid-template-columns: 1fr 1fr;
+}
+
+.report-detail-grid {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: 1fr 1fr;
+  margin-left: 1.1rem;
+  margin-right: 1.1rem;
+}
+
+.report-detail-grid div {
+  background: #f5f8fb;
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.report-detail-grid span {
+  color: #475569;
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.32rem;
+  text-transform: uppercase;
+}
+
+.report-detail-grid strong {
+  font-size: 0.82rem;
 }
 
 .asset-date-grid div {
@@ -1577,6 +1900,10 @@ select:focus-visible {
   min-height: calc(100vh - 58px);
 }
 
+.gis-shell--map-only {
+  grid-template-columns: 1fr;
+}
+
 .gis-map-area {
   min-height: calc(100vh - 58px);
   overflow: hidden;
@@ -1656,6 +1983,23 @@ select:focus-visible {
   font-weight: 800;
   height: 42px;
   width: 42px;
+}
+
+.gis-map-status {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #d7e2e8;
+  border-radius: 999px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 800;
+  left: 50%;
+  margin: 0;
+  padding: 0.55rem 0.9rem;
+  position: absolute;
+  top: 1.5rem;
+  transform: translateX(-50%);
+  z-index: 5;
 }
 
 .map-categories-panel {
@@ -1824,6 +2168,16 @@ select:focus-visible {
   position: relative;
 }
 
+.evidence-image--photo {
+  background: #0f172a;
+}
+
+.evidence-image img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
 .evidence-image span {
   background:
     linear-gradient(#f97316, #f97316) 20% 70% / 10px 38px no-repeat,
@@ -1848,6 +2202,11 @@ select:focus-visible {
   padding: 0 0.8rem;
   position: absolute;
   right: 0.75rem;
+}
+
+.evidence-image button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .incident-actions {

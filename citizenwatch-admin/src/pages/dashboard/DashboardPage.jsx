@@ -1,107 +1,211 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
-import { useAnalytics } from '../../hooks/useAnalytics.js';
+import { getReportCoordinates, subscribeReportsForModeration } from '../../services/adminReportService.js';
 
 const CEBU_CENTER = {
   lat: 10.3157,
   lng: 123.8854
 };
 
-const incidentMarkers = [
-  {
-    id: 'road-001',
-    category: 'Critical Infrastructure',
-    position: [10.3157, 123.8854],
-    title: 'Main Drainage Blockage'
-  },
-  {
-    id: 'road-002',
-    category: 'Utility Maintenance',
-    position: [10.3258, 123.8952],
-    title: 'Hospital Backup Grid Malfunction'
-  },
-  {
-    id: 'road-003',
-    category: 'Public Safety',
-    position: [10.3048, 123.8987],
-    title: 'Highway Interchange Collision'
-  },
-  {
-    id: 'road-004',
-    category: 'Critical Infrastructure',
-    position: [10.3312, 123.8721],
-    title: 'Bridge Surface Damage'
+const statusOrder = ['Pending', 'In Progress', 'Completed'];
+const severityOrder = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3
+};
+
+const markerIcons = {
+  critical: L.divIcon({
+    className: 'admin-leaflet-marker admin-leaflet-marker--critical',
+    html: '<span></span>',
+    iconAnchor: [13, 13],
+    iconSize: [26, 26]
+  }),
+  utility: L.divIcon({
+    className: 'admin-leaflet-marker admin-leaflet-marker--utility',
+    html: '<span></span>',
+    iconAnchor: [13, 13],
+    iconSize: [26, 26]
+  }),
+  safety: L.divIcon({
+    className: 'admin-leaflet-marker admin-leaflet-marker--safety',
+    html: '<span></span>',
+    iconAnchor: [13, 13],
+    iconSize: [26, 26]
+  }),
+  selected: L.divIcon({
+    className: 'admin-leaflet-marker admin-leaflet-marker--selected',
+    html: '<span></span>',
+    iconAnchor: [16, 16],
+    iconSize: [32, 32]
+  })
+};
+
+function toDate(value) {
+  if (value?.toDate) return value.toDate();
+  if (!value) return null;
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getReportTitle(report) {
+  return report.title || report.name || `${report.category || 'Infrastructure'} Report`;
+}
+
+function getReportPosition(report) {
+  const coordinates = getReportCoordinates(report);
+
+  return coordinates ? [coordinates.lat, coordinates.lng] : null;
+}
+
+function getIncidentCluster(report) {
+  const category = String(report.category || '').toLowerCase();
+
+  if (category.includes('light') || category.includes('utility') || category.includes('power')) {
+    return 'Utility Maintenance';
   }
-];
 
-const urgentActions = [
-  {
-    id: 'urgent-001',
-    category: 'Flood Warning',
-    title: 'Sector 7 Main Drainage Blockage',
-    description: 'Water rising rapidly near residential blocks.',
-    time: '2m ago',
-    tags: ['Infrastructure', 'Sanitation']
-  },
-  {
-    id: 'urgent-002',
-    category: 'Power Failure',
-    title: 'Hospital Backup Grid Malfunction',
-    description: 'Primary switchboard failed at 10:42AM.',
-    time: '14m ago',
-    tags: ['Utilities', 'District 1']
-  },
-  {
-    id: 'urgent-003',
-    category: 'Traffic Incident',
-    title: 'Major Collision: Highway Interchange',
-    description: 'Emergency services dispatched; clearing ongoing.',
-    time: '28m ago',
-    tags: ['Public Safety']
+  if (category.includes('traffic') || category.includes('safety') || category.includes('flood')) {
+    return 'Public Safety';
   }
-];
 
-const incidentIcon = L.divIcon({
-  className: 'admin-leaflet-marker admin-leaflet-marker--critical',
-  html: '<span></span>',
-  iconAnchor: [13, 13],
-  iconSize: [26, 26]
-});
+  return 'Critical Infrastructure';
+}
 
-function DashboardMapBridge() {
+function getMarkerIcon(report, selectedReportId) {
+  if (report.id === selectedReportId) return markerIcons.selected;
+
+  const cluster = getIncidentCluster(report);
+  if (cluster === 'Utility Maintenance') return markerIcons.utility;
+  if (cluster === 'Public Safety') return markerIcons.safety;
+  return markerIcons.critical;
+}
+
+function formatRelativeTime(value) {
+  const date = toDate(value);
+  if (!date) return 'Recently';
+
+  const diffMinutes = Math.max(1, Math.floor((Date.now() - date.getTime()) / 60000));
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+
+  return `${Math.floor(diffHours / 24)}d ago`;
+}
+
+function DashboardMapBridge({ mapRef, selectedReport }) {
   const map = useMap();
 
   useEffect(() => {
+    mapRef.current = map;
     window.setTimeout(() => map.invalidateSize(), 0);
-  }, [map]);
+
+    return () => {
+      if (mapRef.current === map) {
+        mapRef.current = null;
+      }
+    };
+  }, [map, mapRef]);
+
+  useEffect(() => {
+    const position = selectedReport ? getReportPosition(selectedReport) : null;
+    if (position) {
+      map.flyTo(position, 15, { animate: true, duration: 0.75 });
+    }
+  }, [map, selectedReport]);
 
   return null;
 }
 
-function DashboardIcon({ name }) {
-  let path = 'M12 22a2.5 2.5 0 0 0 2.4-1.8H9.6A2.5 2.5 0 0 0 12 22Zm7-5-1.7-2.2V10a5.3 5.3 0 0 0-4-5.1V3a1.3 1.3 0 0 0-2.6 0v1.9a5.3 5.3 0 0 0-4 5.1v4.8L5 17v1.2h14V17Z';
-
-  if (name === 'refresh') {
-    path = 'M17.7 6.3A8 8 0 1 0 20 12h-2a6 6 0 1 1-1.8-4.3L13 11h8V3l-3.3 3.3Z';
-  }
-
-  if (name === 'help') {
-    path = 'M11 17h2v-2h-2v2Zm1-14a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm0 12.5a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11Zm0-9.3c-1.6 0-2.8.9-2.8 2.4h1.7c0-.6.4-1 1.1-1 .7 0 1.1.4 1.1 1 0 .5-.3.8-.9 1.2-.9.6-1.2 1.1-1.2 2.2h1.6c0-.6.2-.9.8-1.3.8-.5 1.5-1.1 1.5-2.2 0-1.4-1.1-2.3-2.9-2.3Z';
-  }
-
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d={path} />
-    </svg>
-  );
+function getStatusClass(status) {
+  return status.toLowerCase().replaceAll('_', '-').replaceAll(' ', '-');
 }
 
 export default function DashboardPage() {
-  const { analytics, isLoading } = useAnalytics();
-  const totalReports = analytics?.totalReports || 1284;
-  const submittedReports = analytics?.submittedReports || 412;
-  const resolvedReports = analytics?.resolvedReports || 812;
+  const mapRef = useRef(null);
+  const [reports, setReports] = useState([]);
+  const [selectedReportId, setSelectedReportId] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All Categories');
+  const [districtFilter, setDistrictFilter] = useState('All Districts');
+  const [severityFilter, setSeverityFilter] = useState('All Severities');
+  const [statusMessage, setStatusMessage] = useState('Loading reports...');
+
+  useEffect(() => {
+    return subscribeReportsForModeration(
+      { maxItems: 200 },
+      (nextReports) => {
+        setReports(nextReports);
+        setStatusMessage(nextReports.length > 0 ? '' : 'No local reports found yet.');
+      }
+    );
+  }, []);
+
+  const normalizedReports = reports;
+
+  const categories = useMemo(
+    () => ['All Categories', ...Array.from(new Set(normalizedReports.map((report) => report.category))).sort()],
+    [normalizedReports]
+  );
+  const districts = useMemo(
+    () => ['All Districts', ...Array.from(new Set(normalizedReports.map((report) => report.district))).sort()],
+    [normalizedReports]
+  );
+  const severities = ['All Severities', 'critical', 'high', 'medium', 'low'];
+
+  const filteredReports = useMemo(
+    () =>
+      normalizedReports.filter(
+        (report) =>
+          (categoryFilter === 'All Categories' || report.category === categoryFilter) &&
+          (districtFilter === 'All Districts' || report.district === districtFilter) &&
+          (severityFilter === 'All Severities' || report.normalizedSeverity === severityFilter)
+      ),
+    [categoryFilter, districtFilter, normalizedReports, severityFilter]
+  );
+
+  const actionableReports = useMemo(
+    () =>
+      filteredReports.filter((report) => {
+        const hasCoordinates = Boolean(getReportPosition(report));
+        const isOpen = report.normalizedStatus !== 'completed';
+        const isPendingOrSevere =
+          report.normalizedStatus === 'pending' || ['critical', 'high'].includes(report.normalizedSeverity);
+
+        return hasCoordinates && isOpen && isPendingOrSevere;
+      }),
+    [filteredReports]
+  );
+
+  const urgentReports = useMemo(
+    () =>
+      actionableReports
+        .filter((report) => ['critical', 'high'].includes(report.normalizedSeverity))
+        .sort((first, second) => {
+          const severityDiff = severityOrder[first.normalizedSeverity] - severityOrder[second.normalizedSeverity];
+          if (severityDiff !== 0) return severityDiff;
+
+          return (toDate(second.createdAt)?.getTime() || 0) - (toDate(first.createdAt)?.getTime() || 0);
+        }),
+    [actionableReports]
+  );
+
+  const selectedReport = normalizedReports.find((report) => report.id === selectedReportId) || null;
+  const resolvedThisMonth = normalizedReports.filter((report) => {
+    if (report.normalizedStatus !== 'completed') return false;
+
+    const date = toDate(report.updatedAt || report.resolvedAt || report.createdAt);
+    const now = new Date();
+    return date && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  }).length;
+  const summary = statusOrder.map((status) => ({
+    status,
+    count: normalizedReports.filter((report) => report.displayStatus === status).length
+  }));
+  const totalReports = normalizedReports.length || 1;
 
   return (
     <main className="command-dashboard">
@@ -109,61 +213,70 @@ export default function DashboardPage() {
         <header className="command-heading">
           <div>
             <h1>Command Overview</h1>
-            <p>System status and live report metrics for today.</p>
+            <p>Actionable report metrics and real-time incident monitoring.</p>
           </div>
-          <div className="dashboard-user-strip">
-            <button type="button" aria-label="Notifications"><DashboardIcon name="bell" /></button>
-            <button type="button" aria-label="Refresh"><DashboardIcon name="refresh" /></button>
-            <button type="button" aria-label="Help"><DashboardIcon name="help" /></button>
-            <span aria-hidden="true">AU</span>
-            <strong>Admin User</strong>
-            {isLoading && <small>Syncing</small>}
-          </div>
+          {statusMessage && <p className="command-sync-message">{statusMessage}</p>}
         </header>
 
         <section className="command-kpi-grid" aria-label="Command overview metrics">
-          <article className="command-kpi-card command-kpi-card--wide">
-            <div>
-              <span>Total Reports</span>
-              <strong>{totalReports.toLocaleString()}</strong>
-            </div>
-            <small>+12%</small>
-            <div className="sparkline" aria-hidden="true">
-              <span />
-            </div>
+          <article className="command-kpi-card">
+            <span>Total Reports</span>
+            <strong>{normalizedReports.length.toLocaleString()}</strong>
           </article>
 
           <article className="command-kpi-card command-kpi-card--danger">
             <span>Critical Priority</span>
-            <strong>24</strong>
-            <small>-4%</small>
-            <div className="sparkline sparkline--danger" aria-hidden="true">
-              <span />
-            </div>
+            <strong>{normalizedReports.filter((report) => report.normalizedSeverity === 'critical').length}</strong>
           </article>
 
-          <article className="command-kpi-card command-kpi-card--neutral">
+          <article className="command-kpi-card command-kpi-card--warning">
             <span>In Progress</span>
-            <strong>{submittedReports}</strong>
-            <small>Stable</small>
-            <div className="mini-progress" aria-hidden="true"><span /></div>
+            <strong>{normalizedReports.filter((report) => report.normalizedStatus === 'in_progress').length}</strong>
           </article>
 
-          <article className="command-kpi-card">
+          <article className="command-kpi-card command-kpi-card--success">
             <span>Resolved This Month</span>
-            <strong>{resolvedReports}</strong>
-            <small>Backlog -8%</small>
-            <div className="sparkline sparkline--soft" aria-hidden="true">
-              <span />
-            </div>
+            <strong>{resolvedThisMonth}</strong>
           </article>
+        </section>
+
+        <section className="command-filter-row" aria-label="Dashboard filters">
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+            {categories.map((category) => <option key={category}>{category}</option>)}
+          </select>
+          <select value={districtFilter} onChange={(event) => setDistrictFilter(event.target.value)}>
+            {districts.map((district) => <option key={district}>{district}</option>)}
+          </select>
+          <select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value)}>
+            {severities.map((severity) => <option key={severity} value={severity}>{severity === 'All Severities' ? severity : severity.toUpperCase()}</option>)}
+          </select>
+        </section>
+
+        <section className="command-progress-card" aria-label="Workflow progress summary">
+          <div className="progress-stacked-bar" aria-hidden="true">
+            {summary.map((item) => (
+              <span
+                className={`progress-stacked-bar__segment progress-stacked-bar__segment--${getStatusClass(item.status)}`}
+                key={item.status}
+                style={{ width: `${(item.count / totalReports) * 100}%` }}
+              />
+            ))}
+          </div>
+          <div className="progress-summary-list">
+            {summary.map((item) => (
+              <span key={item.status}>
+                <i className={`progress-dot progress-dot--${getStatusClass(item.status)}`} />
+                {item.status}: <strong>{item.count}</strong>
+              </span>
+            ))}
+          </div>
         </section>
 
         <section className="dashboard-main-grid">
           <section className="command-map-card">
             <header>
               <h2>Live Incident GIS Clusters</h2>
-              <span>Live Tracking</span>
+              <span>{actionableReports.length} Live</span>
             </header>
             <div className="dashboard-leaflet-shell">
               <MapContainer
@@ -175,17 +288,22 @@ export default function DashboardPage() {
                 zoom={13}
                 zoomControl={false}
               >
-                <DashboardMapBridge />
+                <DashboardMapBridge mapRef={mapRef} selectedReport={selectedReport} />
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                {incidentMarkers.map((marker) => (
-                  <Marker icon={incidentIcon} key={marker.id} position={marker.position}>
+                {actionableReports.map((report) => (
+                  <Marker
+                    eventHandlers={{ click: () => setSelectedReportId(report.id) }}
+                    icon={getMarkerIcon(report, selectedReportId)}
+                    key={report.id}
+                    position={getReportPosition(report)}
+                  >
                     <Popup>
-                      <strong>{marker.title}</strong>
+                      <strong>{getReportTitle(report)}</strong>
                       <br />
-                      {marker.category}
+                      {getIncidentCluster(report)}
                     </Popup>
                   </Marker>
                 ))}
@@ -200,29 +318,48 @@ export default function DashboardPage() {
 
           <section className="urgent-card">
             <header>
-              <h2>Urgent Action Required</h2>
-              <span>3 New</span>
+              <h2>Urgent Action List</h2>
+              <span>{urgentReports.length} Tasks</span>
             </header>
             <div className="urgent-list">
-              {urgentActions.map((action) => (
-                <article className="urgent-item" key={action.id}>
-                  <div>
-                    <span>{action.category}</span>
-                    <time>{action.time}</time>
-                  </div>
-                  <h3>{action.title}</h3>
-                  <p>{action.description}</p>
-                  <footer>
-                    {action.tags.map((tag) => <small key={tag}>{tag}</small>)}
-                  </footer>
-                </article>
-              ))}
+              {urgentReports.length > 0 ? (
+                urgentReports.map((report) => (
+                  <button
+                    className={selectedReportId === report.id ? 'urgent-item urgent-item--active' : 'urgent-item'}
+                    key={report.id}
+                    onClick={() => setSelectedReportId(report.id)}
+                    type="button"
+                  >
+                    <div>
+                      <span>{report.category}</span>
+                      <time>{formatRelativeTime(report.createdAt || report.updatedAt)}</time>
+                    </div>
+                    <h3>{getReportTitle(report)}</h3>
+                    <p>{report.description || 'No description provided.'}</p>
+                    <footer>
+                      <small>{report.normalizedSeverity}</small>
+                      <small>{report.district}</small>
+                    </footer>
+                  </button>
+                ))
+              ) : (
+                <div className="urgent-empty-state">
+                  <h3>No urgent incidents</h3>
+                  <p>Pending high-severity local reports will appear here.</p>
+                </div>
+              )}
             </div>
-            <button type="button">View All Urgent Tasks</button>
+            {selectedReport && (
+              <section className="command-selected-report">
+                <span>{selectedReport.normalizedSeverity}</span>
+                <h3>{getReportTitle(selectedReport)}</h3>
+                <p>{selectedReport.description || 'No description provided.'}</p>
+                <small>{selectedReport.district}</small>
+              </section>
+            )}
           </section>
         </section>
       </section>
     </main>
   );
 }
-

@@ -1,50 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
+import { sampleCitizenReports } from '../../data/sampleReports.js';
+import { getReportCoordinates, normalizeAdminReport, subscribeReportsForModeration } from '../../services/adminReportService.js';
 
 const GIS_CENTER = {
   lat: 10.3157,
   lng: 123.8854
 };
-
-const mapIncidents = [
-  {
-    id: 'map-inc-001',
-    category: 'Drainage',
-    position: [10.3157, 123.8854],
-    title: 'Clogged Drainage Canal'
-  },
-  {
-    id: 'map-inc-002',
-    category: 'Street Lighting',
-    position: [10.3248, 123.8924],
-    title: 'Broken Street Light'
-  },
-  {
-    id: 'map-inc-003',
-    category: 'Road Maintenance',
-    position: [10.3062, 123.8788],
-    title: 'Road Surface Hazard'
-  },
-  {
-    id: 'map-inc-004',
-    category: 'Waste Management',
-    position: [10.3194, 123.8762],
-    title: 'Uncollected Waste'
-  },
-  {
-    id: 'map-inc-005',
-    category: 'Flooding',
-    position: [10.3104, 123.8981],
-    title: 'Flooded Street'
-  },
-  {
-    id: 'map-inc-006',
-    category: 'Utility',
-    position: [10.3291, 123.8815],
-    title: 'Utility Report'
-  }
-];
 
 const primaryCategories = ['Drainage', 'Street Lighting', 'Flooding', 'Road Maintenance', 'Waste Management'];
 const categoryOptions = ['All', ...primaryCategories, 'Others'];
@@ -125,7 +88,65 @@ function getVisibleCategory(category = '') {
   return 'Others';
 }
 
-function GisMap({ mapRef, incidents }) {
+function getReportPosition(report) {
+  const coordinates = getReportCoordinates(report);
+
+  return coordinates ? [coordinates.lat, coordinates.lng] : null;
+}
+
+function getReportCategory(report) {
+  return report.category || 'Infrastructure Report';
+}
+
+function getReportTitle(report) {
+  return report.title || report.name || `${getReportCategory(report)} Report`;
+}
+
+function getReportAddress(report) {
+  const position = getReportPosition(report);
+
+  if (report.locationText || report.address || report.location?.address) {
+    return report.locationText || report.address || report.location.address;
+  }
+
+  return position ? `${position[0].toFixed(5)}, ${position[1].toFixed(5)}` : 'Location not provided';
+}
+
+function getReportDistrict(report) {
+  return report.district || 'District not provided';
+}
+
+function getReportImage(report) {
+  return report.imageUrl || report.photoUrl || report.evidenceImage || report.photoPreview || '';
+}
+
+function formatReportId(report) {
+  return report.trackingId || report.reportId || `#INC-${String(report.id || '').slice(0, 6).toUpperCase()}`;
+}
+
+function formatDate(value) {
+  let date = null;
+
+  if (value?.toDate) {
+    date = value.toDate();
+  } else if (value) {
+    date = new Date(value);
+  }
+
+  if (!date || Number.isNaN(date.getTime())) {
+    return 'Recently';
+  }
+
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function GisMap({ mapRef, reports, onSelectReport }) {
   function handleZoomIn() {
     mapRef.current?.zoomIn();
   }
@@ -154,19 +175,33 @@ function GisMap({ mapRef, incidents }) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {incidents.map((incident, index) => (
-          <Marker
-            icon={index === 0 ? criticalIncidentIcon : utilityIncidentIcon}
-            key={incident.id}
-            position={incident.position}
-          >
-            <Popup>
-              <strong>{incident.title}</strong>
-              <br />
-              {incident.category}
-            </Popup>
-          </Marker>
-        ))}
+        {reports.map((report) => {
+          const position = getReportPosition(report);
+          const category = getReportCategory(report);
+          const isCritical = report.normalizedSeverity === 'critical';
+
+          if (!position) {
+            return null;
+          }
+
+          return (
+            <Marker
+              eventHandlers={{
+                click: () => onSelectReport(report)
+              }}
+              icon={isCritical ? criticalIncidentIcon : utilityIncidentIcon}
+              key={report.id}
+              position={position}
+              title={category}
+            >
+              <Popup>
+                <strong>{category}</strong>
+                <br />
+                {getReportTitle(report)}
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
 
       <div className="gis-map-controls">
@@ -178,17 +213,97 @@ function GisMap({ mapRef, incidents }) {
   );
 }
 
+function ReportDetailsPanel({ report, onClose }) {
+  const imageUrl = getReportImage(report);
+
+  function handleEnlarge() {
+    if (imageUrl) {
+      window.open(imageUrl, '_blank', 'noopener,noreferrer');
+    }
+  }
+
+  return (
+    <aside className="incident-detail-panel">
+      <button className="incident-close" onClick={onClose} type="button" aria-label="Close report detail">
+        <Icon name="close" />
+      </button>
+      <span className="incident-id">{formatReportId(report)}</span>
+      <h2>{getReportTitle(report)}</h2>
+      <p className="incident-location">{getReportDistrict(report)} - {getReportAddress(report)}</p>
+
+      <section className="incident-summary">
+        <h3>Report Summary</h3>
+        <div className="incident-summary-grid">
+          <div>
+            <span>Time Reported</span>
+            <strong>{formatDate(report.createdAt || report.timestamp || report.submittedAt)}</strong>
+          </div>
+          <div>
+            <span>Source Type</span>
+            <strong>{report.sourceType || report.source || 'Citizen App'}</strong>
+          </div>
+        </div>
+        <p>{report.description || 'No report description provided.'}</p>
+      </section>
+
+      <section className="evidence-section">
+        <h3>Evidence Thumbnail</h3>
+        <div className={imageUrl ? 'evidence-image evidence-image--photo' : 'evidence-image'}>
+          {imageUrl ? <img src={imageUrl} alt="Report evidence" /> : <span />}
+          <button disabled={!imageUrl} onClick={handleEnlarge} type="button">
+            <Icon name="image" />
+            Enlarge
+          </button>
+        </div>
+      </section>
+    </aside>
+  );
+}
+
 export default function ReportMapPage() {
   const mapRef = useRef(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [reports, setReports] = useState([]);
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [mapMessage, setMapMessage] = useState('Loading reports...');
 
-  const filteredIncidents = useMemo(() => {
+  useEffect(() => {
+    const unsubscribe = subscribeReportsForModeration(
+      { maxItems: 200 },
+      (nextReports) => {
+        setReports(nextReports);
+        setMapMessage(nextReports.length > 0 ? '' : 'No local reports with map coordinates found yet.');
+      }
+    );
+
+    return unsubscribe;
+  }, []);
+
+  const mapReports = useMemo(
+    () =>
+      reports.filter(
+        (report) =>
+          getReportPosition(report) &&
+          !report.deleted &&
+          !report.isDeleted &&
+          !['completed', 'rejected'].includes(report.normalizedStatus)
+      ),
+    [reports]
+  );
+  const displayedMapReports = mapReports.length > 0 ? mapReports : sampleCitizenReports.map(normalizeAdminReport);
+  const isShowingSampleReports = mapReports.length === 0;
+  const mapStatusMessage =
+    mapReports.length > 0
+      ? ''
+      : `Showing sample citizen reports until local reports with coordinates are available.${mapMessage ? ` ${mapMessage}` : ''}`;
+
+  const filteredReports = useMemo(() => {
     if (selectedCategory === 'All') {
-      return mapIncidents;
+      return displayedMapReports;
     }
 
-    return mapIncidents.filter((incident) => getVisibleCategory(incident.category) === selectedCategory);
-  }, [selectedCategory]);
+    return displayedMapReports.filter((report) => getVisibleCategory(getReportCategory(report)) === selectedCategory);
+  }, [displayedMapReports, selectedCategory]);
 
   return (
     <main className="gis-tracking-page">
@@ -208,9 +323,11 @@ export default function ReportMapPage() {
         <span className="gis-admin-avatar" aria-hidden="true">AU</span>
       </header>
 
-      <section className="gis-shell">
+      <section className={selectedReport ? 'gis-shell' : 'gis-shell gis-shell--map-only'}>
         <section className="gis-map-area">
-          <GisMap incidents={filteredIncidents} mapRef={mapRef} />
+          <GisMap mapRef={mapRef} onSelectReport={setSelectedReport} reports={filteredReports} />
+
+          {mapStatusMessage && <p className="gis-map-status">{mapStatusMessage}</p>}
 
           <aside className="map-categories-panel">
             <header>
@@ -228,46 +345,11 @@ export default function ReportMapPage() {
                 </button>
               ))}
             </div>
-            <p>{selectedCategory === 'All' ? 'Showing all categories' : `Showing ${filteredIncidents.length} reports`}</p>
+            <p>{isShowingSampleReports ? `Showing ${filteredReports.length} sample reports` : `Showing ${filteredReports.length} reports`}</p>
           </aside>
         </section>
 
-        <aside className="incident-detail-panel">
-          <button className="incident-close" type="button" aria-label="Close incident detail"><Icon name="close" /></button>
-          <span className="incident-id">#INC-3921-CR</span>
-          <h2>Critical Infrastructure Failure</h2>
-          <p className="incident-location">District 4, Main Intersection - North Ave</p>
-
-          <section className="incident-summary">
-            <h3>Report Summary</h3>
-            <div className="incident-summary-grid">
-              <div>
-                <span>Time Reported</span>
-                <strong>14:22:05 PM</strong>
-              </div>
-              <div>
-                <span>Source Type</span>
-                <strong>Citizen App</strong>
-              </div>
-            </div>
-            <p>
-              Large scale pipe burst reported near the main intersection. High pressure water causing erosion on the sidewalk and minor flooding in the underpass. Public safety hazards identified.
-            </p>
-          </section>
-
-          <section className="evidence-section">
-            <h3>Evidence Thumbnail</h3>
-            <div className="evidence-image">
-              <span />
-              <button type="button"><Icon name="image" />Enlarge</button>
-            </div>
-          </section>
-
-          <section className="incident-actions">
-            <button className="dispatch-button" type="button">Dispatch Rapid Response Team</button>
-            <button className="contact-button" type="button"><Icon name="phone" />Contact Utility Provider</button>
-          </section>
-        </aside>
+        {selectedReport && <ReportDetailsPanel onClose={() => setSelectedReport(null)} report={selectedReport} />}
       </section>
     </main>
   );
