@@ -1,7 +1,6 @@
-import { sampleCitizenReports } from '../data/sampleReports.js';
 import {
   collection,
-  doc as firestoreDoc,
+  doc,
   getDocs,
   onSnapshot,
   orderBy,
@@ -9,78 +8,58 @@ import {
   serverTimestamp,
   updateDoc
 } from 'firebase/firestore';
-import { db } from '../firebase/firestore.js';
-import { isFirebaseConfigured } from '../firebase/config.js';
+import { db, isFirebaseConfigured } from '../firebase/config.js';
 
 const ADMIN_REPORTS_STORAGE_KEY = 'citizenwatch_admin_reports';
+const CITIZEN_REPORTS_STORAGE_KEY = 'citizenwatch_reports';
+const LOCAL_STORAGE_REPORT_KEYS = [
+  ADMIN_REPORTS_STORAGE_KEY,
+  CITIZEN_REPORTS_STORAGE_KEY,
+  'citizenwatch_alerts',
+  'citizenwatch_saved_report_draft'
+];
+
 export const REJECTED_REPORT_REASON = 'This report is either fake, not traceable, or no problem was found after review.';
+
 const listeners = new Set();
 let cachedReports = null;
 
-function getReportsRef() {
-  return isFirebaseConfigured && db ? collection(db, 'reports') : null;
+function shouldUseFirestore() {
+  return Boolean(isFirebaseConfigured && db);
 }
 
 function canUseStorage() {
   return typeof window !== 'undefined' && Boolean(window.localStorage);
 }
 
-function readStoredReports() {
-  if (!canUseStorage()) {
-    return [...sampleCitizenReports];
-  }
+function clearLocalReportStorage() {
+  if (!canUseStorage()) return;
 
-  try {
-    const rawReports = window.localStorage.getItem(ADMIN_REPORTS_STORAGE_KEY);
-    if (!rawReports) {
-      writeStoredReports(sampleCitizenReports);
-      return [...sampleCitizenReports];
-    }
+  LOCAL_STORAGE_REPORT_KEYS.forEach((key) => window.localStorage.removeItem(key));
 
-    const parsedReports = JSON.parse(rawReports);
-    if (!Array.isArray(parsedReports)) {
-      return [...sampleCitizenReports];
-    }
-
-    const storedIds = new Set(parsedReports.map((report) => report.id));
-    const missingSamples = sampleCitizenReports.filter((report) => !storedIds.has(report.id));
-    const mergedReports = [...parsedReports, ...missingSamples];
-
-    if (missingSamples.length > 0) {
-      writeStoredReports(mergedReports);
-    }
-
-    return mergedReports;
-  } catch (error) {
-    console.warn('Unable to read local admin reports.', error);
-    return [...sampleCitizenReports];
+  if (typeof window.sessionStorage !== 'undefined') {
+    window.sessionStorage.removeItem('citizenwatch_last_submitted_report_id');
+    window.sessionStorage.removeItem('citizenwatch_report_draft');
   }
 }
 
-function writeStoredReports(reports) {
-  if (!canUseStorage()) {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(ADMIN_REPORTS_STORAGE_KEY, JSON.stringify(reports));
-  } catch (error) {
-    console.warn('Unable to save local admin reports.', error);
-  }
+function getReportsCollection() {
+  return collection(db, 'reports');
 }
 
-function getRawReports() {
-  if (!cachedReports) {
-    cachedReports = readStoredReports();
-  }
-
-  return cachedReports;
+function notifyReportListeners() {
+  listeners.forEach(({ filters, onReports }) => {
+    onReports(applyFilters([], filters));
+  });
 }
 
-function setRawReports(reports) {
-  cachedReports = reports;
-  writeStoredReports(reports);
-  notifyReportListeners();
+function toMillis(value) {
+  if (value?.toDate) return value.toDate().getTime();
+  if (typeof value === 'number') return value;
+  if (!value) return 0;
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
 
 function applyFilters(reports, { status, maxItems = 200 } = {}) {
@@ -96,19 +75,14 @@ function applyFilters(reports, { status, maxItems = 200 } = {}) {
     .map(normalizeAdminReport);
 }
 
-function notifyReportListeners() {
-  listeners.forEach(({ filters, onReports }) => {
-    onReports(applyFilters(getRawReports(), filters));
-  });
-}
-
-function toMillis(value) {
-  if (value?.toDate) return value.toDate().getTime();
-  if (typeof value === 'number') return value;
-  if (!value) return 0;
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+function applyFirestoreFilters(snapshot, filters = {}) {
+  return applyFilters(
+    snapshot.docs.map((reportDoc) => ({
+      id: reportDoc.id,
+      ...reportDoc.data()
+    })),
+    filters
+  );
 }
 
 export function normalizeReportStatus(status = '') {
@@ -219,55 +193,36 @@ export function normalizeAdminReport(report = {}) {
 }
 
 export async function getReportsForModeration(filters = {}) {
-  const reportsRef = getReportsRef();
+  clearLocalReportStorage();
 
-  if (reportsRef) {
-    const reportsQuery = query(reportsRef, orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(reportsQuery);
-    return applyFilters(
-      snapshot.docs.map((reportDoc) => ({
-        id: reportDoc.id,
-        ...reportDoc.data()
-      })),
-      filters
-    );
+  if (!shouldUseFirestore()) {
+    return applyFilters([], filters);
   }
 
-  return applyFilters(getRawReports(), filters);
+  const reportsQuery = query(getReportsCollection(), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(reportsQuery);
+  return applyFirestoreFilters(snapshot, filters);
 }
 
-export function subscribeReportsForModeration(filters = {}, onReports) {
-  const reportsRef = getReportsRef();
+export function subscribeReportsForModeration(filters = {}, onReports, onError) {
+  clearLocalReportStorage();
 
-  if (reportsRef) {
-    const reportsQuery = query(reportsRef, orderBy('createdAt', 'desc'));
-    return onSnapshot(
-      reportsQuery,
-      (snapshot) => {
-        onReports(
-          applyFilters(
-            snapshot.docs.map((reportDoc) => ({
-              id: reportDoc.id,
-              ...reportDoc.data()
-            })),
-            filters
-          )
-        );
-      },
-      (error) => {
-        console.warn('Unable to listen to Firestore reports. Falling back to local reports.', error);
-        onReports(applyFilters(getRawReports(), filters));
-      }
-    );
+  if (!shouldUseFirestore()) {
+    onReports([]);
+    return () => {};
   }
 
-  const listener = { filters, onReports };
-  listeners.add(listener);
-  onReports(applyFilters(getRawReports(), filters));
+  const reportsQuery = query(getReportsCollection(), orderBy('createdAt', 'desc'));
 
-  return () => {
-    listeners.delete(listener);
-  };
+  return onSnapshot(
+    reportsQuery,
+    (snapshot) => onReports(applyFirestoreFilters(snapshot, filters)),
+    (error) => {
+      console.error('Unable to subscribe to Firestore reports.', error);
+      onReports([]);
+      onError?.(error);
+    }
+  );
 }
 
 export function updateReportStatus({
@@ -281,61 +236,40 @@ export function updateReportStatus({
   description,
   subtasks
 }) {
-  const adminNotes = remarks || notes;
-  const updatedAt = new Date().toISOString();
-
-  const reportsRef = getReportsRef();
-  if (reportsRef) {
-    return updateDoc(firestoreDoc(db, 'reports', reportId), {
-      ...(status !== undefined ? { status } : {}),
-      ...(assignedTeam !== undefined ? { assignedTeam } : {}),
-      ...(progress !== undefined ? { progress } : {}),
-      ...(description !== undefined ? { description } : {}),
-      ...(subtasks !== undefined ? { subtasks } : {}),
-      adminNotes,
-      remarks: adminNotes,
-      reviewedBy: adminId || null,
-      updatedBy: adminId || null,
-      updatedAt: serverTimestamp()
-    });
+  if (!shouldUseFirestore()) {
+    clearLocalReportStorage();
+    notifyReportListeners();
+    return Promise.resolve();
   }
 
-  const reports = getRawReports();
-  const nextReports = reports.map((report) => {
-    if (report.id !== reportId && report.reportId !== reportId && report.trackingId !== reportId) {
-      return report;
-    }
+  const adminNotes = remarks || notes;
+  const updatePayload = {
+    ...(status !== undefined ? { status } : {}),
+    ...(assignedTeam !== undefined ? { assignedTeam } : {}),
+    ...(progress !== undefined ? { progress } : {}),
+    ...(description !== undefined ? { description } : {}),
+    ...(subtasks !== undefined ? { subtasks } : {}),
+    adminNotes,
+    remarks: adminNotes,
+    reviewedBy: adminId || null,
+    updatedBy: adminId || null,
+    updatedAt: serverTimestamp()
+  };
 
-    return {
-      ...report,
-      ...(status !== undefined ? { status } : {}),
-      ...(assignedTeam !== undefined ? { assignedTeam } : {}),
-      ...(progress !== undefined ? { progress } : {}),
-      ...(description !== undefined ? { description } : {}),
-      ...(subtasks !== undefined ? { subtasks } : {}),
-      adminNotes,
-      remarks: adminNotes,
-      reviewedBy: adminId || report.reviewedBy || null,
-      updatedBy: adminId || report.updatedBy || null,
-      updatedAt
-    };
-  });
-
-  setRawReports(nextReports);
-  return Promise.resolve();
+  return updateDoc(doc(db, 'reports', reportId), updatePayload);
 }
 
-export function updateLocalReport(reportId, updates = {}) {
-  const nextReports = getRawReports().map((report) =>
-    report.id === reportId || report.reportId === reportId || report.trackingId === reportId
-      ? { ...report, ...updates, updatedAt: new Date().toISOString() }
-      : report
-  );
-
-  setRawReports(nextReports);
-  return nextReports.map(normalizeAdminReport).find((report) => report.id === reportId || report.reportId === reportId);
+export function updateLocalReport() {
+  clearLocalReportStorage();
+  return null;
 }
 
 export function resetLocalReports() {
-  setRawReports([...sampleCitizenReports]);
+  cachedReports = [];
+  clearLocalReportStorage();
+  notifyReportListeners();
+}
+
+export function clearLocalReportsForFirebaseTest() {
+  resetLocalReports();
 }

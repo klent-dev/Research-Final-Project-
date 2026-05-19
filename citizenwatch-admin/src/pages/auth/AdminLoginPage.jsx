@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginAdmin } from '../../services/adminAuthService.js';
 
@@ -89,7 +89,7 @@ export default function AdminLoginPage() {
             {isSubmitting ? 'Signing In...' : 'Sign In to Console'}
             <span aria-hidden="true">→</span>
           </button>
-      </form>
+        </form>
 
         <footer className="admin-login-footer">
           <strong>Authorized Personnel Only. Monitored Government Access.</strong>
@@ -104,4 +104,3 @@ export default function AdminLoginPage() {
     </main>
   );
 }
-

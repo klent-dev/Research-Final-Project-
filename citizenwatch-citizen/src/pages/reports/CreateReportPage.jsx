@@ -151,6 +151,7 @@ export default function CreateReportPage() {
   const cameraInputRef = useRef(null);
   const objectUrlRef = useRef('');
   const scrollPositionRef = useRef(0);
+  const autoAdvanceRef = useRef(false);
   const navigate = useNavigate();
   const selectedFileName = selectedFile?.name || draft.fileName || '';
   const selectedFileSize = selectedFile ? formatFileSize(selectedFile) : draft.fileSize || '';
@@ -208,17 +209,18 @@ export default function CreateReportPage() {
     setSelectedFile(file);
     setPreviewUrl(nextPreviewUrl);
     setStepError('');
+    autoAdvanceRef.current = false;
 
     const reader = new FileReader();
     reader.onload = () => {
-      updatePhoto(file, typeof reader.result === 'string' ? reader.result : '');
+      const photoPreview = typeof reader.result === 'string' ? reader.result : '';
+      updatePhoto(file, photoPreview);
+      void extractPhotoMetadata(file, photoPreview);
     };
     reader.readAsDataURL(file);
-
-    void extractPhotoMetadata(file);
   }
 
-  async function extractPhotoMetadata(file) {
+  async function extractPhotoMetadata(file, photoPreview = '') {
     try {
       const [gpsData, parsedMetadata] = await Promise.all([
         exifr.gps(file).catch(() => null),
@@ -234,16 +236,38 @@ export default function CreateReportPage() {
       const exifLat = Number(gpsData?.latitude);
       const exifLng = Number(gpsData?.longitude);
       const hasExifGps = Number.isFinite(exifLat) && Number.isFinite(exifLng);
+      const exifLocation = hasExifGps
+        ? {
+            lat: exifLat,
+            lng: exifLng,
+            accuracy: null,
+            address: 'Photo location detected',
+            source: 'exif',
+            subAddress: `Lat: ${exifLat.toFixed(5)}, Lng: ${exifLng.toFixed(5)}`
+          }
+        : null;
 
       updateDraft({
+        selectedFile: file || null,
+        photoPreview: photoPreview || draft.photoPreview || '',
+        fileName: file?.name || draft.fileName || '',
+        fileSize: file?.size ? formatFileSize(file) : draft.fileSize || '',
         exifLat: hasExifGps ? exifLat : null,
         exifLng: hasExifGps ? exifLng : null,
         exifTimestamp: toIsoTimestamp(exifTimestamp),
         hasExifGps,
+        ...(exifLocation ? { location: exifLocation } : {}),
         metadataPreview: {
           location: hasExifGps ? 'Photo GPS detected' : 'Metadata pending validation'
         }
       });
+
+      if (hasExifGps && !autoAdvanceRef.current) {
+        autoAdvanceRef.current = true;
+        window.setTimeout(() => {
+          navigate('/reports/create/details');
+        }, 650);
+      }
     } catch (error) {
       console.warn('Unable to read image EXIF metadata.', error);
       updateDraft({
@@ -276,6 +300,7 @@ export default function CreateReportPage() {
 
     setSelectedFile(null);
     setPreviewUrl('');
+    autoAdvanceRef.current = false;
 
     updateDraft({
       selectedFile: null,

@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
-import { sampleCitizenReports } from '../../data/sampleReports.js';
-import { getReportCoordinates, normalizeAdminReport, subscribeReportsForModeration } from '../../services/adminReportService.js';
+import {
+  getReportCoordinates,
+  subscribeReportsForModeration,
+  updateReportStatus
+} from '../../services/adminReportService.js';
 
 const GIS_CENTER = {
   lat: 10.3157,
@@ -213,7 +216,7 @@ function GisMap({ mapRef, reports, onSelectReport }) {
   );
 }
 
-function ReportDetailsPanel({ report, onClose }) {
+function ReportDetailsPanel({ report, onClose, onStatusUpdate }) {
   const imageUrl = getReportImage(report);
 
   function handleEnlarge() {
@@ -256,6 +259,13 @@ function ReportDetailsPanel({ report, onClose }) {
           </button>
         </div>
       </section>
+
+      <section className="incident-actions">
+        <button onClick={() => onStatusUpdate(report, 'under_review')} type="button">Under Review</button>
+        <button onClick={() => onStatusUpdate(report, 'verified')} type="button">Verified</button>
+        <button onClick={() => onStatusUpdate(report, 'resolved')} type="button">Resolved</button>
+        <button onClick={() => onStatusUpdate(report, 'rejected')} type="button">Rejected</button>
+      </section>
     </aside>
   );
 }
@@ -272,7 +282,7 @@ export default function ReportMapPage() {
       { maxItems: 200 },
       (nextReports) => {
         setReports(nextReports);
-        setMapMessage(nextReports.length > 0 ? '' : 'No local reports with map coordinates found yet.');
+        setMapMessage(nextReports.length > 0 ? '' : 'No Firebase reports with map coordinates found yet.');
       }
     );
 
@@ -290,20 +300,25 @@ export default function ReportMapPage() {
       ),
     [reports]
   );
-  const displayedMapReports = mapReports.length > 0 ? mapReports : sampleCitizenReports.map(normalizeAdminReport);
-  const isShowingSampleReports = mapReports.length === 0;
-  const mapStatusMessage =
-    mapReports.length > 0
-      ? ''
-      : `Showing sample citizen reports until local reports with coordinates are available.${mapMessage ? ` ${mapMessage}` : ''}`;
-
   const filteredReports = useMemo(() => {
     if (selectedCategory === 'All') {
-      return displayedMapReports;
+      return mapReports;
     }
 
-    return displayedMapReports.filter((report) => getVisibleCategory(getReportCategory(report)) === selectedCategory);
-  }, [displayedMapReports, selectedCategory]);
+    return mapReports.filter((report) => getVisibleCategory(getReportCategory(report)) === selectedCategory);
+  }, [mapReports, selectedCategory]);
+
+  function handleStatusUpdate(report, status) {
+    updateReportStatus({
+      reportId: report.id,
+      status,
+      adminId: 'local-admin'
+    });
+
+    if (['resolved', 'rejected'].includes(status)) {
+      setSelectedReport(null);
+    }
+  }
 
   return (
     <main className="gis-tracking-page">
@@ -327,7 +342,7 @@ export default function ReportMapPage() {
         <section className="gis-map-area">
           <GisMap mapRef={mapRef} onSelectReport={setSelectedReport} reports={filteredReports} />
 
-          {mapStatusMessage && <p className="gis-map-status">{mapStatusMessage}</p>}
+          {mapMessage && filteredReports.length === 0 && <p className="gis-map-status">{mapMessage}</p>}
 
           <aside className="map-categories-panel">
             <header>
@@ -345,11 +360,17 @@ export default function ReportMapPage() {
                 </button>
               ))}
             </div>
-            <p>{isShowingSampleReports ? `Showing ${filteredReports.length} sample reports` : `Showing ${filteredReports.length} reports`}</p>
+            <p>Showing {filteredReports.length} reports</p>
           </aside>
         </section>
 
-        {selectedReport && <ReportDetailsPanel onClose={() => setSelectedReport(null)} report={selectedReport} />}
+        {selectedReport && (
+          <ReportDetailsPanel
+            onClose={() => setSelectedReport(null)}
+            onStatusUpdate={handleStatusUpdate}
+            report={selectedReport}
+          />
+        )}
       </section>
     </main>
   );

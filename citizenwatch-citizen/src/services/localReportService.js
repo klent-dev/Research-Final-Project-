@@ -1,4 +1,5 @@
 import { normalizeUrgency } from '../utils/severity.js';
+import { isFirebaseConfigured } from '../firebase/config.js';
 
 export const REPORTS_STORAGE_KEY = 'citizenwatch_reports';
 export const ALERTS_STORAGE_KEY = 'citizenwatch_alerts';
@@ -93,6 +94,11 @@ function normalizeReport(report) {
 }
 
 export function getReports() {
+  if (isFirebaseConfigured) {
+    clearReports();
+    return [];
+  }
+
   const reports = readJson(window.localStorage, REPORTS_STORAGE_KEY, []);
 
   if (!Array.isArray(reports)) {

@@ -1,14 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
-import { sampleCitizenReports } from '../../data/sampleReports.js';
+﻿import { useEffect, useMemo, useState } from 'react';
 import {
   REJECTED_REPORT_REASON,
-  normalizeAdminReport,
-  subscribeReportsForModeration
+  subscribeReportsForModeration,
+  updateReportStatus
 } from '../../services/adminReportService.js';
 
 const categoryFilters = ['All Assets', 'Roads', 'Drainage', 'Streetlights', 'Bridges'];
 const statusFilters = ['All Statuses', 'Pending', 'In Progress', 'Completed'];
 const statusOrder = ['Pending', 'In Progress', 'Completed'];
+const statusActions = [
+  { label: 'Under Review', value: 'under_review' },
+  { label: 'Verified', value: 'verified' },
+  { label: 'Resolved', value: 'resolved' },
+  { label: 'Rejected', value: 'rejected' }
+];
 const severityOrder = {
   critical: 0,
   high: 1,
@@ -50,30 +55,37 @@ export default function ReportQueuePage() {
       { maxItems: 200 },
       (nextReports) => {
         setReports(nextReports);
-        setStatusMessage(nextReports.length > 0 ? '' : 'No local reports found yet.');
+        setStatusMessage(nextReports.length > 0 ? '' : 'No Firebase reports found yet.');
         setSelectedReportId((currentId) => currentId || nextReports[0]?.id || '');
       }
     );
   }, []);
 
-  const displayedReports = reports.length > 0 ? reports : sampleCitizenReports.map(normalizeAdminReport);
-  const isShowingExampleReports = reports.length === 0;
-
   const filteredReports = useMemo(() => {
     const category = getFilterCategory(activeCategory);
 
-    return displayedReports
+    return reports
       .filter((report) => !category || report.category === category)
       .filter((report) => activeStatus === 'All Statuses' || report.displayStatus === activeStatus)
       .sort((first, second) => severityOrder[first.normalizedSeverity] - severityOrder[second.normalizedSeverity]);
-  }, [activeCategory, activeStatus, displayedReports]);
+  }, [activeCategory, activeStatus, reports]);
 
-  const selectedReport = displayedReports.find((report) => report.id === selectedReportId) || filteredReports[0] || null;
-  const totalReports = displayedReports.length || 1;
+  const selectedReport = reports.find((report) => report.id === selectedReportId) || filteredReports[0] || null;
+  const totalReports = reports.length || 1;
   const summary = statusOrder.map((status) => ({
     status,
-    count: displayedReports.filter((report) => report.displayStatus === status).length
+    count: reports.filter((report) => report.displayStatus === status).length
   }));
+
+  function handleStatusAction(status) {
+    if (!selectedReport) return;
+
+    updateReportStatus({
+      reportId: selectedReport.id,
+      status,
+      adminId: 'local-admin'
+    });
+  }
 
   return (
     <main className="infrastructure-page">
@@ -90,13 +102,8 @@ export default function ReportQueuePage() {
             <h3>Progress Overview</h3>
             <p>Pending, in-progress, and completed report counts from local reports</p>
           </div>
-          <strong>{displayedReports.length} Reports</strong>
+          <strong>{reports.length} Reports</strong>
         </header>
-        {isShowingExampleReports && (
-          <div className="reports-demo-banner">
-            Sample citizen reports shown from the local report array.
-          </div>
-        )}
         <div className="progress-stacked-bar" aria-hidden="true">
           {summary.map((item) => (
             <span
@@ -234,6 +241,20 @@ export default function ReportQueuePage() {
                     <p>{selectedReport.description}</p>
                   </div>
                 </article>
+              </section>
+              <section className="report-status-actions">
+                <h3>Status Actions</h3>
+                <div>
+                  {statusActions.map((action) => (
+                    <button
+                      key={action.value}
+                      onClick={() => handleStatusAction(action.value)}
+                      type="button"
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
               </section>
             </>
           ) : (

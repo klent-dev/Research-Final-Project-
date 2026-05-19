@@ -1,238 +1,562 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { subscribeReportsForModeration } from '../../services/adminReportService.js';
+import { useAdminAuth } from '../../hooks/useAdminAuth.js';
 
-const loginHistory = [
-  ['192.168.1.45 (Quezon City)', 'Just now'],
-  ['10.0.0.12 (Command Center)', '2h ago']
+const SETTINGS_STORAGE_KEY = 'citizenwatch_admin_settings';
+
+const tabs = [
+  { id: 'account', label: 'Account' },
+  { id: 'notifications', label: 'Notifications' },
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'map', label: 'Map' },
+  { id: 'system', label: 'System & Data' },
+  { id: 'security', label: 'Security & Roles' }
 ];
 
-const notificationOptions = [
-  ['System Critical Alerts', 'Immediate push and desktop notifications', true],
-  ['Email Report Summaries', 'Daily infrastructure health digests', true],
-  ['Emergency Broadcasts', 'External siren and public alert integration', false]
+const defaultSettings = {
+  account: {
+    fullName: 'Local Admin',
+    email: 'admin@citizenwatch.local',
+    avatarUrl: '',
+    twoFactorEnabled: false
+  },
+  notifications: {
+    newReportAlert: true,
+    criticalReportAlert: true,
+    statusChangeAlert: true,
+    deliveryEmail: true,
+    deliveryInApp: true
+  },
+  dashboard: {
+    theme: 'system',
+    defaultCategory: 'All Categories',
+    defaultStatus: 'All Statuses',
+    defaultDistrict: 'All Districts',
+    showMetricCards: true,
+    reorderCards: false
+  },
+  map: {
+    showLowPriorityMarkers: true,
+    markerClustering: true,
+    realtimeUpdates: true,
+    zoomLevel: 13
+  }
+};
+
+const roleOptions = ['citizen', 'lgu_admin'];
+const categoryOptions = ['All Categories', 'Roads', 'Drainage', 'Streetlights', 'Bridges', 'Waste Management', 'Others'];
+const statusOptions = ['All Statuses', 'Pending', 'Under Review', 'Verified', 'In Progress', 'Resolved', 'Rejected'];
+const districtOptions = [
+  'All Districts',
+  'Cebu Province - 1st District',
+  'Cebu Province - 2nd District',
+  'Cebu Province - 3rd District',
+  'Cebu Province - 4th District',
+  'Cebu Province - 5th District',
+  'Cebu Province - 6th District',
+  'Cebu Province - 7th District',
+  'Cebu City - North District',
+  'Cebu City - South District',
+  'Lapu-Lapu City - Lone District',
+  'Mandaue City - Lone District'
 ];
 
-const teamMembers = [
-  ['John Doe', 'Supervisor', 'JD'],
-  ['Alice Moore', 'Dispatcher', 'AM'],
-  ['Robert King', 'Analyst', 'RK']
-];
+function readSettings() {
+  if (typeof window === 'undefined') return defaultSettings;
 
-function Icon({ name }) {
-  const paths = {
-    search: 'M10 4a6 6 0 0 1 4.8 9.6l4.3 4.3-1.4 1.4-4.3-4.3A6 6 0 1 1 10 4Zm0 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z',
-    bell: 'M12 22a2.5 2.5 0 0 0 2.4-1.8H9.6A2.5 2.5 0 0 0 12 22Zm7-5-1.7-2.2V10a5.3 5.3 0 0 0-4-5.1V3a1.3 1.3 0 0 0-2.6 0v1.9a5.3 5.3 0 0 0-4 5.1v4.8L5 17v1.2h14V17Z',
-    refresh: 'M17.7 6.3A8 8 0 1 0 20 12h-2a6 6 0 1 1-1.8-4.3L13 11h8V3l-3.3 3.3Z',
-    message: 'M4 5h16v11H8.2L4 19.2V5Zm2 2v8.1l1.5-1.1H18V7H6Z',
-    security: 'M12 2 20 5v6c0 5-3.2 8.7-8 11-4.8-2.3-8-6-8-11V5l8-3Zm0 3.2L6 7.4V11c0 3.5 2 6.2 6 8.2 4-2 6-4.7 6-8.2V7.4l-6-2.2Z',
-    notifications: 'M12 22a2.5 2.5 0 0 0 2.4-1.8H9.6A2.5 2.5 0 0 0 12 22Zm7-5-1.7-2.2V10a5.3 5.3 0 0 0-4-5.1V3a1.3 1.3 0 0 0-2.6 0v1.9a5.3 5.3 0 0 0-4 5.1v4.8L5 17v1.2h14V17Z',
-    team: 'M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm8 0a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5ZM3 19a5 5 0 0 1 10 0v1H3v-1Zm10.5 1v-1a6.5 6.5 0 0 0-1.2-3.8A4.5 4.5 0 0 1 21 17.5V20h-7.5Z',
-    config: 'M10.2 2h3.6l.7 3.1c.5.2 1 .4 1.5.7l2.7-1.7 2.5 2.5-1.7 2.7c.3.5.5 1 .7 1.5l3.1.7v3.6l-3.1.7c-.2.5-.4 1-.7 1.5l1.7 2.7-2.5 2.5-2.7-1.7c-.5.3-1 .5-1.5.7l-.7 3.1h-3.6l-.7-3.1c-.5-.2-1-.4-1.5-.7l-2.7 1.7-2.5-2.5 1.7-2.7c-.3-.5-.5-1-.7-1.5l-3.1-.7v-3.6l3.1-.7c.2-.5.4-1 .7-1.5L2.8 6.6l2.5-2.5L8 5.8c.5-.3 1-.5 1.5-.7L10.2 2Zm1.8 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z',
-    addUser: 'M9 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm-7 9a7 7 0 0 1 14 0v1H2v-1Zm16-11V6h2v3h3v2h-3v3h-2v-3h-3V9h3Z'
-  };
+  try {
+    const savedSettings = JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY));
+    return {
+      account: { ...defaultSettings.account, ...savedSettings?.account },
+      notifications: { ...defaultSettings.notifications, ...savedSettings?.notifications },
+      dashboard: { ...defaultSettings.dashboard, ...savedSettings?.dashboard },
+      map: { ...defaultSettings.map, ...savedSettings?.map }
+    };
+  } catch {
+    return defaultSettings;
+  }
+}
 
+function writeSettings(settings) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+}
+
+function getCitizenName(report) {
+  return report.reporterName || report.createdByName || report.reporterId || report.createdBy || 'Citizen Reporter';
+}
+
+function FormField({ children, label }) {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d={paths[name]} />
-    </svg>
+    <label className="admin-settings-field">
+      <span>{label}</span>
+      {children}
+    </label>
   );
 }
 
-export default function UserManagementPage() {
-  const [activePanel, setActivePanel] = useState('settings');
+function Toggle({ checked, label, description, onChange }) {
+  return (
+    <label className="admin-settings-toggle">
+      <span>
+        <strong>{label}</strong>
+        {description && <small>{description}</small>}
+      </span>
+      <input checked={checked} onChange={(event) => onChange(event.target.checked)} type="checkbox" />
+      <i aria-hidden="true" />
+    </label>
+  );
+}
 
-  if (activePanel === 'password') {
-    return (
-      <main className="settings-page password-page">
-        <section className="password-content">
-          <nav className="password-breadcrumb" aria-label="Breadcrumb">
-            <button onClick={() => setActivePanel('settings')} type="button">Settings</button>
-            <span>›</span>
-            <strong>Change Password</strong>
-          </nav>
+function SectionCard({ children, eyebrow, title }) {
+  return (
+    <section className="admin-settings-card">
+      <header>
+        <span>{eyebrow}</span>
+        <h3>{title}</h3>
+      </header>
+      {children}
+    </section>
+  );
+}
 
-          <header className="password-heading">
-            <h1>Security &amp; Password</h1>
-            <p>Manage your account security and update your login credentials.</p>
-          </header>
+function AccountSettings({ passwordForm, passwordMessage, settings, updatePassword, updateSection }) {
+  return (
+    <div className="admin-settings-section-grid">
+      <SectionCard eyebrow="Admin only" title="Account Settings">
+        <div className="admin-profile-row">
+          <div className="admin-profile-avatar">
+            {settings.account.avatarUrl ? <img src={settings.account.avatarUrl} alt="" /> : <span>AU</span>}
+          </div>
+          <div>
+            <strong>{settings.account.fullName || 'Admin User'}</strong>
+            <p>{settings.account.email}</p>
+            <span className="admin-role-badge">lgu_admin</span>
+          </div>
+        </div>
 
-          <form className="password-card">
-            <header>
-              <span aria-hidden="true">↻</span>
+        <div className="admin-settings-form-grid">
+          <FormField label="Full Name">
+            <input
+              onChange={(event) => updateSection('account', { fullName: event.target.value })}
+              value={settings.account.fullName}
+            />
+          </FormField>
+          <FormField label="Email">
+            <input
+              onChange={(event) => updateSection('account', { email: event.target.value })}
+              type="email"
+              value={settings.account.email}
+            />
+          </FormField>
+          <FormField label="Avatar URL">
+            <input
+              onChange={(event) => updateSection('account', { avatarUrl: event.target.value })}
+              placeholder="https://example.com/avatar.jpg"
+              value={settings.account.avatarUrl}
+            />
+          </FormField>
+        </div>
+
+        <Toggle
+          checked={settings.account.twoFactorEnabled}
+          description="Placeholder UI for future authentication hardening."
+          label="Two-Factor Authentication"
+          onChange={(value) => updateSection('account', { twoFactorEnabled: value })}
+        />
+      </SectionCard>
+
+      <SectionCard eyebrow="Security" title="Change Password">
+        <div className="admin-settings-form-grid">
+          <FormField label="Current Password">
+            <input
+              onChange={(event) => updatePassword({ currentPassword: event.target.value })}
+              type="password"
+              value={passwordForm.currentPassword}
+            />
+          </FormField>
+          <FormField label="New Password">
+            <input
+              onChange={(event) => updatePassword({ newPassword: event.target.value })}
+              type="password"
+              value={passwordForm.newPassword}
+            />
+          </FormField>
+          <FormField label="Confirm Password">
+            <input
+              onChange={(event) => updatePassword({ confirmPassword: event.target.value })}
+              type="password"
+              value={passwordForm.confirmPassword}
+            />
+          </FormField>
+        </div>
+        {passwordMessage && <p className="admin-settings-validation">{passwordMessage}</p>}
+      </SectionCard>
+    </div>
+  );
+}
+
+function NotificationSettings({ settings, updateSection }) {
+  return (
+    <SectionCard eyebrow="Alerts" title="Notification Settings">
+      <div className="admin-settings-stack">
+        <Toggle
+          checked={settings.notifications.newReportAlert}
+          description="Notify admins when a new citizen report arrives."
+          label="New report alert"
+          onChange={(value) => updateSection('notifications', { newReportAlert: value })}
+        />
+        <Toggle
+          checked={settings.notifications.criticalReportAlert}
+          description="Prioritize critical and urgent reports."
+          label="Critical / urgent report alert"
+          onChange={(value) => updateSection('notifications', { criticalReportAlert: value })}
+        />
+        <Toggle
+          checked={settings.notifications.statusChangeAlert}
+          description="Notify when report progress changes."
+          label="Report status change alert"
+          onChange={(value) => updateSection('notifications', { statusChangeAlert: value })}
+        />
+      </div>
+      <div className="admin-settings-check-grid">
+        <label>
+          <input
+            checked={settings.notifications.deliveryEmail}
+            onChange={(event) => updateSection('notifications', { deliveryEmail: event.target.checked })}
+            type="checkbox"
+          />
+          Email delivery
+        </label>
+        <label>
+          <input
+            checked={settings.notifications.deliveryInApp}
+            onChange={(event) => updateSection('notifications', { deliveryInApp: event.target.checked })}
+            type="checkbox"
+          />
+          In-app delivery
+        </label>
+      </div>
+    </SectionCard>
+  );
+}
+
+function DashboardPreferences({ settings, updateSection }) {
+  return (
+    <div className="admin-settings-section-grid">
+      <SectionCard eyebrow="Display" title="Dashboard Preferences">
+        <div className="admin-settings-form-grid">
+          <FormField label="Theme">
+            <select
+              onChange={(event) => updateSection('dashboard', { theme: event.target.value })}
+              value={settings.dashboard.theme}
+            >
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="system">System Default</option>
+            </select>
+          </FormField>
+          <FormField label="Default Category">
+            <select
+              onChange={(event) => updateSection('dashboard', { defaultCategory: event.target.value })}
+              value={settings.dashboard.defaultCategory}
+            >
+              {categoryOptions.map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Default Status">
+            <select
+              onChange={(event) => updateSection('dashboard', { defaultStatus: event.target.value })}
+              value={settings.dashboard.defaultStatus}
+            >
+              {statusOptions.map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Default District">
+            <select
+              onChange={(event) => updateSection('dashboard', { defaultDistrict: event.target.value })}
+              value={settings.dashboard.defaultDistrict}
+            >
+              {districtOptions.map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </FormField>
+        </div>
+      </SectionCard>
+
+      <SectionCard eyebrow="Layout" title="Metric Cards">
+        <Toggle
+          checked={settings.dashboard.showMetricCards}
+          description="Show total, critical, in-progress, and resolved cards."
+          label="Show metric cards"
+          onChange={(value) => updateSection('dashboard', { showMetricCards: value })}
+        />
+        <Toggle
+          checked={settings.dashboard.reorderCards}
+          description="Placeholder for drag-and-drop ordering."
+          label="Reorder cards"
+          onChange={(value) => updateSection('dashboard', { reorderCards: value })}
+        />
+      </SectionCard>
+    </div>
+  );
+}
+
+function MapSettings({ settings, updateSection }) {
+  return (
+    <SectionCard eyebrow="GIS" title="Map Settings">
+      <div className="admin-settings-stack">
+        <Toggle
+          checked={settings.map.showLowPriorityMarkers}
+          label="Show low-priority markers"
+          onChange={(value) => updateSection('map', { showLowPriorityMarkers: value })}
+        />
+        <Toggle
+          checked={settings.map.markerClustering}
+          label="Marker clustering"
+          onChange={(value) => updateSection('map', { markerClustering: value })}
+        />
+        <Toggle
+          checked={settings.map.realtimeUpdates}
+          label="Auto real-time updates"
+          onChange={(value) => updateSection('map', { realtimeUpdates: value })}
+        />
+      </div>
+      <FormField label={`Default Zoom Level: ${settings.map.zoomLevel}`}>
+        <input
+          max="18"
+          min="8"
+          onChange={(event) => updateSection('map', { zoomLevel: Number(event.target.value) })}
+          type="range"
+          value={settings.map.zoomLevel}
+        />
+      </FormField>
+    </SectionCard>
+  );
+}
+
+function SystemDataSettings({ onClearLocalData }) {
+  return (
+    <div className="admin-settings-section-grid">
+      <SectionCard eyebrow="Maintenance" title="System & Data">
+        <div className="admin-settings-action-grid">
+          <button onClick={onClearLocalData} type="button">Clear demo localStorage data</button>
+          <button type="button">Export CSV</button>
+          <button type="button">Export JSON</button>
+        </div>
+        <div className="admin-settings-about">
+          <strong>App Version</strong>
+          <span>CitizenWatch Admin v1.0.0</span>
+        </div>
+      </SectionCard>
+
+      <SectionCard eyebrow="About" title="About CitizenWatch">
+        <p className="admin-settings-copy">
+          CitizenWatch helps LGU teams monitor citizen-submitted infrastructure reports,
+          track response progress, and coordinate field action from one dashboard.
+        </p>
+      </SectionCard>
+    </div>
+  );
+}
+
+function SecurityRoles({ citizens, updateCitizenRole }) {
+  return (
+    <SectionCard eyebrow="Access" title="Security & Roles">
+      <div className="admin-settings-users">
+        {citizens.length > 0 ? (
+          citizens.map((citizen) => (
+            <article key={citizen.id}>
               <div>
-                <h2>Update Password</h2>
-                <p>Secure your account with a unique password</p>
+                <strong>{citizen.name}</strong>
+                <span>{citizen.id}</span>
               </div>
-            </header>
+              <span className="admin-role-badge">{citizen.role}</span>
+              <select
+                aria-label={`Change role for ${citizen.name}`}
+                onChange={(event) => updateCitizenRole(citizen.id, event.target.value)}
+                value={citizen.role}
+              >
+                {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
+              </select>
+            </article>
+          ))
+        ) : (
+          <div className="reports-table-state">
+            <h2>No users found.</h2>
+            <p>Citizens will appear here after reports are submitted.</p>
+          </div>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
 
-            <label>
-              <span>Current Password</span>
-              <div>
-                <input defaultValue="currentpass" type="password" />
-                <button type="button" aria-label="Show current password">⊘</button>
-              </div>
-            </label>
+export default function AdminSettingsPage() {
+  const { admin } = useAdminAuth();
+  const [activeTab, setActiveTab] = useState('account');
+  const [settings, setSettings] = useState(readSettings);
+  const [reports, setReports] = useState([]);
+  const [roleOverrides, setRoleOverrides] = useState({});
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [feedback, setFeedback] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
 
-            <label>
-              <span>New Password</span>
-              <div>
-                <input placeholder="Enter new password" type="password" />
-                <button type="button" aria-label="Show new password">⊙</button>
-              </div>
-            </label>
+  useEffect(() => subscribeReportsForModeration({ maxItems: 200 }, setReports), []);
 
-            <label>
-              <span>Confirm New Password</span>
-              <input placeholder="Repeat new password" type="password" />
-            </label>
+  useEffect(() => {
+    if (!admin) return;
 
-            <section className="password-standards">
-              <h3>Security Standards</h3>
-              <div>
-                <span className="complete">At least 12 characters</span>
-                <span>Include at least one number</span>
-                <span>Special character (!@#$%^&amp;*)</span>
-                <span>Mixed case (Aa)</span>
-              </div>
-            </section>
+    setSettings((currentSettings) => ({
+      ...currentSettings,
+      account: {
+        ...currentSettings.account,
+        fullName: currentSettings.account.fullName || admin.displayName || 'Local Admin',
+        email: currentSettings.account.email || admin.email || 'admin@citizenwatch.local'
+      }
+    }));
+  }, [admin]);
 
-            <footer>
-              <button type="submit">Update Password</button>
-              <button onClick={() => setActivePanel('settings')} type="button">Cancel</button>
-            </footer>
-          </form>
-        </section>
-      </main>
-    );
+  const citizens = useMemo(() => {
+    const citizenMap = new Map();
+
+    reports.forEach((report) => {
+      const id = report.reporterId || report.createdBy || 'citizen';
+      const currentCitizen = citizenMap.get(id) || {
+        id,
+        name: getCitizenName(report),
+        role: roleOverrides[id] || 'citizen',
+        reportCount: 0
+      };
+
+      citizenMap.set(id, {
+        ...currentCitizen,
+        role: roleOverrides[id] || currentCitizen.role,
+        reportCount: currentCitizen.reportCount + 1
+      });
+    });
+
+    return Array.from(citizenMap.values());
+  }, [reports, roleOverrides]);
+
+  function updateSection(section, updates) {
+    setSettings((currentSettings) => ({
+      ...currentSettings,
+      [section]: {
+        ...currentSettings[section],
+        ...updates
+      }
+    }));
+    setFeedback('');
+  }
+
+  function updatePassword(updates) {
+    setPasswordForm((currentForm) => ({ ...currentForm, ...updates }));
+    setPasswordMessage('');
+    setFeedback('');
+  }
+
+  function updateCitizenRole(citizenId, role) {
+    setRoleOverrides((currentRoles) => ({ ...currentRoles, [citizenId]: role }));
+    setFeedback('Role change saved as a UI placeholder.');
+  }
+
+  function handleSave() {
+    if (passwordForm.newPassword || passwordForm.confirmPassword || passwordForm.currentPassword) {
+      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        setPasswordMessage('New password and confirm password do not match.');
+        return;
+      }
+
+      if (passwordForm.newPassword.length > 0 && passwordForm.newPassword.length < 8) {
+        setPasswordMessage('New password must be at least 8 characters.');
+        return;
+      }
+    }
+
+    writeSettings(settings);
+    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    setPasswordMessage('');
+    setFeedback('Settings updated successfully.');
+  }
+
+  function handleClearLocalData() {
+    [
+      'citizenwatch_admin_settings',
+      'citizenwatch_admin_reports',
+      'citizenwatch_reports',
+      'citizenwatch_alerts',
+      'citizenwatch_saved_report_draft'
+    ].forEach((key) => window.localStorage.removeItem(key));
+
+    writeSettings(defaultSettings);
+    setSettings(defaultSettings);
+    setFeedback('Demo localStorage data cleared.');
+  }
+
+  function renderActiveTab() {
+    if (activeTab === 'account') {
+      return (
+        <AccountSettings
+          passwordForm={passwordForm}
+          passwordMessage={passwordMessage}
+          settings={settings}
+          updatePassword={updatePassword}
+          updateSection={updateSection}
+        />
+      );
+    }
+
+    if (activeTab === 'notifications') {
+      return <NotificationSettings settings={settings} updateSection={updateSection} />;
+    }
+
+    if (activeTab === 'dashboard') {
+      return <DashboardPreferences settings={settings} updateSection={updateSection} />;
+    }
+
+    if (activeTab === 'map') {
+      return <MapSettings settings={settings} updateSection={updateSection} />;
+    }
+
+    if (activeTab === 'system') {
+      return <SystemDataSettings onClearLocalData={handleClearLocalData} />;
+    }
+
+    return <SecurityRoles citizens={citizens} updateCitizenRole={updateCitizenRole} />;
   }
 
   return (
-    <main className="settings-page">
-      <header className="settings-topbar">
-        <h1>Infrastructure Monitoring</h1>
-        <label className="settings-search">
-          <Icon name="search" />
-          <input placeholder="Search parameters..." type="search" />
-        </label>
-        <button className="settings-emergency" type="button">Emergency Alert</button>
-        <button type="button" aria-label="Notifications"><Icon name="bell" /></button>
-        <button type="button" aria-label="Refresh"><Icon name="refresh" /></button>
-        <button type="button" aria-label="Messages"><Icon name="message" /></button>
-        <section className="settings-user-chip">
-          <span aria-hidden="true">AU</span>
+    <main className="settings-page admin-settings-page">
+      <section className="settings-content admin-settings-content">
+        <header className="settings-heading admin-settings-heading">
           <div>
-            <strong>Admin User</strong>
-            <small>LGU Level 4</small>
+            <span>Admin Console</span>
+            <h2>Settings</h2>
+            <p>Manage account details, notifications, dashboard preferences, map behavior, and access roles.</p>
           </div>
-        </section>
-      </header>
-
-      <section className="settings-content">
-        <header className="settings-heading">
-          <h2>Console Settings</h2>
-          <p>Manage your account preferences, team permissions, and system configurations.</p>
+          <button onClick={handleSave} type="button">Save Settings</button>
         </header>
 
-        <section className="settings-grid">
-          <article className="settings-card profile-card">
-            <div className="profile-avatar">
-              <span>AD</span>
-              <i aria-hidden="true">✓</i>
-            </div>
-            <div>
-              <h3>Administrator</h3>
-              <p>admin.console@lgu.gov.ph</p>
-              <span>Super Admin</span>
-            </div>
-            <footer>
-              <button onClick={() => setActivePanel('password')} type="button">Change Password</button>
-              <button type="button">Update Contact Info</button>
-            </footer>
-          </article>
+        {feedback && <p className="admin-settings-feedback">{feedback}</p>}
 
-          <article className="settings-card system-card">
-            <header>
-              <Icon name="config" />
-              <h3>System Configuration</h3>
-            </header>
-            <section className="refresh-card">
-              <div>
-                <span>GIS Refresh Interval</span>
-                <strong>Every 5m</strong>
-              </div>
-              <div className="settings-slider"><i /></div>
-            </section>
-            <section className="gateway-card">
-              <span aria-hidden="true">◆</span>
-              <div>
-                <strong>API Gateway Status</strong>
-                <p>Connected & Secure</p>
-              </div>
-              <i aria-hidden="true" />
-            </section>
-          </article>
+        <nav className="admin-settings-tabs" aria-label="Settings sections">
+          {tabs.map((tab) => (
+            <button
+              className={activeTab === tab.id ? 'active' : ''}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              type="button"
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
 
-          <article className="settings-card security-card">
-            <header>
-              <Icon name="security" />
-              <h3>Security</h3>
-            </header>
-            <div className="settings-toggle-row">
-              <div>
-                <strong>Two-Factor Authentication</strong>
-                <p>Required for all admins</p>
-              </div>
-              <label className="toggle-switch">
-                <input defaultChecked type="checkbox" />
-                <span />
-              </label>
-            </div>
-            <h4>Recent Login History</h4>
-            {loginHistory.map(([address, time]) => (
-              <div className="login-row" key={address}>
-                <span>{address}</span>
-                <strong>{time}</strong>
-              </div>
-            ))}
-            <button className="text-action" type="button">Manage All Sessions</button>
-          </article>
-
-          <article className="settings-card notifications-card">
-            <header>
-              <Icon name="notifications" />
-              <h3>Notifications</h3>
-            </header>
-            {notificationOptions.map(([title, description, checked]) => (
-              <label className="notification-option" key={title}>
-                <input defaultChecked={checked} type="checkbox" />
-                <span>
-                  <strong>{title}</strong>
-                  <small>{description}</small>
-                </span>
-              </label>
-            ))}
-          </article>
-
-          <article className="settings-card team-card">
-            <header>
-              <div>
-                <Icon name="team" />
-                <h3>Team Management</h3>
-              </div>
-              <button type="button" aria-label="Add user"><Icon name="addUser" /></button>
-            </header>
-            {teamMembers.map(([name, role, initials]) => (
-              <article className="team-member" key={name}>
-                <span aria-hidden="true">{initials}</span>
-                <div>
-                  <strong>{name}</strong>
-                  <small>{role}</small>
-                </div>
-                <button type="button" aria-label={`More actions for ${name}`}>⋮</button>
-              </article>
-            ))}
-            <button className="view-admins-button" type="button">View All 12 Admins</button>
-          </article>
-        </section>
+        {renderActiveTab()}
       </section>
     </main>
   );

@@ -3,17 +3,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   FaArrowLeft,
   FaArrowRight,
+  FaLightbulb,
   FaMapMarkerAlt,
   FaPlus,
   FaTimes,
   FaTint,
   FaTrashAlt,
-  FaWater,
-  FaLightbulb
+  FaWater
 } from 'react-icons/fa';
 import responseImage from '../../assets/images/Response.png';
 import { useReportDraft } from '../../context/ReportDraftContext.jsx';
-import { buildReportFromDraft, saveReport } from '../../services/localReportService.js';
+import { buildReportFromDraft, clearReports } from '../../services/localReportService.js';
 import { createInfrastructureReport } from '../../services/reportService.js';
 import { SEVERITY_LEVELS, normalizeUrgency } from '../../utils/severity.js';
 
@@ -77,7 +77,6 @@ export default function CreateReportDetailsPage() {
   }
 
   function handleSaveDraft() {
-    // TODO: Re-enable Firebase draft persistence after UI is completed
     const savedDraft = {
       ...draft,
       issueType: selectedIssueType,
@@ -143,46 +142,20 @@ export default function CreateReportDetailsPage() {
       description: description.trim()
     });
 
-    const localReport = buildReportFromDraft({
+    const reportPayload = buildReportFromDraft({
       ...nextDraft,
       status: 'under_review',
       createdBy: 'local-citizen'
     });
 
     try {
-      const savedReport = saveReport(localReport);
-      let firestoreReportId = '';
-
-      try {
-        firestoreReportId = await createInfrastructureReport({
-          ...localReport,
-          category: localReport.issueType,
-          severity: localReport.urgency,
-          status: 'under_review',
-          reporterId: 'local-citizen',
-          reporterName: 'Citizen Reporter',
-          photoPreview: '',
-          evidenceImage: '',
-          imageUrl: '',
-          photoUrl: ''
-        });
-      } catch (error) {
-        console.warn('Unable to sync report to Firestore. Report remains saved locally.', error);
-      }
-
-      if (firestoreReportId) {
-        saveReport({
-          ...savedReport,
-          firestoreReportId,
-          syncedToFirestore: true
-        });
-      }
-
+      const firestoreReportId = await createInfrastructureReport(reportPayload);
+      clearReports();
       resetDraft();
-      console.log('Report submitted:', savedReport.trackingId);
+      console.log('Report saved to Firebase:', firestoreReportId);
       navigate('/reports/create/success');
     } catch (error) {
-      console.warn('Unable to save report locally.', error);
+      console.warn('Unable to save report to Firebase.', error);
       setStepError('Unable to submit report right now. Please try again.');
     } finally {
       setIsSubmitting(false);

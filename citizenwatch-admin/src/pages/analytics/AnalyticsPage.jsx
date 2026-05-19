@@ -42,63 +42,6 @@ const REPORT_MAP_CENTER = {
   lng: 120.9842
 };
 
-const demoCitizenReports = [
-  {
-    id: 'CW-2026-001',
-    trackingId: 'CW-2026-001',
-    category: 'Road Damage',
-    severity: 'High',
-    district: 'Cebu City - North District',
-    status: REPORT_STATUS.SUBMITTED,
-    createdAt: '2026-05-19T08:20:00+08:00',
-    updatedAt: '2026-05-19T08:20:00+08:00',
-    reporterName: 'Juan Dela Cruz',
-    reporterId: 'local-citizen-001',
-    description: 'Large pothole near the pedestrian lane causing motorcycles to swerve during rush hour.',
-    location: {
-      address: 'Mango Avenue, Barangay Kamputhaw',
-      lat: 10.3157,
-      lng: 123.8854
-    }
-  },
-  {
-    id: 'CW-2026-002',
-    trackingId: 'CW-2026-002',
-    category: 'Street Light',
-    severity: 'Medium',
-    district: 'Cebu City - South District',
-    status: REPORT_STATUS.UNDER_REVIEW,
-    createdAt: '2026-05-18T19:45:00+08:00',
-    updatedAt: '2026-05-19T09:10:00+08:00',
-    reporterName: 'Maria Santos',
-    reporterId: 'local-citizen-002',
-    description: 'Street light has been off for three nights, making the alley unsafe for residents.',
-    location: {
-      address: 'Osmena Boulevard, Barangay Capitol Site',
-      lat: 10.3099,
-      lng: 123.8931
-    }
-  },
-  {
-    id: 'CW-2026-003',
-    trackingId: 'CW-2026-003',
-    category: 'Drainage',
-    severity: 'Critical',
-    district: 'Cebu City - South District',
-    status: REPORT_STATUS.IN_PROGRESS,
-    createdAt: '2026-05-18T14:05:00+08:00',
-    updatedAt: '2026-05-19T10:25:00+08:00',
-    reporterName: 'Ana Reyes',
-    reporterId: 'local-citizen-003',
-    description: 'Clogged drainage is overflowing after rain and water is entering nearby storefronts.',
-    location: {
-      address: 'Colon Street, Barangay Kalubihan',
-      lat: 10.2959,
-      lng: 123.9008
-    }
-  }
-];
-
 const reportDetailIcon = L.divIcon({
   className: 'community-leaflet-marker community-leaflet-marker--road report-detail-leaflet-marker',
   html: '<span></span>',
@@ -402,7 +345,6 @@ function ReportDetailsDrawer({ report, adminId, isSaving, onClose, onSave }) {
 export default function AnalyticsPage() {
   const { admin } = useAdminAuth();
   const [reports, setReports] = useState([]);
-  const [demoReports, setDemoReports] = useState(demoCitizenReports);
   const [categoryFilter, setCategoryFilter] = useState('All Categories');
   const [severityFilter, setSeverityFilter] = useState('All Severities');
   const [statusFilter, setStatusFilter] = useState('');
@@ -435,17 +377,14 @@ export default function AnalyticsPage() {
   useEffect(() => {
     if (!selectedReport) return;
 
-    const sourceReports = reports.length > 0 ? reports : demoReports;
-    const updatedReport = sourceReports.find((report) => report.id === selectedReport.id);
+    const updatedReport = reports.find((report) => report.id === selectedReport.id);
     if (updatedReport) {
       setSelectedReport(updatedReport);
     }
-  }, [demoReports, reports, selectedReport]);
+  }, [reports, selectedReport]);
 
   const displayedReports = useMemo(() => {
-    const sourceReports = reports.length > 0 ? reports : demoReports;
-
-    return sourceReports.filter((report) => {
+    return reports.filter((report) => {
       const reportSeverity = report.severity || report.urgency || 'Low';
 
       return (
@@ -454,8 +393,7 @@ export default function AnalyticsPage() {
         (!statusFilter || report.status === statusFilter)
       );
     });
-  }, [categoryFilter, demoReports, reports, severityFilter, statusFilter]);
-  const isShowingDemoReports = reports.length === 0 && displayedReports.length > 0;
+  }, [categoryFilter, reports, severityFilter, statusFilter]);
   const selectedCount = selectedReportIds.length;
 
   const tableMessage = useMemo(() => {
@@ -466,25 +404,6 @@ export default function AnalyticsPage() {
   }, [displayedReports.length, errorMessage, isLoading]);
 
   async function handleSaveReportStatus(updatePayload) {
-    if (selectedReport?.id?.startsWith('CW-2026-')) {
-      const updatedReport = {
-        ...selectedReport,
-        adminNotes: updatePayload.remarks || updatePayload.notes || selectedReport.adminNotes,
-        remarks: updatePayload.remarks || updatePayload.notes || selectedReport.remarks,
-        reviewedBy: updatePayload.adminId || selectedReport.reviewedBy,
-        status: updatePayload.status,
-        updatedAt: new Date().toISOString()
-      };
-
-      setDemoReports((currentReports) => (
-        currentReports.map((report) => (
-          report.id === updatedReport.id ? updatedReport : report
-        ))
-      ));
-      setSelectedReport(null);
-      return;
-    }
-
     setIsSaving(true);
     setErrorMessage('');
 
@@ -522,15 +441,9 @@ export default function AnalyticsPage() {
   }
 
   function handleDeleteSelectedReports() {
-    if (reports.length > 0) {
-      setReports((currentReports) => (
-        currentReports.filter((report) => !selectedReportIds.includes(report.id))
-      ));
-    } else {
-      setDemoReports((currentReports) => (
-        currentReports.filter((report) => !selectedReportIds.includes(report.id))
-      ));
-    }
+    setReports((currentReports) => (
+      currentReports.filter((report) => !selectedReportIds.includes(report.id))
+    ));
 
     if (selectedReport && selectedReportIds.includes(selectedReport.id)) {
       setSelectedReport(null);
@@ -603,12 +516,6 @@ export default function AnalyticsPage() {
         </section>
 
         <section className="reports-table-card">
-          {isShowingDemoReports && (
-            <div className="reports-demo-banner">
-              Potential citizen report output. Real submissions will replace these rows once your database is connected.
-            </div>
-          )}
-
           {tableMessage ? (
             <div className={errorMessage ? 'reports-table-state reports-table-state--error' : 'reports-table-state'}>
               {tableMessage}

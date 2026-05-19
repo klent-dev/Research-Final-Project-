@@ -5,6 +5,310 @@
   line-height: 1.5;
 }
 
+/* Final admin polish layer */
+:root {
+  --admin-bg: #eef6f3;
+  --admin-surface: rgba(255, 255, 255, 0.96);
+  --admin-border: #d7e7df;
+  --admin-text: #0f172a;
+  --admin-muted: #64748b;
+  --admin-green: #007a36;
+  --admin-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+}
+
+.command-dashboard,
+.infrastructure-page,
+.gis-tracking-page,
+.reports-management-page,
+.settings-page {
+  background:
+    radial-gradient(circle at 1px 1px, rgba(0, 122, 54, 0.07) 1px, transparent 0) 0 0 / 30px 30px,
+    var(--admin-bg);
+}
+
+.command-content,
+.reports-management-content {
+  max-width: 1280px;
+}
+
+.command-heading h1,
+.infra-heading h2,
+.reports-title-row h2,
+.settings-heading h2 {
+  color: var(--admin-text);
+  font-size: clamp(1.75rem, 3vw, 2.6rem);
+  letter-spacing: 0;
+  line-height: 1.05;
+}
+
+.command-heading p,
+.infra-heading p,
+.reports-title-row p,
+.settings-heading p {
+  color: var(--admin-muted);
+  font-size: 0.96rem;
+}
+
+.command-kpi-card,
+.progress-summary-card,
+.command-progress-card,
+.command-map-card,
+.urgent-card,
+.asset-table-card,
+.selected-asset-card,
+.reports-table-card,
+.map-categories-panel,
+.incident-detail-panel {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 14px;
+  box-shadow: var(--admin-shadow);
+}
+
+.command-kpi-card {
+  border-left-width: 5px;
+  min-height: 126px;
+  padding: 1rem;
+}
+
+.command-kpi-card strong {
+  font-size: clamp(2rem, 4vw, 3rem);
+  margin-top: 0.65rem;
+}
+
+.command-filter-row select,
+.reports-filter-select select,
+.reports-status-filter select {
+  border-color: var(--admin-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.infra-filter-row {
+  gap: 0.65rem;
+  scrollbar-width: none;
+}
+
+.infra-filter-row::-webkit-scrollbar {
+  display: none;
+}
+
+.infra-filter-row button,
+.gis-category-list button,
+.button,
+.admin-login-submit,
+.dispatch-button,
+.contact-button {
+  border-radius: 10px;
+}
+
+.infra-filter-row button,
+.gis-category-list button {
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.infra-filter-row button:hover,
+.gis-category-list button:hover {
+  transform: translateY(-1px);
+}
+
+.asset-table-card table,
+.reports-table-card table {
+  min-width: 720px;
+}
+
+.asset-table-card th,
+.asset-table-card td,
+.reports-table-card th,
+.reports-table-card td {
+  padding: 0.95rem 1rem;
+}
+
+.asset-table-card tbody tr,
+.reports-table-card tbody tr {
+  transition: background 0.18s ease;
+}
+
+.asset-table-card tbody tr:hover,
+.reports-table-card tbody tr:hover {
+  background: #f4fbf7;
+}
+
+.asset-status,
+.severity-pill,
+.report-status,
+.reports-status-pill {
+  align-items: center;
+  border-radius: 999px;
+  min-height: 28px;
+  white-space: nowrap;
+}
+
+.report-progress-cell span {
+  width: min(150px, 32vw);
+}
+
+.selected-asset-card {
+  align-self: start;
+  position: sticky;
+  top: 1rem;
+}
+
+.dashboard-leaflet-shell,
+.gis-map-canvas {
+  border-radius: 0 0 14px 14px;
+}
+
+.urgent-item {
+  border-radius: 10px;
+}
+
+.urgent-item--active,
+.urgent-item:hover {
+  background: #f3faf6;
+}
+
+.command-selected-report {
+  background: #f8fcfa;
+}
+
+@media (max-width: 1180px) {
+  .command-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-main-grid,
+  .infra-workspace,
+  .gis-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .selected-asset-card,
+  .incident-detail-panel {
+    position: static;
+  }
+
+  .dashboard-leaflet-shell {
+    height: clamp(340px, 52vh, 520px);
+  }
+}
+
+@media (max-width: 860px) {
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    height: auto;
+    overflow-x: auto;
+    padding: 0.75rem;
+    position: static;
+  }
+
+  .sidebar-brand,
+  .sidebar-account,
+  .sidebar-signout,
+  .sidebar-new-report {
+    display: none;
+  }
+
+  .sidebar-nav {
+    display: flex;
+    gap: 0.35rem;
+    min-width: max-content;
+  }
+
+  .sidebar-nav a {
+    border-radius: 999px;
+    grid-template-columns: auto;
+    min-height: 40px;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .sidebar-nav a span {
+    height: 28px;
+    width: 28px;
+  }
+
+  .command-content,
+  .infrastructure-page,
+  .reports-management-content {
+    padding: 1.15rem 1rem 1rem;
+  }
+
+  .command-heading,
+  .infra-heading,
+  .reports-title-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .command-filter-row,
+  .reports-filter-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .command-filter-row select,
+  .reports-filter-select,
+  .reports-status-filter,
+  .reports-filter-select select,
+  .reports-status-filter select {
+    width: 100%;
+  }
+
+  .map-categories-panel {
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .command-kpi-grid,
+  .report-detail-grid,
+  .incident-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .command-kpi-card {
+    min-height: 108px;
+  }
+
+  .progress-summary-card header {
+    align-items: start;
+    display: grid;
+    gap: 0.6rem;
+    grid-template-columns: 1fr;
+  }
+
+  .progress-summary-list {
+    gap: 0.55rem;
+  }
+
+  .asset-table-card,
+  .reports-table-card {
+    border-radius: 12px;
+  }
+
+  .asset-table-card table,
+  .reports-table-card table {
+    min-width: 640px;
+  }
+
+  .dashboard-leaflet-shell,
+  .gis-map-canvas {
+    min-height: 360px;
+  }
+
+  .map-legend {
+    bottom: 0.8rem;
+    left: 0.8rem;
+    right: auto;
+    top: auto;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -989,7 +1293,7 @@ select:focus-visible {
   background: #f3f8fc;
   color: #0f172a;
   min-height: 100vh;
-  padding: 0 1.6rem 2rem;
+  padding: 1.45rem 1.6rem 2rem;
 }
 
 .infra-topbar {
@@ -3531,6 +3835,349 @@ select:focus-visible {
   min-height: 46px;
 }
 
+.admin-settings-content {
+  max-width: 1220px;
+  padding-top: 2rem;
+}
+
+.admin-settings-heading {
+  align-items: flex-end;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.admin-settings-heading > div > span {
+  color: #007a36;
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.45rem;
+  text-transform: uppercase;
+}
+
+.admin-settings-heading button,
+.admin-settings-action-grid button {
+  background: #007a36;
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 900;
+  min-height: 44px;
+  padding: 0 1.2rem;
+}
+
+.admin-settings-feedback,
+.admin-settings-validation {
+  border-radius: 8px;
+  font-size: 0.86rem;
+  font-weight: 800;
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+}
+
+.admin-settings-feedback {
+  background: #dcfce7;
+  color: #047857;
+}
+
+.admin-settings-validation {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.admin-settings-tabs {
+  background: #ffffff;
+  border: 1px solid #d7e2e8;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  padding: 0.5rem;
+}
+
+.admin-settings-tabs button {
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  color: #475569;
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-weight: 900;
+  min-height: 42px;
+  padding: 0 1rem;
+}
+
+.admin-settings-tabs button.active {
+  background: #e6f7ed;
+  color: #007a36;
+}
+
+.admin-settings-section-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+}
+
+.admin-settings-card {
+  background: #ffffff;
+  border: 1px solid #d7e2e8;
+  border-radius: 14px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+  display: grid;
+  gap: 1.15rem;
+  padding: 1.3rem;
+}
+
+.admin-settings-card > header {
+  border-bottom: 1px solid #e5edf1;
+  padding-bottom: 0.9rem;
+}
+
+.admin-settings-card > header > span {
+  color: #007a36;
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+}
+
+.admin-settings-card h3 {
+  color: #0f172a;
+  font-size: 1.12rem;
+  margin: 0;
+}
+
+.admin-profile-row {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+}
+
+.admin-profile-avatar {
+  align-items: center;
+  background: linear-gradient(135deg, #bbf7d0, #0f766e);
+  border: 5px solid #e9f6ef;
+  border-radius: 50%;
+  color: #ffffff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 1.1rem;
+  font-weight: 900;
+  height: 76px;
+  justify-content: center;
+  overflow: hidden;
+  width: 76px;
+}
+
+.admin-profile-avatar img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.admin-profile-row strong,
+.admin-profile-row p {
+  display: block;
+}
+
+.admin-profile-row p {
+  color: #64748b;
+  margin: 0.15rem 0 0.45rem;
+}
+
+.admin-role-badge {
+  background: #dcfce7;
+  border-radius: 999px;
+  color: #047857;
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 0.3rem 0.7rem;
+}
+
+.admin-settings-form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-settings-field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.admin-settings-field > span {
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.admin-settings-field input,
+.admin-settings-field select {
+  background: #f8fbfd;
+  border: 1px solid #cbdde5;
+  border-radius: 8px;
+  color: #0f172a;
+  font: inherit;
+  min-height: 44px;
+  padding: 0 0.8rem;
+}
+
+.admin-settings-field input[type="range"] {
+  accent-color: #007a36;
+  padding: 0;
+}
+
+.admin-settings-stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-settings-toggle {
+  align-items: center;
+  background: #f8fbfd;
+  border: 1px solid #dbe6e1;
+  border-radius: 10px;
+  cursor: pointer;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr auto;
+  padding: 0.9rem;
+  position: relative;
+}
+
+.admin-settings-toggle input {
+  opacity: 0;
+  position: absolute;
+}
+
+.admin-settings-toggle strong,
+.admin-settings-toggle small {
+  display: block;
+}
+
+.admin-settings-toggle strong {
+  font-size: 0.9rem;
+}
+
+.admin-settings-toggle small,
+.admin-settings-copy {
+  color: #64748b;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 0.15rem 0 0;
+}
+
+.admin-settings-toggle i {
+  background: #cbd5e1;
+  border-radius: 999px;
+  display: block;
+  height: 28px;
+  position: relative;
+  width: 50px;
+}
+
+.admin-settings-toggle i::after {
+  background: #ffffff;
+  border-radius: 50%;
+  content: "";
+  height: 20px;
+  left: 4px;
+  position: absolute;
+  top: 4px;
+  transition: transform 0.18s ease;
+  width: 20px;
+}
+
+.admin-settings-toggle input:checked + i {
+  background: #007a36;
+}
+
+.admin-settings-toggle input:checked + i::after {
+  transform: translateX(22px);
+}
+
+.admin-settings-check-grid,
+.admin-settings-action-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.admin-settings-check-grid label {
+  align-items: center;
+  background: #eef6f3;
+  border-radius: 999px;
+  display: inline-flex;
+  font-weight: 800;
+  gap: 0.45rem;
+  padding: 0.55rem 0.8rem;
+}
+
+.admin-settings-check-grid input {
+  accent-color: #007a36;
+}
+
+.admin-settings-action-grid button:nth-child(n + 2) {
+  background: #ffffff;
+  border: 1px solid #bbd4c6;
+  color: #007a36;
+}
+
+.admin-settings-about {
+  background: #f8fbfd;
+  border: 1px solid #dbe6e1;
+  border-radius: 10px;
+  display: grid;
+  gap: 0.25rem;
+  padding: 1rem;
+}
+
+.admin-settings-about span {
+  color: #64748b;
+}
+
+.admin-settings-users {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-settings-users article {
+  align-items: center;
+  background: #f8fbfd;
+  border: 1px solid #dbe6e1;
+  border-radius: 10px;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr auto minmax(150px, 0.25fr);
+  padding: 0.9rem;
+}
+
+.admin-settings-users strong,
+.admin-settings-users span {
+  display: block;
+}
+
+.admin-settings-users div > span {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.admin-settings-users select {
+  background: #ffffff;
+  border: 1px solid #cbdde5;
+  border-radius: 8px;
+  min-height: 40px;
+  padding: 0 0.7rem;
+}
+
 .password-page {
   background: #eef4f8;
 }
@@ -4424,6 +5071,211 @@ select:focus-visible {
   .notifications-card,
   .team-card {
     grid-column: span 1;
+  }
+}
+
+.report-status-actions {
+  margin-left: 1.1rem;
+  margin-right: 1.1rem;
+}
+
+.report-status-actions h3 {
+  font-size: 0.92rem;
+  margin: 0 0 0.75rem;
+}
+
+.report-status-actions div {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.report-status-actions button {
+  background: #edf6f1;
+  border: 1px solid #cfe3d8;
+  border-radius: 9px;
+  color: #007a36;
+  cursor: pointer;
+  font-weight: 900;
+  min-height: 40px;
+}
+
+.report-status-actions button:last-child {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+/* Final responsive overrides */
+.command-kpi-card,
+.progress-summary-card,
+.command-progress-card,
+.command-map-card,
+.urgent-card,
+.asset-table-card,
+.selected-asset-card,
+.reports-table-card,
+.map-categories-panel,
+.incident-detail-panel {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 14px;
+  box-shadow: var(--admin-shadow);
+}
+
+.command-kpi-card {
+  border-left-width: 5px;
+  min-height: 126px;
+  padding: 1rem;
+}
+
+.command-kpi-card strong {
+  font-size: clamp(2rem, 4vw, 3rem);
+  margin-top: 0.65rem;
+}
+
+.asset-table-card tbody tr:hover,
+.reports-table-card tbody tr:hover,
+.urgent-item:hover,
+.urgent-item--active {
+  background: #f3faf6;
+}
+
+.asset-status,
+.severity-pill,
+.report-status,
+.reports-status-pill {
+  align-items: center;
+  border-radius: 999px;
+  min-height: 28px;
+  white-space: nowrap;
+}
+
+.report-progress-cell span {
+  width: min(150px, 32vw);
+}
+
+.selected-asset-card {
+  align-self: start;
+  position: sticky;
+  top: 1rem;
+}
+
+@media (max-width: 1180px) {
+  .command-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-main-grid,
+  .infra-workspace,
+  .gis-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .selected-asset-card,
+  .incident-detail-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 860px) {
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    height: auto;
+    overflow-x: auto;
+    padding: 0.75rem;
+    position: static;
+  }
+
+  .sidebar-brand,
+  .sidebar-account,
+  .sidebar-signout,
+  .sidebar-new-report {
+    display: none;
+  }
+
+  .sidebar-nav {
+    display: flex;
+    gap: 0.35rem;
+    min-width: max-content;
+  }
+
+  .sidebar-nav a {
+    border-radius: 999px;
+    grid-template-columns: auto;
+    min-height: 40px;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .command-content,
+  .infrastructure-page,
+  .reports-management-content {
+    padding: 1rem;
+  }
+
+  .command-heading,
+  .infra-heading,
+  .reports-title-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .command-filter-row,
+  .reports-filter-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .admin-settings-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-settings-heading button {
+    width: 100%;
+  }
+
+  .admin-settings-section-grid,
+  .admin-settings-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-settings-users article {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .command-kpi-grid,
+  .report-detail-grid,
+  .incident-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .asset-table-card table,
+  .reports-table-card table {
+    min-width: 640px;
+  }
+
+  .dashboard-leaflet-shell,
+  .gis-map-canvas {
+    min-height: 360px;
+  }
+
+  .admin-settings-card {
+    padding: 1rem;
+  }
+
+  .admin-profile-row {
+    align-items: flex-start;
+  }
+
+  .admin-settings-tabs button {
+    padding: 0 0.8rem;
   }
 }
 

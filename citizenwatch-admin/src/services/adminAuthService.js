@@ -11,17 +11,17 @@ import { isFirebaseConfigured } from '../firebase/config.js';
 const allowedRole = import.meta.env.VITE_ADMIN_ALLOWED_ROLE ?? 'lgu_admin';
 const isAdminAuthBypassed = import.meta.env.VITE_ADMIN_AUTH_BYPASS !== 'false';
 
-export const demoAdmin = {
-  uid: 'demo-admin',
+export const localAdmin = {
+  uid: 'local-admin',
   email: 'admin@citizenwatch.local',
-  displayName: 'Demo Admin',
+  displayName: 'Local Admin',
   role: allowedRole
 };
 
 export function listenToAdminAuthChanges(callback) {
   // TODO: Set VITE_ADMIN_AUTH_BYPASS=false when real admin credentials are ready.
   if (isAdminAuthBypassed || !isFirebaseConfigured || !auth || !db) {
-    callback(demoAdmin);
+    callback(localAdmin);
     return () => {};
   }
 
@@ -40,7 +40,7 @@ export function listenToAdminAuthChanges(callback) {
 export async function loginAdmin({ email, password }) {
   // TODO: Set VITE_ADMIN_AUTH_BYPASS=false when real admin credentials are ready.
   if (isAdminAuthBypassed || !isFirebaseConfigured || !auth) {
-    return { ...demoAdmin, email };
+    return { ...localAdmin, email };
   }
 
   const credential = await signInWithEmailAndPassword(auth, email, password);

@@ -139,7 +139,7 @@ export default function DashboardPage() {
       { maxItems: 200 },
       (nextReports) => {
         setReports(nextReports);
-        setStatusMessage(nextReports.length > 0 ? '' : 'No local reports found yet.');
+        setStatusMessage(nextReports.length > 0 ? '' : 'No Firebase reports found yet.');
       }
     );
   }, []);

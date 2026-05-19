@@ -12,66 +12,68 @@ import PageContainer from '../../components/PageContainer.jsx';
 import communityImage from '../../assets/images/Community.png';
 import responseImage from '../../assets/images/Response.png';
 import {
+  clearReports,
   deleteReport,
   formatStatusLabel,
   formatReportDate,
   getReports,
-  getStatusColor,
-  markReportSynced
+  getStatusColor
 } from '../../services/localReportService.js';
-import { createInfrastructureReport } from '../../services/reportService.js';
+import { getCitizenReports } from '../../services/reportService.js';
 import { isFirebaseConfigured } from '../../firebase/config.js';
 import { useAuth } from '../../hooks/useAuth.js';
 
 export default function ReportsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [reports, setReports] = useState(() => getReports());
+  const [reports, setReports] = useState(() => (isFirebaseConfigured ? [] : getReports()));
   const [syncMessage, setSyncMessage] = useState('');
   const resolvedReports = reports.filter((report) => report.status === 'resolved');
 
   useEffect(() => {
+    if (isFirebaseConfigured) {
+      return undefined;
+    }
+
+    function refreshLocalReports() {
+      setReports(getReports());
+    }
+
+    window.addEventListener('storage', refreshLocalReports);
+    window.addEventListener('citizenwatch:reports-updated', refreshLocalReports);
+
+    return () => {
+      window.removeEventListener('storage', refreshLocalReports);
+      window.removeEventListener('citizenwatch:reports-updated', refreshLocalReports);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isFirebaseConfigured) {
-      setSyncMessage('Firebase is not configured. Reports are saved locally only.');
+      setSyncMessage('Firebase is not configured. Add your Firebase env values to submit and load reports.');
       return;
     }
 
     let ignore = false;
 
-    async function syncLocalReports() {
-      const localReports = getReports().filter((report) => !report.syncedToFirestore);
-
-      if (localReports.length === 0) {
-        setSyncMessage('');
-        return;
-      }
+    async function loadFirebaseReports() {
+      clearReports();
 
       try {
-        for (const report of localReports) {
-          const firestoreReportId = await createInfrastructureReport({
-            ...report,
-            reporterId: user?.uid || report.reporterId || report.createdBy || 'anonymous-citizen',
-            reporterName: user?.displayName || user?.email || report.reporterName || 'Citizen Reporter',
-            createdBy: user?.uid || report.createdBy || 'anonymous-citizen'
-          });
-
-          if (!ignore) {
-            setReports(markReportSynced(report.id, firestoreReportId));
-          }
-        }
-
+        const nextReports = await getCitizenReports(user?.uid || 'anonymous-citizen');
         if (!ignore) {
-          setSyncMessage('Reports synced to the LGU dashboard.');
+          setReports(nextReports);
         }
+        setSyncMessage('');
       } catch (error) {
-        console.warn('Unable to sync local reports to Firestore.', error);
+        console.warn('Unable to load reports from Firestore.', error);
         if (!ignore) {
-          setSyncMessage('Unable to sync reports to the LGU dashboard. Check Firebase configuration.');
+          setSyncMessage('Unable to load reports from Firebase. Check Firebase configuration.');
         }
       }
     }
 
-    syncLocalReports();
+    loadFirebaseReports();
 
     return () => {
       ignore = true;
