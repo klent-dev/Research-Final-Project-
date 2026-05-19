@@ -46,11 +46,36 @@ function LocationMapBridge({ location, mapRef }) {
 }
 
 function hasValidLocation(location) {
-  return Boolean(
+  return (
     Number.isFinite(Number(location?.lat)) &&
-    Number.isFinite(Number(location?.lng)) &&
-    location?.address
+    Number.isFinite(Number(location?.lng))
   );
+}
+
+function normalizeSelectedLocation(location) {
+  if (!hasValidLocation(location)) {
+    return null;
+  }
+
+  const lat = Number(location.lat);
+  const lng = Number(location.lng);
+  const source = location.source || 'gps';
+
+  return {
+    ...location,
+    lat,
+    lng,
+    accuracy: Number.isFinite(Number(location.accuracy)) ? Math.round(Number(location.accuracy)) : null,
+    address:
+      location.address ||
+      (source === 'exif'
+        ? 'Photo location detected'
+        : source === 'manual'
+          ? 'Manual location selected'
+          : 'Location detected'),
+    source,
+    subAddress: location.subAddress || `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`
+  };
 }
 
 function createExifLocation(draft) {
@@ -78,7 +103,7 @@ export default function CreateReportLocationPage() {
   // TODO: Connect browser Geolocation API and reverse geocoding
   // TODO: Compare EXIF GPS with browser GPS for validation scoring
   const [reportLocation, setReportLocation] = useState(() => (
-    hasValidLocation(draft.location) ? draft.location : createExifLocation(draft)
+    normalizeSelectedLocation(draft.location) || createExifLocation(draft)
   ));
   const [isManualAddressOpen, setIsManualAddressOpen] = useState(false);
   const [manualAddress, setManualAddress] = useState(() => draft.location?.source === 'manual' ? draft.location.address : '');
@@ -120,10 +145,11 @@ export default function CreateReportLocationPage() {
           subAddress: `Lat: ${position.coords.latitude.toFixed(5)}, Lng: ${position.coords.longitude.toFixed(5)}`
         };
 
-        setReportLocation(nextLocation);
-        updateLocation(nextLocation);
+        const normalizedLocation = normalizeSelectedLocation(nextLocation);
+        setReportLocation(normalizedLocation);
+        updateLocation(normalizedLocation);
         setLocationError('');
-        mapRef.current?.flyTo([nextLocation.lat, nextLocation.lng], 16, {
+        mapRef.current?.flyTo([normalizedLocation.lat, normalizedLocation.lng], 16, {
           animate: true,
           duration: 0.8
         });
@@ -156,16 +182,18 @@ export default function CreateReportLocationPage() {
     const exifLocation = createExifLocation(draft);
 
     if (!hasValidLocation(reportLocation) && exifLocation) {
-      setReportLocation(exifLocation);
-      updateLocation(exifLocation);
-      mapRef.current?.flyTo([exifLocation.lat, exifLocation.lng], 16, {
+      const normalizedLocation = normalizeSelectedLocation(exifLocation);
+      setReportLocation(normalizedLocation);
+      updateLocation(normalizedLocation);
+      setLocationError('');
+      mapRef.current?.flyTo([normalizedLocation.lat, normalizedLocation.lng], 16, {
         animate: true,
         duration: 0.8
       });
     }
 
     if (hasValidLocation(reportLocation) && reportLocation.source === 'exif' && !hasValidLocation(draft.location)) {
-      updateLocation(reportLocation);
+      updateLocation(normalizeSelectedLocation(reportLocation));
     }
   }, [draft, hasPhoto, reportLocation, updateLocation]);
 
@@ -185,7 +213,7 @@ export default function CreateReportLocationPage() {
     }
 
     // TODO: Connect real GPS verification and map coordinates after UI is completed
-    updateLocation(reportLocation);
+    updateLocation(normalizeSelectedLocation(reportLocation));
     navigate('/reports/create/details');
   }
 
@@ -212,11 +240,12 @@ export default function CreateReportLocationPage() {
       subAddress: 'Manual address entry'
     };
 
-    setReportLocation(nextLocation);
-    updateLocation(nextLocation);
+    const normalizedLocation = normalizeSelectedLocation(nextLocation);
+    setReportLocation(normalizedLocation);
+    updateLocation(normalizedLocation);
     setLocationError('');
     setIsManualAddressOpen(false);
-    mapRef.current?.flyTo([nextLocation.lat, nextLocation.lng], 15, {
+    mapRef.current?.flyTo([normalizedLocation.lat, normalizedLocation.lng], 15, {
       animate: true,
       duration: 0.8
     });

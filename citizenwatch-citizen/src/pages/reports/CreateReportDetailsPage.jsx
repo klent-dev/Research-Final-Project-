@@ -40,8 +40,7 @@ export default function CreateReportDetailsPage() {
   const locationLabel = draft.location?.address || 'Location pending';
   const hasLocation = Boolean(
     Number.isFinite(Number(draft.location?.lat)) &&
-    Number.isFinite(Number(draft.location?.lng)) &&
-    draft.location?.address
+    Number.isFinite(Number(draft.location?.lng))
   );
 
   useEffect(() => {

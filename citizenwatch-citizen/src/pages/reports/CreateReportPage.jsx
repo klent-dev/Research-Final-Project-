@@ -137,8 +137,7 @@ export default function CreateReportPage() {
   const hasSelectedPhoto = Boolean(previewUrl || draft.photoPreview);
   const hasLocation = Boolean(
     Number.isFinite(Number(draft?.location?.lat)) &&
-    Number.isFinite(Number(draft?.location?.lng)) &&
-    draft?.location?.address
+    Number.isFinite(Number(draft?.location?.lng))
   );
   const currentLocation = !hasSelectedPhoto
     ? 'Waiting for photo upload'
