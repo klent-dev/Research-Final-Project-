@@ -12,10 +12,11 @@ export default function AppShell({ children }) {
   const { pathname } = useLocation();
   const isAuthRoute = authRoutes.includes(pathname);
   const isCreateReportRoute = createReportRoutes.includes(pathname);
-  const shouldHideHeader = isAuthRoute || noHeaderRoutes.includes(pathname) || isCreateReportRoute;
+  const isReportDetailsRoute = /^\/reports\/[^/]+$/.test(pathname);
+  const shouldHideHeader = isAuthRoute || noHeaderRoutes.includes(pathname) || isCreateReportRoute || isReportDetailsRoute;
   const hideFabRoutes = ['/home', '/dashboard', '/reports', '/map', '/alerts', '/profile', '/submit-report', '/reports/create', '/reports/create/location', '/reports/create/details', '/reports/create/success'];
-  const shouldHideFab = hideFabRoutes.includes(pathname);
-  const shouldShowBottomNav = bottomNavRoutes.includes(pathname);
+  const shouldHideFab = hideFabRoutes.includes(pathname) || isReportDetailsRoute;
+  const shouldShowBottomNav = bottomNavRoutes.includes(pathname) || isReportDetailsRoute;
 
   return (
     <div className={isAuthRoute ? 'app-shell app-shell--auth' : 'app-shell'}>

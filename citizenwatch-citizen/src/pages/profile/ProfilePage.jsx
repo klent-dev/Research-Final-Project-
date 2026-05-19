@@ -19,7 +19,7 @@ import { HiOutlineBadgeCheck } from 'react-icons/hi';
 import PageContainer from '../../components/PageContainer.jsx';
 import communityImage from '../../assets/images/Community.png';
 import responseImage from '../../assets/images/Response.png';
-import { formatReportDate, getReports, getStatusColor } from '../../services/localReportService.js';
+import { formatReportDate, formatStatusLabel, getReports, getStatusColor } from '../../services/localReportService.js';
 
 const citizenName = 'Klent Ian Ca\u00f1ada';
 const maskedPassword = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
@@ -139,7 +139,7 @@ export default function ProfilePage() {
                   <time>{formatReportDate(report.createdAt)}</time>
                 </div>
                 <span className={`profile-status-pill profile-status-pill--${getStatusColor(report.status)}`}>
-                  {report.status}
+                  {formatStatusLabel(report.status)}
                 </span>
               </article>
             ))

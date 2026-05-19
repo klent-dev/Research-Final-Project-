@@ -10,6 +10,10 @@ const initialDraft = {
   fileName: '',
   fileSize: '',
   metadataPreview: null,
+  exifLat: null,
+  exifLng: null,
+  exifTimestamp: '',
+  hasExifGps: false,
   location: {
     lat: null,
     lng: null,
@@ -95,6 +99,10 @@ export function ReportDraftProvider({ children }) {
       fileName: file?.name || '',
       fileSize: file?.size ? formatFileSize(file.size) : '',
       metadataPreview: null,
+      exifLat: null,
+      exifLng: null,
+      exifTimestamp: '',
+      hasExifGps: false,
       evidenceCapturedAt: previewUrl ? new Date().toISOString() : ''
     });
   }, [updateDraft]);

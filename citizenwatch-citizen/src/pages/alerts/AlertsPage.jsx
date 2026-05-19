@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  FaBars,
   FaClipboardList,
   FaExclamationTriangle,
   FaGavel,
@@ -37,7 +36,6 @@ export default function AlertsPage() {
     <PageContainer className="alerts-page">
       <header className="alerts-topbar">
         <div className="alerts-brand">
-          <FaBars aria-hidden="true" />
           <FaGavel aria-hidden="true" />
           <span>CitizenWatch</span>
         </div>

@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
-  FaBars,
   FaBullhorn,
   FaCheckCircle,
   FaClipboardList,
@@ -14,6 +13,7 @@ import communityImage from '../../assets/images/Community.png';
 import responseImage from '../../assets/images/Response.png';
 import {
   deleteReport,
+  formatStatusLabel,
   formatReportDate,
   getReports,
   getStatusColor
@@ -21,10 +21,12 @@ import {
 
 export default function ReportsPage() {
   // TODO: Replace localStorage with Firestore backend
+  const navigate = useNavigate();
   const [reports, setReports] = useState(() => getReports());
   const resolvedReports = reports.filter((report) => report.status.toUpperCase().includes('RESOLVED'));
 
-  function handleDeleteReport(reportId) {
+  function handleDeleteReport(event, reportId) {
+    event.stopPropagation();
     const confirmed = window.confirm('Are you sure you want to delete this report?');
 
     if (!confirmed) {
@@ -34,11 +36,21 @@ export default function ReportsPage() {
     setReports(deleteReport(reportId));
   }
 
+  function handleOpenReport(reportId) {
+    navigate(`/reports/${reportId}`);
+  }
+
+  function handleReportKeyDown(event, reportId) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleOpenReport(reportId);
+    }
+  }
+
   return (
     <PageContainer className="reports-page">
       <header className="reports-topbar">
         <div className="reports-brand">
-          <FaBars aria-hidden="true" />
           <FaGavel aria-hidden="true" />
           <span>CitizenWatch</span>
         </div>
@@ -87,19 +99,26 @@ export default function ReportsPage() {
         <div className="reports-list">
           {reports.length > 0 ? (
             reports.map((report) => (
-              <article className="reports-list-card" key={report.id}>
+              <article
+                className="reports-list-card"
+                key={report.id}
+                onClick={() => handleOpenReport(report.id)}
+                onKeyDown={(event) => handleReportKeyDown(event, report.id)}
+                role="button"
+                tabIndex={0}
+              >
                 <img src={report.photoPreview || responseImage} alt="" />
                 <div className="reports-list-card__body">
                   <div>
                     <h3>{report.title}</h3>
                     <div className="reports-card-actions">
                       <span className={`reports-status-pill reports-status-pill--${getStatusColor(report.status)}`}>
-                        {report.status}
+                        {formatStatusLabel(report.status)}
                       </span>
                       <button
                         aria-label="Delete report"
                         className="reports-delete-button"
-                        onClick={() => handleDeleteReport(report.id)}
+                        onClick={(event) => handleDeleteReport(event, report.id)}
                         type="button"
                       >
                         <FiTrash2 aria-hidden="true" />

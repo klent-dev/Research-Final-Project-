@@ -35,6 +35,11 @@ export default function CreateReportDetailsPage() {
   const navigate = useNavigate();
   const photoPreview = draft.photoPreview || responseImage;
   const locationLabel = draft.location?.address || 'Location pending';
+  const hasLocation = Boolean(
+    Number.isFinite(Number(draft.location?.lat)) &&
+    Number.isFinite(Number(draft.location?.lng)) &&
+    draft.location?.address
+  );
 
   function handleSaveDraft() {
     // TODO: Re-enable Firebase draft persistence after UI is completed
@@ -47,6 +52,11 @@ export default function CreateReportDetailsPage() {
   }
 
   function handleNextStep() {
+    if (!draft.photoPreview || !hasLocation) {
+      setStepError('Please complete the evidence upload and location verification before submitting.');
+      return;
+    }
+
     if (!selectedIssueType || !selectedUrgency || !description.trim()) {
       setStepError('Please complete the issue type, urgency, and description before submitting.');
       return;

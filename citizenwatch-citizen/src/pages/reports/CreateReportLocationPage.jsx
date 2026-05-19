@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -19,7 +19,7 @@ const LAHUG_CENTER = {
   lng: 123.9065
 };
 
-function LocationMapBridge({ mapRef }) {
+function LocationMapBridge({ location, mapRef }) {
   const map = useMap();
 
   useEffect(() => {
@@ -33,24 +33,64 @@ function LocationMapBridge({ mapRef }) {
     };
   }, [map, mapRef]);
 
+  useEffect(() => {
+    if (hasValidLocation(location)) {
+      map.flyTo([location.lat, location.lng], 16, {
+        animate: true,
+        duration: 0.8
+      });
+    }
+  }, [location, map]);
+
   return null;
+}
+
+function hasValidLocation(location) {
+  return Boolean(
+    Number.isFinite(Number(location?.lat)) &&
+    Number.isFinite(Number(location?.lng)) &&
+    location?.address
+  );
+}
+
+function createExifLocation(draft) {
+  const exifLat = Number(draft?.exifLat);
+  const exifLng = Number(draft?.exifLng);
+
+  if (!draft?.hasExifGps || !Number.isFinite(exifLat) || !Number.isFinite(exifLng)) {
+    return null;
+  }
+
+  return {
+    lat: exifLat,
+    lng: exifLng,
+    accuracy: null,
+    address: 'Photo location detected',
+    source: 'exif',
+    // TODO: Add reverse geocoding for human-readable EXIF photo address
+    subAddress: `Lat: ${exifLat.toFixed(5)}, Lng: ${exifLng.toFixed(5)}`
+  };
 }
 
 export default function CreateReportLocationPage() {
   const navigate = useNavigate();
   const { draft, updateLocation } = useReportDraft();
   // TODO: Connect browser Geolocation API and reverse geocoding
-  const [reportLocation, setReportLocation] = useState(() => draft.location || null);
+  // TODO: Compare EXIF GPS with browser GPS for validation scoring
+  const [reportLocation, setReportLocation] = useState(() => (
+    hasValidLocation(draft.location) ? draft.location : createExifLocation(draft)
+  ));
+  const [isManualAddressOpen, setIsManualAddressOpen] = useState(false);
+  const [manualAddress, setManualAddress] = useState(() => draft.location?.source === 'manual' ? draft.location.address : '');
   const [locationError, setLocationError] = useState('');
   const mapRef = useRef(null);
-  const hasLocation = Boolean(
-    Number.isFinite(Number(reportLocation?.lat)) &&
-    Number.isFinite(Number(reportLocation?.lng)) &&
-    reportLocation?.address
-  );
+  const hasRequestedBrowserLocationRef = useRef(false);
+  const hasLocation = hasValidLocation(reportLocation);
+  const isGpsLocation = reportLocation?.source === 'gps';
+  const isExifLocation = reportLocation?.source === 'exif';
   const hasAccuracy = Number.isFinite(Number(reportLocation?.accuracy));
 
-  function requestUserLocation() {
+  const requestUserLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setLocationError('GPS is not supported by this browser.');
       return;
@@ -85,7 +125,42 @@ export default function CreateReportLocationPage() {
         maximumAge: 60000
       }
     );
-  }
+  }, [updateLocation]);
+
+  useEffect(() => {
+    const hasExifLocation = Boolean(createExifLocation(draft));
+
+    if (!hasLocation && !hasExifLocation && !hasRequestedBrowserLocationRef.current) {
+      hasRequestedBrowserLocationRef.current = true;
+      requestUserLocation();
+    }
+  }, [draft, hasLocation, requestUserLocation]);
+
+  useEffect(() => {
+    const exifLocation = createExifLocation(draft);
+
+    if (!hasValidLocation(reportLocation) && exifLocation) {
+      setReportLocation(exifLocation);
+      updateLocation(exifLocation);
+      mapRef.current?.flyTo([exifLocation.lat, exifLocation.lng], 16, {
+        animate: true,
+        duration: 0.8
+      });
+    }
+
+    if (hasValidLocation(reportLocation) && reportLocation.source === 'exif' && !hasValidLocation(draft.location)) {
+      updateLocation(reportLocation);
+    }
+  }, [draft, reportLocation, updateLocation]);
+
+  useEffect(() => {
+    if (hasLocation) {
+      mapRef.current?.flyTo([reportLocation.lat, reportLocation.lng], 16, {
+        animate: true,
+        duration: 0.8
+      });
+    }
+  }, [hasLocation, reportLocation]);
 
   function handleConfirmLocation() {
     if (!hasLocation) {
@@ -98,8 +173,36 @@ export default function CreateReportLocationPage() {
   }
 
   function handleEditAddress() {
-    // TODO: Add manual address edit form after UI is completed
-    console.log('Edit address manually clicked');
+    setIsManualAddressOpen((isOpen) => !isOpen);
+  }
+
+  function handleManualLocationSubmit(event) {
+    event.preventDefault();
+
+    const trimmedAddress = manualAddress.trim();
+    if (!trimmedAddress) {
+      setLocationError('Please enter an address to continue.');
+      return;
+    }
+
+    const nextLocation = {
+      lat: LAHUG_CENTER.lat,
+      lng: LAHUG_CENTER.lng,
+      accuracy: null,
+      address: trimmedAddress,
+      source: 'manual',
+      // TODO: Add reverse geocoding for manual address coordinates
+      subAddress: 'Manual address entry'
+    };
+
+    setReportLocation(nextLocation);
+    updateLocation(nextLocation);
+    setLocationError('');
+    setIsManualAddressOpen(false);
+    mapRef.current?.flyTo([nextLocation.lat, nextLocation.lng], 15, {
+      animate: true,
+      duration: 0.8
+    });
   }
 
   return (
@@ -134,7 +237,7 @@ export default function CreateReportLocationPage() {
           zoom={14}
           zoomControl={false}
         >
-          <LocationMapBridge mapRef={mapRef} />
+          <LocationMapBridge location={reportLocation} mapRef={mapRef} />
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -149,8 +252,16 @@ export default function CreateReportLocationPage() {
 
         <div className={hasLocation ? 'gps-verified-pill' : 'gps-verified-pill gps-verified-pill--waiting'}>
           {hasLocation && <FaCheckCircle aria-hidden="true" />}
-          <span>{hasLocation ? 'GPS Verified' : 'Waiting for GPS'}</span>
-          {hasLocation && hasAccuracy && <strong>&plusmn; {reportLocation.accuracy}m</strong>}
+          <span>
+            {hasLocation
+              ? isExifLocation
+                ? 'Photo GPS Detected'
+                : isGpsLocation
+                  ? 'GPS Verified'
+                  : 'Location Set'
+              : 'Waiting for GPS'}
+          </span>
+          {hasLocation && isGpsLocation && hasAccuracy && <strong>&plusmn; {reportLocation.accuracy}m</strong>}
         </div>
 
         {!hasLocation && (
@@ -199,6 +310,23 @@ export default function CreateReportLocationPage() {
         <button className="edit-address-button" onClick={handleEditAddress} type="button">
           Edit Address Manually
         </button>
+
+        {isManualAddressOpen && (
+          <form className="manual-address-form" onSubmit={handleManualLocationSubmit}>
+            <label htmlFor="manual-address">Manual Address</label>
+            <input
+              id="manual-address"
+              onChange={(event) => {
+                setManualAddress(event.target.value);
+                setLocationError('');
+              }}
+              placeholder="Enter report location"
+              type="text"
+              value={manualAddress}
+            />
+            <button type="submit">Use This Address</button>
+          </form>
+        )}
       </section>
     </main>
   );

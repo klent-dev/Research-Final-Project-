@@ -4,7 +4,6 @@ import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-  FaBars,
   FaCrosshairs,
   FaFilter,
   FaGavel,
@@ -20,6 +19,7 @@ import {
 } from 'react-icons/fa';
 import PageContainer from '../../components/PageContainer.jsx';
 import communityImage from '../../assets/images/Community.png';
+import { formatStatusLabel } from '../../services/localReportService.js';
 import {
   DEFAULT_MAP_CENTER,
   filterReports,
@@ -173,7 +173,6 @@ export default function MapPage() {
     <PageContainer className="community-map-page">
       <header className="community-map-topbar">
         <div className="community-map-brand">
-          <FaBars aria-hidden="true" />
           <FaGavel aria-hidden="true" />
           <span>CitizenWatch</span>
         </div>
@@ -226,7 +225,7 @@ export default function MapPage() {
                     <div className="map-popup-header">
                       <strong>{report.issueType || report.category}</strong>
                       <span className={`community-status-pill community-status-pill--${getStatusTone(report.status)}`}>
-                        {report.status}
+                        {formatStatusLabel(report.status)}
                       </span>
                     </div>
                     <p>{report.location?.address || 'Location detected'}</p>
@@ -288,7 +287,7 @@ export default function MapPage() {
                     </p>
                   </div>
                   <span className={`community-status-pill community-status-pill--${tone}`}>
-                    {report.status}
+                    {formatStatusLabel(report.status)}
                   </span>
                 </article>
               );

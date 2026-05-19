@@ -55,7 +55,7 @@ function toDate(value) {
 }
 
 function normalizeStatus(status) {
-  return status || 'UNDER REVIEW';
+  return status || 'under_review';
 }
 
 function normalizeReport(report) {
@@ -77,8 +77,10 @@ function normalizeReport(report) {
     location: {
       lat: report.location?.lat ?? null,
       lng: report.location?.lng ?? null,
+      accuracy: report.location?.accuracy ?? null,
       address: report.location?.address || 'Location not selected',
-      subAddress: report.location?.subAddress || ''
+      subAddress: report.location?.subAddress || '',
+      source: report.location?.source || null
     },
     photoPreview: report.photoPreview || '',
     photoUrl: report.photoPreview || report.photoUrl || '',
@@ -224,6 +226,20 @@ export function getStatusColor(status = '') {
   return 'review';
 }
 
+export function formatStatusLabel(status = '') {
+  const normalized = String(status || '').trim().toLowerCase();
+
+  if (normalized === 'under_review' || normalized === 'under review' || normalized === 'review') {
+    return 'UNDER REVIEW';
+  }
+
+  if (normalized === 'in_progress' || normalized === 'in progress') {
+    return 'IN PROGRESS';
+  }
+
+  return normalized ? normalized.replace(/_/g, ' ').toUpperCase() : 'UNDER REVIEW';
+}
+
 export function getReportDraft() {
   return readJson(window.sessionStorage, REPORT_DRAFT_STORAGE_KEY, {});
 }
@@ -274,7 +290,7 @@ export function buildReportFromDraft(draft) {
     issueType: draft.issueType,
     urgency: draft.urgency,
     description: draft.description,
-    status: 'UNDER REVIEW',
+    status: 'under_review',
     createdAt: now,
     updatedAt: now,
     location: draft.location,

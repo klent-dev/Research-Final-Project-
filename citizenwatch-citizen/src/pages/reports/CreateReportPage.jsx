@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import exifr from 'exifr';
 import {
   FaArrowRight,
   FaCamera,
@@ -33,26 +34,58 @@ function formatFileSize(file) {
   return `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function formatMetadataTimestamp(value) {
+  if (!value) {
+    return 'Waiting for report submission';
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Waiting for report submission';
+  }
+
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function toIsoTimestamp(value) {
+  if (!value) {
+    return '';
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString();
+}
+
 export default function CreateReportPage() {
   const { draft, updateDraft, updatePhoto } = useReportDraft();
   const [selectedFile, setSelectedFile] = useState(() => draft.selectedFile || null);
   const [previewUrl, setPreviewUrl] = useState(() => draft.photoPreview || '');
   const [stepError, setStepError] = useState('');
   // TODO: Replace with real EXIF/GPS metadata after report submission
-  const hasMetadata = Boolean(draft?.location || draft?.evidenceCapturedAt);
-  const currentLocation = hasMetadata && draft?.location?.address
-    ? draft.location.address
-    : 'Location not available yet';
-  const timestamp = hasMetadata && draft?.evidenceCapturedAt
-    ? new Date(draft.evidenceCapturedAt).toLocaleString('en-US', {
-      month: 'short',
-      day: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-    : 'Waiting for report submission';
+  const hasSelectedPhoto = Boolean(previewUrl || draft.photoPreview);
+  const hasLocation = Boolean(
+    Number.isFinite(Number(draft?.location?.lat)) &&
+    Number.isFinite(Number(draft?.location?.lng)) &&
+    draft?.location?.address
+  );
+  const currentLocation = !hasSelectedPhoto
+    ? 'Waiting for photo upload'
+    : draft.hasExifGps
+      ? 'Photo GPS detected'
+      : hasLocation
+        ? draft.location.address
+        : draft?.metadataPreview?.location || 'Metadata pending validation';
+  const timestamp = formatMetadataTimestamp(draft?.exifTimestamp);
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
   const objectUrlRef = useRef('');
   const scrollPositionRef = useRef(0);
   const navigate = useNavigate();
@@ -67,7 +100,11 @@ export default function CreateReportPage() {
 
   function handleUseCamera() {
     // TODO: Connect camera capture, Firebase Storage, EXIF, and GPS validation after UI is completed
-    console.log('Use Camera clicked');
+    scrollPositionRef.current = window.scrollY;
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
+    }
+    cameraInputRef.current?.click();
   }
 
   function handleChooseFile() {
@@ -105,6 +142,48 @@ export default function CreateReportPage() {
       updatePhoto(file, typeof reader.result === 'string' ? reader.result : '');
     };
     reader.readAsDataURL(file);
+
+    void extractPhotoMetadata(file);
+  }
+
+  async function extractPhotoMetadata(file) {
+    try {
+      const [gpsData, parsedMetadata] = await Promise.all([
+        exifr.gps(file).catch(() => null),
+        exifr.parse(file, {
+          pick: ['DateTimeOriginal', 'CreateDate', 'ModifyDate']
+        }).catch(() => null)
+      ]);
+      const exifTimestamp =
+        parsedMetadata?.DateTimeOriginal ||
+        parsedMetadata?.CreateDate ||
+        parsedMetadata?.ModifyDate ||
+        '';
+      const exifLat = Number(gpsData?.latitude);
+      const exifLng = Number(gpsData?.longitude);
+      const hasExifGps = Number.isFinite(exifLat) && Number.isFinite(exifLng);
+
+      updateDraft({
+        exifLat: hasExifGps ? exifLat : null,
+        exifLng: hasExifGps ? exifLng : null,
+        exifTimestamp: toIsoTimestamp(exifTimestamp),
+        hasExifGps,
+        metadataPreview: {
+          location: hasExifGps ? 'Photo GPS detected' : 'Metadata pending validation'
+        }
+      });
+    } catch (error) {
+      console.warn('Unable to read image EXIF metadata.', error);
+      updateDraft({
+        exifLat: null,
+        exifLng: null,
+        exifTimestamp: '',
+        hasExifGps: false,
+        metadataPreview: {
+          location: 'Metadata pending validation'
+        }
+      });
+    }
   }
 
   function handleRemovePhoto() {
@@ -118,6 +197,11 @@ export default function CreateReportPage() {
       fileInputRef.current.blur();
     }
 
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
+      cameraInputRef.current.blur();
+    }
+
     setSelectedFile(null);
     setPreviewUrl('');
 
@@ -126,7 +210,12 @@ export default function CreateReportPage() {
       fileName: '',
       fileSize: '',
       photoPreview: '',
-      evidenceCapturedAt: ''
+      evidenceCapturedAt: '',
+      metadataPreview: null,
+      exifLat: null,
+      exifLng: null,
+      exifTimestamp: '',
+      hasExifGps: false
     });
   }
 
@@ -188,6 +277,16 @@ export default function CreateReportPage() {
               className="sr-only"
               onChange={handleFileChange}
               ref={fileInputRef}
+              type="file"
+            />
+
+            <input
+              accept="image/*"
+              aria-label="Capture report evidence image"
+              capture="environment"
+              className="sr-only"
+              onChange={handleFileChange}
+              ref={cameraInputRef}
               type="file"
             />
 
