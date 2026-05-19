@@ -71,6 +71,14 @@ a {
   color: inherit;
 }
 
+img,
+picture,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
 input,
 select,
 textarea {
@@ -114,6 +122,7 @@ textarea {
   animation: pageFadeIn 360ms ease both;
   margin: 0 auto;
   max-width: 1120px;
+  min-width: 0;
   padding: 1rem max(1rem, env(safe-area-inset-left)) calc(8rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-right));
   min-height: auto;
   overflow: visible;
@@ -3745,6 +3754,7 @@ textarea {
   gap: 1rem;
   justify-content: space-between;
   min-height: 4rem;
+  min-width: 0;
   padding: 0.8rem 1rem;
 }
 
@@ -3764,6 +3774,7 @@ textarea {
   font-size: clamp(0.86rem, 3.2vw, 0.98rem);
   font-weight: 850;
   min-width: 0;
+  overflow-wrap: anywhere;
   text-align: right;
   word-break: break-word;
 }
@@ -3797,14 +3808,20 @@ textarea {
   gap: 0.8rem;
   grid-template-columns: auto minmax(0, 1fr) auto;
   min-height: 5.35rem;
+  min-width: 0;
   padding: 0.85rem 1rem;
   text-align: left;
-  width: 100%;
   transition: background var(--transition);
+  width: 100%;
 }
 
 .profile-report-item:hover {
   background: #f8fafc;
+}
+
+.profile-report-item:focus-visible {
+  outline: 3px solid rgba(22, 163, 74, 0.24);
+  outline-offset: -3px;
 }
 
 .profile-report-item img {
@@ -3819,6 +3836,9 @@ textarea {
   font-size: clamp(0.88rem, 3.5vw, 1rem);
   line-height: 1.25;
   margin: 0 0 0.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .profile-report-item time {
@@ -3858,7 +3878,10 @@ textarea {
   border-radius: 999px;
   font-size: clamp(0.62rem, 2.5vw, 0.72rem);
   font-weight: 950;
+  max-width: 6.8rem;
+  overflow: hidden;
   padding: 0.35rem 0.55rem;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -4368,6 +4391,100 @@ textarea {
   margin: 0;
 }
 
+.metadata-status {
+  align-items: center;
+  border: 1px solid rgba(203, 213, 225, 0.72);
+  border-radius: 1rem;
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: auto 1fr;
+  min-width: 0;
+  padding: 0.9rem 1rem;
+}
+
+.metadata-status > div,
+.metadata-row > div {
+  min-width: 0;
+}
+
+.metadata-status > svg {
+  flex: 0 0 auto;
+  font-size: clamp(1.15rem, 4.8vw, 1.45rem);
+}
+
+.metadata-status span {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: clamp(0.62rem, 2.5vw, 0.72rem);
+  font-weight: 950;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.35rem;
+  padding: 0.28rem 0.5rem;
+  text-transform: uppercase;
+}
+
+.metadata-status strong {
+  color: var(--text);
+  display: block;
+  font-size: clamp(0.92rem, 3.7vw, 1.08rem);
+  line-height: 1.2;
+  margin-bottom: 0.2rem;
+  overflow-wrap: anywhere;
+}
+
+.metadata-status p {
+  color: #64748b;
+  font-size: clamp(0.78rem, 3vw, 0.9rem);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.metadata-status--success {
+  background: #ecfdf5;
+  border-color: rgba(22, 163, 74, 0.22);
+}
+
+.metadata-status--success > svg,
+.metadata-status--success span {
+  color: #047857;
+}
+
+.metadata-status--success span {
+  background: #d7f8e0;
+}
+
+.metadata-status--fallback,
+.metadata-status--warning {
+  background: #fffbeb;
+  border-color: rgba(245, 158, 11, 0.24);
+}
+
+.metadata-status--fallback > svg,
+.metadata-status--fallback span,
+.metadata-status--warning > svg,
+.metadata-status--warning span {
+  color: #b45309;
+}
+
+.metadata-status--fallback span,
+.metadata-status--warning span {
+  background: #fef3c7;
+}
+
+.metadata-status--waiting {
+  background: #f8fafc;
+  border-color: rgba(203, 213, 225, 0.84);
+}
+
+.metadata-status--waiting > svg,
+.metadata-status--waiting span {
+  color: #64748b;
+}
+
+.metadata-status--waiting span {
+  background: #e2e8f0;
+}
+
 .metadata-row {
   align-items: center;
   background: #f0f2ff;
@@ -4400,6 +4517,7 @@ textarea {
   font-size: clamp(1rem, 4.3vw, 1.45rem);
   letter-spacing: -0.02em;
   line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .metadata-note {
@@ -5755,6 +5873,7 @@ textarea {
   gap: 0.8rem;
   grid-template-columns: auto minmax(0, 1fr);
   min-height: clamp(6rem, 24vw, 7.2rem);
+  min-width: 0;
   padding: clamp(0.75rem, 3.5vw, 1rem);
   cursor: pointer;
   transition: box-shadow var(--transition), transform var(--transition), border-color var(--transition);
@@ -5787,6 +5906,11 @@ textarea {
   display: flex;
   gap: 0.65rem;
   justify-content: space-between;
+  min-width: 0;
+}
+
+.reports-list-card__body > div > div {
+  min-width: 0;
 }
 
 .reports-card-actions {
@@ -5824,6 +5948,9 @@ textarea {
   line-height: 1.25;
   margin: 0;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .reports-list-card p {

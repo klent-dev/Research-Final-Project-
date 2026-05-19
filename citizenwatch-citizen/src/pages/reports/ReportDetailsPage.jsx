@@ -45,6 +45,10 @@ function formatSubmittedDate(value) {
   });
 }
 
+function formatUrgencyLabel(value) {
+  return value || 'Medium';
+}
+
 function ReportDetailMapBridge({ position }) {
   const map = useMap();
 
@@ -67,6 +71,10 @@ function getTimelineState(status, step) {
         ? 1
         : 0;
   const stepIndex = order.indexOf(step);
+
+  if (step === 'submitted') {
+    return 'complete';
+  }
 
   if (stepIndex < currentIndex) {
     return 'complete';
@@ -159,7 +167,11 @@ export default function ReportDetailsPage() {
           </div>
           <div>
             <span>Status</span>
-            <strong>{formatStatusLabel(report.status)}</strong>
+            <strong className="report-details-summary-status">
+              <span className={`reports-status-pill reports-status-pill--${statusTone}`}>
+                {formatStatusLabel(report.status)}
+              </span>
+            </strong>
           </div>
           <div>
             <span>Issue Type</span>
@@ -167,7 +179,7 @@ export default function ReportDetailsPage() {
           </div>
           <div>
             <span>Urgency</span>
-            <strong>{report.urgency || 'Medium'}</strong>
+            <strong>{formatUrgencyLabel(report.urgency)}</strong>
           </div>
           <div className="report-details-info-grid__wide">
             <span>Submitted</span>

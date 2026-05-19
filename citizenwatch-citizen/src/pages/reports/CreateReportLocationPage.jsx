@@ -85,10 +85,22 @@ export default function CreateReportLocationPage() {
   const [locationError, setLocationError] = useState('');
   const mapRef = useRef(null);
   const hasRequestedBrowserLocationRef = useRef(false);
+  const hasPhoto = Boolean(draft.photoPreview);
   const hasLocation = hasValidLocation(reportLocation);
   const isGpsLocation = reportLocation?.source === 'gps';
   const isExifLocation = reportLocation?.source === 'exif';
   const hasAccuracy = Number.isFinite(Number(reportLocation?.accuracy));
+
+  useEffect(() => {
+    if (!hasPhoto) {
+      navigate('/reports/create', {
+        replace: true,
+        state: {
+          validationError: 'Please upload or capture a photo before continuing.'
+        }
+      });
+    }
+  }, [hasPhoto, navigate]);
 
   const requestUserLocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -130,13 +142,17 @@ export default function CreateReportLocationPage() {
   useEffect(() => {
     const hasExifLocation = Boolean(createExifLocation(draft));
 
-    if (!hasLocation && !hasExifLocation && !hasRequestedBrowserLocationRef.current) {
+    if (hasPhoto && !hasLocation && !hasExifLocation && !hasRequestedBrowserLocationRef.current) {
       hasRequestedBrowserLocationRef.current = true;
       requestUserLocation();
     }
-  }, [draft, hasLocation, requestUserLocation]);
+  }, [draft, hasLocation, hasPhoto, requestUserLocation]);
 
   useEffect(() => {
+    if (!hasPhoto) {
+      return;
+    }
+
     const exifLocation = createExifLocation(draft);
 
     if (!hasValidLocation(reportLocation) && exifLocation) {
@@ -151,7 +167,7 @@ export default function CreateReportLocationPage() {
     if (hasValidLocation(reportLocation) && reportLocation.source === 'exif' && !hasValidLocation(draft.location)) {
       updateLocation(reportLocation);
     }
-  }, [draft, reportLocation, updateLocation]);
+  }, [draft, hasPhoto, reportLocation, updateLocation]);
 
   useEffect(() => {
     if (hasLocation) {
@@ -164,6 +180,7 @@ export default function CreateReportLocationPage() {
 
   function handleConfirmLocation() {
     if (!hasLocation) {
+      setLocationError('Please allow GPS or enter location manually to continue.');
       return;
     }
 
@@ -255,10 +272,10 @@ export default function CreateReportLocationPage() {
           <span>
             {hasLocation
               ? isExifLocation
-                ? 'Photo GPS Detected'
+                ? 'Photo GPS detected'
                 : isGpsLocation
-                  ? 'GPS Verified'
-                  : 'Location Set'
+                  ? 'Using current device location'
+                  : 'Manual location selected'
               : 'Waiting for GPS'}
           </span>
           {hasLocation && isGpsLocation && hasAccuracy && <strong>&plusmn; {reportLocation.accuracy}m</strong>}
@@ -306,6 +323,10 @@ export default function CreateReportLocationPage() {
           Confirm Location
           <FaArrowRight aria-hidden="true" />
         </button>
+
+        {!hasLocation && (
+          <p className="create-step-error">Please allow GPS or enter location manually to continue.</p>
+        )}
 
         <button className="edit-address-button" onClick={handleEditAddress} type="button">
           Edit Address Manually

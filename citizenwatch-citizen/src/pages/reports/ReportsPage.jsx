@@ -173,6 +173,7 @@ export default function ReportsPage() {
                       <button
                         aria-label="Delete report"
                         className="reports-delete-button"
+                        onKeyDown={(event) => event.stopPropagation()}
                         onClick={(event) => handleDeleteReport(event, report.id)}
                         type="button"
                       >

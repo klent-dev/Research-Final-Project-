@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FaArrowLeft,
@@ -14,9 +14,6 @@ import {
 import responseImage from '../../assets/images/Response.png';
 import { useReportDraft } from '../../context/ReportDraftContext.jsx';
 import { buildReportFromDraft, saveReport } from '../../services/localReportService.js';
-import { createInfrastructureReport, attachReportPhoto } from '../../services/reportService.js';
-import { uploadReportPhoto } from '../../services/storageService.js';
-import { useAuth } from '../../hooks/useAuth.js';
 import { SEVERITY_LEVELS, normalizeUrgency } from '../../utils/severity.js';
 
 const issueTypes = [
@@ -28,10 +25,10 @@ const issueTypes = [
 ];
 
 const urgencyLevels = SEVERITY_LEVELS;
+const SAVED_DRAFT_STORAGE_KEY = 'citizenwatch_saved_report_draft';
 
 export default function CreateReportDetailsPage() {
   const { draft, resetDraft, updateIssueDetails } = useReportDraft();
-  const { user } = useAuth();
   const [selectedIssueType, setSelectedIssueType] = useState(draft.issueType || 'Drainage');
   const [selectedUrgency, setSelectedUrgency] = useState(normalizeUrgency(draft.urgency));
   const [description, setDescription] = useState(draft.description || '');
@@ -39,6 +36,7 @@ export default function CreateReportDetailsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const photoPreview = draft.photoPreview || responseImage;
+  const hasPhoto = Boolean(draft.photoPreview);
   const locationLabel = draft.location?.address || 'Location pending';
   const hasLocation = Boolean(
     Number.isFinite(Number(draft.location?.lat)) &&
@@ -46,24 +44,87 @@ export default function CreateReportDetailsPage() {
     draft.location?.address
   );
 
+  useEffect(() => {
+    if (!hasPhoto) {
+      navigate('/reports/create', {
+        replace: true,
+        state: {
+          validationError: 'Please upload or capture a photo before continuing.'
+        }
+      });
+      return;
+    }
+
+    if (!hasLocation) {
+      navigate('/reports/create/location', { replace: true });
+    }
+  }, [hasLocation, hasPhoto, navigate]);
+
+  function getDetailsValidationError() {
+    if (!selectedIssueType) {
+      return 'Please select an issue type.';
+    }
+
+    if (!selectedUrgency) {
+      return 'Please select urgency.';
+    }
+
+    if (description.trim().length < 10) {
+      return 'Please describe the issue with at least 10 characters.';
+    }
+
+    return '';
+  }
+
   function handleSaveDraft() {
     // TODO: Re-enable Firebase draft persistence after UI is completed
+    const savedDraft = {
+      ...draft,
+      issueType: selectedIssueType,
+      urgency: selectedUrgency,
+      description
+    };
+
     updateIssueDetails({
       issueType: selectedIssueType,
       urgency: selectedUrgency,
       description
     });
-    console.log('Save Draft clicked');
+
+    try {
+      window.localStorage.setItem(
+        SAVED_DRAFT_STORAGE_KEY,
+        JSON.stringify({
+          ...savedDraft,
+          selectedFile: undefined
+        })
+      );
+      setStepError('');
+    } catch (error) {
+      console.warn('Unable to save report draft locally.', error);
+      setStepError('Unable to save draft right now. Please try again.');
+    }
   }
 
   async function handleNextStep() {
-    if (!draft.photoPreview || !hasLocation) {
-      setStepError('Please complete the evidence upload and location verification before submitting.');
+    if (!hasPhoto) {
+      navigate('/reports/create', {
+        replace: true,
+        state: {
+          validationError: 'Please upload or capture a photo before continuing.'
+        }
+      });
       return;
     }
 
-    if (!selectedIssueType || !selectedUrgency || !description.trim()) {
-      setStepError('Please complete the issue type, urgency, and description before submitting.');
+    if (!hasLocation) {
+      navigate('/reports/create/location', { replace: true });
+      return;
+    }
+
+    const validationError = getDetailsValidationError();
+    if (validationError) {
+      setStepError(validationError);
       return;
     }
 
@@ -76,49 +137,27 @@ export default function CreateReportDetailsPage() {
       urgency: selectedUrgency,
       description: description.trim()
     };
-    updateIssueDetails(nextDraft);
+    updateIssueDetails({
+      issueType: selectedIssueType,
+      urgency: selectedUrgency,
+      description: description.trim()
+    });
 
-    const reporterId = user?.uid || 'anonymous-citizen';
-    const reporterName = user?.displayName || user?.email || 'Citizen Reporter';
     const localReport = buildReportFromDraft({
       ...nextDraft,
-      createdBy: reporterId
+      status: 'under_review',
+      createdBy: 'local-citizen'
     });
 
     try {
-      const reportId = await createInfrastructureReport({
-        trackingId: localReport.trackingId,
-        category: selectedIssueType,
-        issueType: selectedIssueType,
-        severity: selectedUrgency,
-        urgency: selectedUrgency,
-        description: description.trim(),
-        location: nextDraft.location,
-        photoPreview: nextDraft.photoPreview,
-        evidenceImage: nextDraft.photoPreview,
-        reporterId,
-        reporterName,
-        createdBy: reporterId
-      });
-
-      if (nextDraft.selectedFile) {
-        const photoUrl = await uploadReportPhoto({
-          file: nextDraft.selectedFile,
-          reportId,
-          userId: reporterId
-        });
-        await attachReportPhoto({ reportId, photoUrl });
-      }
-
-      saveReport({ ...localReport, id: reportId });
-      resetDraft();
-      navigate('/reports/create/success');
-    } catch (error) {
-      console.warn('Firestore report submission failed. Saving report locally instead.', error);
+      // TODO: Replace localStorage submission with Firebase/Firestore after UI is completed
       const savedReport = saveReport(localReport);
       resetDraft();
       console.log('Report saved locally:', savedReport.trackingId);
       navigate('/reports/create/success');
+    } catch (error) {
+      console.warn('Unable to save report locally.', error);
+      setStepError('Unable to submit report right now. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

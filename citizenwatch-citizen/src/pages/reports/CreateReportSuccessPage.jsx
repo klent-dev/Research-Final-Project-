@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   FaCheck,
   FaCopy,
@@ -10,8 +11,20 @@ import {
 import { getLastSubmittedReport } from '../../services/localReportService.js';
 
 export default function CreateReportSuccessPage() {
+  const navigate = useNavigate();
   const submittedReport = getLastSubmittedReport();
   const trackingId = submittedReport?.trackingId || 'Pending';
+
+  useEffect(() => {
+    if (!submittedReport) {
+      navigate('/reports/create', {
+        replace: true,
+        state: {
+          validationError: 'Please complete the report form before viewing the success page.'
+        }
+      });
+    }
+  }, [navigate, submittedReport]);
 
   async function handleCopyTrackingId() {
     try {
@@ -19,6 +32,19 @@ export default function CreateReportSuccessPage() {
     } catch {
       console.log('Tracking ID:', trackingId);
     }
+  }
+
+  if (!submittedReport) {
+    return (
+      <main className="create-success-page">
+        <section className="create-success-content">
+          <section className="success-message">
+            <h1>Completing report setup</h1>
+            <p>Please complete the report form before viewing the success page.</p>
+          </section>
+        </section>
+      </main>
+    );
   }
 
   return (

@@ -312,7 +312,7 @@ export function buildReportFromDraft(draft) {
     issueType: draft.issueType,
     urgency: draft.urgency,
     description: draft.description,
-    status: 'submitted',
+    status: draft.status || 'under_review',
     createdAt: now,
     updatedAt: now,
     location: draft.location,

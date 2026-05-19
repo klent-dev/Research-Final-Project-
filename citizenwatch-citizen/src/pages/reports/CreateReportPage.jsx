@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import exifr from 'exifr';
 import {
   FaArrowRight,
   FaCamera,
   FaCameraRetro,
   FaCalendarAlt,
+  FaCheckCircle,
+  FaCrosshairs,
+  FaExclamationTriangle,
   FaFileUpload,
   FaGavel,
   FaInfo,
@@ -64,11 +67,72 @@ function toIsoTimestamp(value) {
   return Number.isNaN(date.getTime()) ? '' : date.toISOString();
 }
 
+function getMetadataStatus({ draft, hasLocation, hasSelectedPhoto }) {
+  if (!hasSelectedPhoto) {
+    return {
+      tone: 'waiting',
+      badge: 'Waiting',
+      icon: FaInfo,
+      title: 'Waiting for photo upload',
+      helper: 'Photos taken directly from your camera usually contain GPS metadata.'
+    };
+  }
+
+  if (draft.hasExifGps) {
+    return {
+      tone: 'success',
+      badge: 'Photo GPS Verified',
+      icon: FaCheckCircle,
+      title: 'Photo GPS metadata detected',
+      helper: 'Location extracted from uploaded photo.'
+    };
+  }
+
+  if (hasLocation && draft.location?.source === 'gps') {
+    return {
+      tone: 'fallback',
+      badge: 'Device GPS',
+      icon: FaCrosshairs,
+      title: 'Using current device location',
+      helper: 'No GPS metadata was found in the photo.'
+    };
+  }
+
+  if (hasLocation && draft.location?.source === 'manual') {
+    return {
+      tone: 'fallback',
+      badge: 'Manual Location',
+      icon: FaMapMarkerAlt,
+      title: 'Using manually entered location',
+      helper: 'No GPS metadata was found in the photo.'
+    };
+  }
+
+  if (draft.metadataPreview?.location === 'Metadata pending validation') {
+    return {
+      tone: 'warning',
+      badge: 'No GPS Data',
+      icon: FaExclamationTriangle,
+      title: 'No GPS metadata found in photo',
+      helper: 'Using device GPS instead.'
+    };
+  }
+
+  return {
+    tone: 'warning',
+    badge: 'No GPS Data',
+    icon: FaExclamationTriangle,
+    title: 'Location unavailable',
+    helper: 'Allow GPS or enter location manually.'
+  };
+}
+
 export default function CreateReportPage() {
   const { draft, updateDraft, updatePhoto } = useReportDraft();
+  const location = useLocation();
   const [selectedFile, setSelectedFile] = useState(() => draft.selectedFile || null);
   const [previewUrl, setPreviewUrl] = useState(() => draft.photoPreview || '');
-  const [stepError, setStepError] = useState('');
+  const [stepError, setStepError] = useState(() => location.state?.validationError || '');
   // TODO: Replace with real EXIF/GPS metadata after report submission
   const hasSelectedPhoto = Boolean(previewUrl || draft.photoPreview);
   const hasLocation = Boolean(
@@ -91,6 +155,8 @@ export default function CreateReportPage() {
   const navigate = useNavigate();
   const selectedFileName = selectedFile?.name || draft.fileName || '';
   const selectedFileSize = selectedFile ? formatFileSize(selectedFile) : draft.fileSize || '';
+  const metadataStatus = getMetadataStatus({ draft, hasLocation, hasSelectedPhoto });
+  const MetadataStatusIcon = metadataStatus.icon;
 
   useEffect(() => () => {
     if (objectUrlRef.current) {
@@ -118,12 +184,19 @@ export default function CreateReportPage() {
   function handleFileChange(event) {
     const [file] = event.target.files;
     fileInputRef.current?.blur();
+    cameraInputRef.current?.blur();
 
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: scrollPositionRef.current, left: 0, behavior: 'auto' });
     });
 
     if (!file) {
+      return;
+    }
+
+    if (!file.type?.startsWith('image/')) {
+      setStepError('Please select a valid image file.');
+      event.target.value = '';
       return;
     }
 
@@ -221,7 +294,7 @@ export default function CreateReportPage() {
 
   function handleNextStep() {
     if (!draft.photoPreview && !previewUrl) {
-      setStepError('Please choose or capture a photo before continuing.');
+      setStepError('Please upload or capture a photo before continuing.');
       return;
     }
 
@@ -326,6 +399,15 @@ export default function CreateReportPage() {
             <h2>Metadata Preview</h2>
           </header>
 
+          <div className={`metadata-status metadata-status--${metadataStatus.tone}`}>
+            <MetadataStatusIcon aria-hidden="true" />
+            <div>
+              <span>{metadataStatus.badge}</span>
+              <strong>{metadataStatus.title}</strong>
+              <p>{metadataStatus.helper}</p>
+            </div>
+          </div>
+
           <div className="metadata-row">
             <FaMapMarkerAlt aria-hidden="true" />
             <div>
@@ -344,6 +426,7 @@ export default function CreateReportPage() {
 
           <p className="metadata-note">
             * GPS data will be automatically embedded into your report for precision dispatching.
+            Screenshots and downloaded images may not contain location data.
           </p>
         </section>
 
