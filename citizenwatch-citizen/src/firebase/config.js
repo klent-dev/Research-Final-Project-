@@ -1,18 +1,11 @@
-import { initializeApp } from 'firebase/app';
-
-export const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
-};
-
-export const isFirebaseConfigured = Object.values(firebaseConfig).every(Boolean);
-
-export const firebaseApp = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
-
-if (!isFirebaseConfigured) {
-  console.warn('Firebase is not configured yet. Add VITE_FIREBASE_* environment variables to enable authentication.');
-}
+export {
+  analytics,
+  db,
+  firebaseApp,
+  firebaseConfig,
+  isFirebaseConfigured,
+  missingFirebaseEnvKeys,
+  requiredFirebaseEnvKeys,
+  storage,
+  auth
+} from './firebase.js';
