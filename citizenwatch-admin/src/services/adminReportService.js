@@ -1,9 +1,25 @@
 import { sampleCitizenReports } from '../data/sampleReports.js';
+import {
+  collection,
+  doc as firestoreDoc,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc
+} from 'firebase/firestore';
+import { db } from '../firebase/firestore.js';
+import { isFirebaseConfigured } from '../firebase/config.js';
 
 const ADMIN_REPORTS_STORAGE_KEY = 'citizenwatch_admin_reports';
 export const REJECTED_REPORT_REASON = 'This report is either fake, not traceable, or no problem was found after review.';
 const listeners = new Set();
 let cachedReports = null;
+
+function getReportsRef() {
+  return isFirebaseConfigured && db ? collection(db, 'reports') : null;
+}
 
 function canUseStorage() {
   return typeof window !== 'undefined' && Boolean(window.localStorage);
@@ -203,10 +219,48 @@ export function normalizeAdminReport(report = {}) {
 }
 
 export async function getReportsForModeration(filters = {}) {
+  const reportsRef = getReportsRef();
+
+  if (reportsRef) {
+    const reportsQuery = query(reportsRef, orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(reportsQuery);
+    return applyFilters(
+      snapshot.docs.map((reportDoc) => ({
+        id: reportDoc.id,
+        ...reportDoc.data()
+      })),
+      filters
+    );
+  }
+
   return applyFilters(getRawReports(), filters);
 }
 
 export function subscribeReportsForModeration(filters = {}, onReports) {
+  const reportsRef = getReportsRef();
+
+  if (reportsRef) {
+    const reportsQuery = query(reportsRef, orderBy('createdAt', 'desc'));
+    return onSnapshot(
+      reportsQuery,
+      (snapshot) => {
+        onReports(
+          applyFilters(
+            snapshot.docs.map((reportDoc) => ({
+              id: reportDoc.id,
+              ...reportDoc.data()
+            })),
+            filters
+          )
+        );
+      },
+      (error) => {
+        console.warn('Unable to listen to Firestore reports. Falling back to local reports.', error);
+        onReports(applyFilters(getRawReports(), filters));
+      }
+    );
+  }
+
   const listener = { filters, onReports };
   listeners.add(listener);
   onReports(applyFilters(getRawReports(), filters));
@@ -229,6 +283,23 @@ export function updateReportStatus({
 }) {
   const adminNotes = remarks || notes;
   const updatedAt = new Date().toISOString();
+
+  const reportsRef = getReportsRef();
+  if (reportsRef) {
+    return updateDoc(firestoreDoc(db, 'reports', reportId), {
+      ...(status !== undefined ? { status } : {}),
+      ...(assignedTeam !== undefined ? { assignedTeam } : {}),
+      ...(progress !== undefined ? { progress } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(subtasks !== undefined ? { subtasks } : {}),
+      adminNotes,
+      remarks: adminNotes,
+      reviewedBy: adminId || null,
+      updatedBy: adminId || null,
+      updatedAt: serverTimestamp()
+    });
+  }
+
   const reports = getRawReports();
   const nextReports = reports.map((report) => {
     if (report.id !== reportId && report.reportId !== reportId && report.trackingId !== reportId) {

@@ -14,6 +14,7 @@ import {
 import responseImage from '../../assets/images/Response.png';
 import { useReportDraft } from '../../context/ReportDraftContext.jsx';
 import { buildReportFromDraft, saveReport } from '../../services/localReportService.js';
+import { createInfrastructureReport } from '../../services/reportService.js';
 import { SEVERITY_LEVELS, normalizeUrgency } from '../../utils/severity.js';
 
 const issueTypes = [
@@ -149,10 +150,36 @@ export default function CreateReportDetailsPage() {
     });
 
     try {
-      // TODO: Replace localStorage submission with Firebase/Firestore after UI is completed
       const savedReport = saveReport(localReport);
+      let firestoreReportId = '';
+
+      try {
+        firestoreReportId = await createInfrastructureReport({
+          ...localReport,
+          category: localReport.issueType,
+          severity: localReport.urgency,
+          status: 'under_review',
+          reporterId: 'local-citizen',
+          reporterName: 'Citizen Reporter',
+          photoPreview: '',
+          evidenceImage: '',
+          imageUrl: '',
+          photoUrl: ''
+        });
+      } catch (error) {
+        console.warn('Unable to sync report to Firestore. Report remains saved locally.', error);
+      }
+
+      if (firestoreReportId) {
+        saveReport({
+          ...savedReport,
+          firestoreReportId,
+          syncedToFirestore: true
+        });
+      }
+
       resetDraft();
-      console.log('Report saved locally:', savedReport.trackingId);
+      console.log('Report submitted:', savedReport.trackingId);
       navigate('/reports/create/success');
     } catch (error) {
       console.warn('Unable to save report locally.', error);

@@ -19,6 +19,17 @@ const LAHUG_CENTER = {
   lng: 123.9065
 };
 
+function createTestLocation() {
+  return {
+    lat: LAHUG_CENTER.lat,
+    lng: LAHUG_CENTER.lng,
+    accuracy: null,
+    address: 'Test location - Lahug, Cebu City',
+    source: 'test',
+    subAddress: 'Temporary testing location'
+  };
+}
+
 function LocationMapBridge({ location, mapRef }) {
   const map = useMap();
 
@@ -155,7 +166,14 @@ export default function CreateReportLocationPage() {
         });
       },
       () => {
-        setLocationError('Unable to access GPS. You may edit the address manually.');
+        const fallbackLocation = normalizeSelectedLocation(createTestLocation());
+        setReportLocation(fallbackLocation);
+        updateLocation(fallbackLocation);
+        setLocationError('GPS unavailable. A temporary test location was selected.');
+        mapRef.current?.flyTo([fallbackLocation.lat, fallbackLocation.lng], 15, {
+          animate: true,
+          duration: 0.8
+        });
       },
       {
         enableHighAccuracy: true,
@@ -304,7 +322,9 @@ export default function CreateReportLocationPage() {
                 ? 'Photo GPS detected'
                 : isGpsLocation
                   ? 'Using current device location'
-                  : 'Manual location selected'
+                  : reportLocation?.source === 'test'
+                    ? 'Test location selected'
+                    : 'Manual location selected'
               : 'Waiting for GPS'}
           </span>
           {hasLocation && isGpsLocation && hasAccuracy && <strong>&plusmn; {reportLocation.accuracy}m</strong>}

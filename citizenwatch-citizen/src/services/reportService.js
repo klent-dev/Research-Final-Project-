@@ -32,7 +32,7 @@ function normalizeReportPayload(payload = {}) {
     description: payload.description || 'No description provided.',
     severity,
     urgency: payload.urgency || severity,
-    status: REPORT_STATUS.SUBMITTED,
+    status: payload.status || REPORT_STATUS.SUBMITTED,
     location,
     address: location.address,
     latitude: location.lat,
