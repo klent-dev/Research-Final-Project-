@@ -9,6 +9,7 @@ import { db } from '../firebase/firestore.js';
 import { isFirebaseConfigured } from '../firebase/config.js';
 
 const allowedRole = import.meta.env.VITE_ADMIN_ALLOWED_ROLE ?? 'lgu_admin';
+const isAdminAuthBypassed = import.meta.env.VITE_ADMIN_AUTH_BYPASS !== 'false';
 
 export const demoAdmin = {
   uid: 'demo-admin',
@@ -18,7 +19,8 @@ export const demoAdmin = {
 };
 
 export function listenToAdminAuthChanges(callback) {
-  if (!isFirebaseConfigured || !auth || !db) {
+  // TODO: Set VITE_ADMIN_AUTH_BYPASS=false when real admin credentials are ready.
+  if (isAdminAuthBypassed || !isFirebaseConfigured || !auth || !db) {
     callback(demoAdmin);
     return () => {};
   }
@@ -36,7 +38,8 @@ export function listenToAdminAuthChanges(callback) {
 }
 
 export async function loginAdmin({ email, password }) {
-  if (!isFirebaseConfigured || !auth) {
+  // TODO: Set VITE_ADMIN_AUTH_BYPASS=false when real admin credentials are ready.
+  if (isAdminAuthBypassed || !isFirebaseConfigured || !auth) {
     return { ...demoAdmin, email };
   }
 
@@ -45,7 +48,7 @@ export async function loginAdmin({ email, password }) {
 }
 
 export function logoutAdmin() {
-  if (!isFirebaseConfigured || !auth) {
+  if (isAdminAuthBypassed || !isFirebaseConfigured || !auth) {
     return Promise.resolve();
   }
 
