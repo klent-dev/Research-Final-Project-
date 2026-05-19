@@ -3666,11 +3666,21 @@ textarea {
   transform: translateY(-1px);
 }
 
+.profile-edit-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+  transform: none;
+}
+
 .profile-stats-grid {
   display: grid;
   gap: clamp(1rem, 4vw, 1.35rem);
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: clamp(2rem, 7vw, 2.6rem);
+}
+
+.profile-stats-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .profile-stat-card {
@@ -3779,12 +3789,22 @@ textarea {
 
 .profile-report-item {
   align-items: center;
+  background: transparent;
+  border: 0;
   border-bottom: 1px solid rgba(226, 232, 240, 0.92);
+  cursor: pointer;
   display: grid;
   gap: 0.8rem;
   grid-template-columns: auto minmax(0, 1fr) auto;
   min-height: 5.35rem;
   padding: 0.85rem 1rem;
+  text-align: left;
+  width: 100%;
+  transition: background var(--transition);
+}
+
+.profile-report-item:hover {
+  background: #f8fafc;
 }
 
 .profile-report-item img {
@@ -3871,6 +3891,7 @@ textarea {
   min-height: 3.85rem;
   padding: 0 1rem;
   text-align: left;
+  text-decoration: none;
   transition: background var(--transition);
   width: 100%;
 }
@@ -3933,6 +3954,16 @@ textarea {
     padding-right: 0.75rem;
   }
 
+  .profile-stats-grid--three {
+    gap: 0.65rem;
+  }
+
+  .profile-stat-card {
+    min-height: 6.6rem;
+    padding-left: 0.45rem;
+    padding-right: 0.45rem;
+  }
+
   .profile-info-row {
     align-items: flex-start;
     flex-direction: column;
@@ -3945,8 +3976,14 @@ textarea {
 
   .profile-report-item {
     gap: 0.65rem;
+    grid-template-columns: auto minmax(0, 1fr);
     padding-left: 0.75rem;
     padding-right: 0.75rem;
+  }
+
+  .profile-report-item .profile-status-pill {
+    grid-column: 2;
+    justify-self: start;
   }
 }
 

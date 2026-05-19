@@ -3,12 +3,8 @@ import {
   FaBell,
   FaChevronRight,
   FaCheck,
-  FaCheckCircle,
   FaEdit,
-  FaFileAlt,
-  FaInfoCircle,
-  FaQuestionCircle,
-  FaRegChartBar,
+  FaPlusCircle,
   FaRegCheckCircle,
   FaRegFileAlt,
   FaRegFolderOpen,
@@ -21,26 +17,26 @@ import communityImage from '../../assets/images/Community.png';
 import responseImage from '../../assets/images/Response.png';
 import { formatReportDate, formatStatusLabel, getReports, getStatusColor } from '../../services/localReportService.js';
 
-const citizenName = 'Klent Ian Ca\u00f1ada';
-const maskedPassword = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
-const membershipText = 'Barangay Lahug \u2022 Member since: 2026';
+const citizenProfile = {
+  // TODO: Replace with Firebase Auth user profile after authentication is re-enabled
+  fullName: 'Klent Ian Ca\u00f1ada',
+  email: 'klent.canada@example.com',
+  phone: '+63 912 345 6789',
+  barangay: 'Lahug',
+  memberSince: '2026'
+};
 
 const accountRows = [
-  ['Full Name', citizenName],
-  ['Email', 'klent.canada@example.com'],
-  ['Phone', '+63 912 345 6789'],
-  ['Barangay', 'Lahug'],
-  ['Password', maskedPassword]
+  ['Full Name', citizenProfile.fullName],
+  ['Email', citizenProfile.email],
+  ['Phone', citizenProfile.phone],
+  ['Barangay', citizenProfile.barangay]
 ];
 
-const securityRows = ['Verified Citizen', 'GPS Reporting Enabled', 'EXIF Data Validation'];
-
-const settings = [
-  { label: 'Notifications', icon: FaBell },
-  { label: 'Privacy', icon: FaShieldAlt },
-  { label: 'Help Center', icon: FaQuestionCircle },
-  { label: 'Terms & Conditions', icon: FaFileAlt },
-  { label: 'About CitizenWatch', icon: FaInfoCircle }
+const quickActions = [
+  { label: 'My Reports', icon: FaRegFileAlt, to: '/reports' },
+  { label: 'Create New Report', icon: FaPlusCircle, to: '/reports/create' },
+  { label: 'Alerts', icon: FaBell, to: '/alerts' }
 ];
 
 export default function ProfilePage() {
@@ -60,12 +56,11 @@ export default function ProfilePage() {
       value: reports.filter((report) => report.status.toUpperCase().includes('RESOLVED')).length.toString(),
       icon: FaRegCheckCircle,
       tone: 'green'
-    },
-    { label: 'Accuracy', value: reports.length > 0 ? '100%' : '--', icon: FaRegChartBar, tone: 'purple' }
+    }
   ];
 
   function handleLogout() {
-    // TODO: Re-enable Firebase authentication after UI is completed
+    // TODO: Reconnect Firebase signOut after authentication is re-enabled
     navigate('/login', { replace: true });
   }
 
@@ -74,26 +69,26 @@ export default function ProfilePage() {
       <section className="profile-hero-card">
         <div className="profile-avatar-wrap">
           <div className="profile-avatar-ring">
-            <img src={communityImage} alt={`${citizenName} profile`} />
+            <img src={communityImage} alt={`${citizenProfile.fullName} profile`} />
           </div>
-          <span className="profile-verified-dot" aria-label="Verified citizen">
+          <span className="profile-verified-dot" aria-label="Citizen reporter">
             <FaCheck aria-hidden="true" />
           </span>
         </div>
 
-        <h1>{citizenName}</h1>
+        <h1>{citizenProfile.fullName}</h1>
         <span className="profile-reporter-badge">
           <FaShieldAlt aria-hidden="true" />
-          Verified Citizen Reporter
+          Citizen Reporter
         </span>
-        <p>{membershipText}</p>
-        <Link className="profile-edit-button" to="/profile/edit">
+        <p>Barangay {citizenProfile.barangay} &bull; Member since: {citizenProfile.memberSince}</p>
+        <button className="profile-edit-button" disabled type="button" title="Profile editing will be enabled later">
           <FaEdit aria-hidden="true" />
           Edit Profile
-        </Link>
+        </button>
       </section>
 
-      <section className="profile-stats-grid" aria-label="Citizen reporting statistics">
+      <section className="profile-stats-grid profile-stats-grid--three" aria-label="Citizen reporting statistics">
         {stats.map((stat) => (
           <article className={`profile-stat-card profile-stat-card--${stat.tone}`} key={stat.label}>
             <stat.icon aria-hidden="true" />
@@ -116,23 +111,16 @@ export default function ProfilePage() {
       </section>
 
       <section className="profile-section">
-        <h2>Verification &amp; Security</h2>
-        <div className="profile-check-card">
-          {securityRows.map((item) => (
-            <div className="profile-check-row" key={item}>
-              <FaCheckCircle aria-hidden="true" />
-              <span>{item}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="profile-section">
         <h2>Recent Reports</h2>
         <div className="profile-reports-card">
           {reports.length > 0 ? (
             reports.slice(0, 3).map((report) => (
-              <article className="profile-report-item" key={report.id}>
+              <button
+                className="profile-report-item"
+                key={report.id}
+                onClick={() => navigate(`/reports/${report.id}`)}
+                type="button"
+              >
                 <img src={report.photoPreview || responseImage} alt="" />
                 <div>
                   <h3>{report.title}</h3>
@@ -141,7 +129,7 @@ export default function ProfilePage() {
                 <span className={`profile-status-pill profile-status-pill--${getStatusColor(report.status)}`}>
                   {formatStatusLabel(report.status)}
                 </span>
-              </article>
+              </button>
             ))
           ) : (
             <div className="profile-empty-reports">
@@ -154,14 +142,14 @@ export default function ProfilePage() {
       </section>
 
       <section className="profile-section">
-        <h2>Settings</h2>
+        <h2>Quick Actions</h2>
         <div className="profile-settings-card">
-          {settings.map((item) => (
-            <button className="profile-setting-row" key={item.label} type="button">
+          {quickActions.map((item) => (
+            <Link className="profile-setting-row" key={item.label} to={item.to}>
               <item.icon aria-hidden="true" />
               <span>{item.label}</span>
               <FaChevronRight aria-hidden="true" />
-            </button>
+            </Link>
           ))}
         </div>
       </section>
