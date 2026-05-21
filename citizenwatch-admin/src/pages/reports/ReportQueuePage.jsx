@@ -1,5 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import {
+  getLocationValidationLabel,
+  normalizeLocationValidationStatus,
   REJECTED_REPORT_REASON,
   subscribeReportsForModeration,
   updateReportStatus
@@ -27,6 +29,19 @@ function getStatusClass(status) {
 function getFilterCategory(filter) {
   if (filter === 'All Assets') return null;
   return filter;
+}
+
+function getValidationStatus(report) {
+  return normalizeLocationValidationStatus(report.locationValidation?.status);
+}
+
+function getValidationLabel(report) {
+  return report.locationValidation?.label || getLocationValidationLabel(report.locationValidation?.status);
+}
+
+function formatValidationDistance(report) {
+  const distance = Number(report.locationValidation?.distanceMeters);
+  return Number.isFinite(distance) ? `${Math.round(distance)}m difference` : 'No distance comparison';
 }
 
 function ReportProgress({ report }) {
@@ -158,6 +173,7 @@ export default function ReportQueuePage() {
                 <th>Status</th>
                 <th>Progress</th>
                 <th>Severity</th>
+                <th>Validation</th>
                 <th aria-label="Open report" />
               </tr>
             </thead>
@@ -180,6 +196,11 @@ export default function ReportQueuePage() {
                   </td>
                   <td>
                     <span className={`severity-pill severity-pill--${report.normalizedSeverity}`}>{report.normalizedSeverity}</span>
+                  </td>
+                  <td>
+                    <span className={`validation-chip validation-chip--${getValidationStatus(report)}`}>
+                      {getValidationLabel(report)}
+                    </span>
                   </td>
                   <td><button type="button" aria-label={`Open ${report.name}`}>›</button></td>
                 </tr>
@@ -219,6 +240,18 @@ export default function ReportQueuePage() {
                   <span>Severity</span>
                   <strong>{selectedReport.normalizedSeverity}</strong>
                 </div>
+                <div>
+                  <span>Location Check</span>
+                  <strong>{getValidationLabel(selectedReport)}</strong>
+                </div>
+                <div>
+                  <span>GPS Difference</span>
+                  <strong>{formatValidationDistance(selectedReport)}</strong>
+                </div>
+              </section>
+              <section className={`validation-summary validation-summary--${getValidationStatus(selectedReport)}`}>
+                <strong>{selectedReport.locationValidation?.message || 'Location validation has not been completed.'}</strong>
+                <p>{selectedReport.locationValidation?.helper || 'EXIF/device GPS details will appear here when available.'}</p>
               </section>
               <section className="degradation report-progress-panel">
                 <span>Progress</span>

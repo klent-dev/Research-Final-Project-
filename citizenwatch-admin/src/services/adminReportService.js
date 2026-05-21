@@ -121,6 +121,70 @@ export function normalizeReportSeverity(report = {}) {
   return 'minor';
 }
 
+export function normalizeLocationValidationStatus(status = '') {
+  const normalized = String(status || '')
+    .toLowerCase()
+    .replaceAll('_', '-')
+    .replaceAll(' ', '-');
+
+  if (normalized.includes('verified')) return 'verified';
+  if (normalized.includes('needs-review') || normalized.includes('review')) return 'needs-review';
+  if (normalized.includes('suspicious') || normalized.includes('mismatch')) return 'suspicious';
+  if (normalized.includes('photo') || normalized.includes('exif')) return 'photo-gps-detected';
+  if (normalized.includes('device')) return 'device-gps';
+  if (normalized.includes('manual')) return 'manual-location';
+  if (normalized.includes('test')) return 'test-location';
+  return 'unavailable';
+}
+
+export function getLocationValidationLabel(status = '') {
+  const normalized = normalizeLocationValidationStatus(status);
+
+  if (normalized === 'verified') return 'Verified';
+  if (normalized === 'needs-review') return 'Needs Review';
+  if (normalized === 'suspicious') return 'Location Mismatch';
+  if (normalized === 'photo-gps-detected') return 'Photo GPS';
+  if (normalized === 'device-gps') return 'Device GPS';
+  if (normalized === 'manual-location') return 'Manual Location';
+  if (normalized === 'test-location') return 'Test Location';
+  return 'No GPS Data';
+}
+
+function toCoordinate(value) {
+  const coordinate = Number(value);
+  return Number.isFinite(coordinate) ? coordinate : null;
+}
+
+export function normalizeLocationValidation(report = {}) {
+  const validation = report.locationValidation || {};
+  const exif = report.exif || {};
+  const deviceLocation = report.deviceLocation || {};
+  const status = normalizeLocationValidationStatus(validation.status || validation.label || validation.source);
+  const distance = Number(validation.distanceMeters);
+  const exifLat = toCoordinate(exif.lat ?? exif.latitude ?? report.exifLat);
+  const exifLng = toCoordinate(exif.lng ?? exif.longitude ?? report.exifLng);
+  const deviceLat = toCoordinate(deviceLocation.lat ?? deviceLocation.latitude);
+  const deviceLng = toCoordinate(deviceLocation.lng ?? deviceLocation.longitude);
+  const deviceAccuracy = Number(deviceLocation.accuracy);
+
+  return {
+    ...validation,
+    status,
+    label: validation.label || getLocationValidationLabel(status),
+    message: validation.message || 'Location validation has not been completed.',
+    helper: validation.helper || 'EXIF/device GPS details will appear here when available.',
+    distanceMeters: Number.isFinite(distance) ? Math.round(distance) : null,
+    source: validation.source || 'none',
+    exifLat,
+    exifLng,
+    exifTimestamp: exif.timestamp || report.exifTimestamp || '',
+    hasExifGps: Boolean(report.hasExifGps || (exifLat !== null && exifLng !== null)),
+    deviceLat,
+    deviceLng,
+    deviceAccuracy: Number.isFinite(deviceAccuracy) ? Math.round(deviceAccuracy) : null
+  };
+}
+
 export function normalizeReportCategory(report = {}) {
   const rawCategory = String(report.category || report.issueType || 'Others').toLowerCase();
 
@@ -165,6 +229,7 @@ export function getReportCoordinates(report = {}) {
 export function normalizeAdminReport(report = {}) {
   const category = normalizeReportCategory(report);
   const coordinates = getReportCoordinates(report);
+  const locationValidation = normalizeLocationValidation(report);
 
   return {
     ...report,
@@ -185,6 +250,7 @@ export function normalizeAdminReport(report = {}) {
     normalizedStatus: normalizeReportStatus(report.status),
     displayStatus: getDisplayStatus(report.status),
     normalizedSeverity: normalizeReportSeverity(report),
+    locationValidation,
     progress: calculateReportProgress(report),
     description: report.description || 'No description provided.',
     sourceType: report.sourceType || report.source || 'Citizen App',

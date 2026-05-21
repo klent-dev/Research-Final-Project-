@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
-import { deleteReports, subscribeReportsForModeration, updateReportStatus } from '../../services/adminReportService.js';
+import {
+  deleteReports,
+  getLocationValidationLabel,
+  normalizeLocationValidationStatus,
+  subscribeReportsForModeration,
+  updateReportStatus
+} from '../../services/adminReportService.js';
 import { useAdminAuth } from '../../hooks/useAdminAuth.js';
 import { REPORT_STATUS } from '../../utils/constants.js';
 import { ReportMapMarker } from '../../utils/mapMarkers.js';
@@ -111,6 +117,28 @@ function getReportImage(report) {
   return report.imageUrl || report.photoUrl || report.evidenceImage || report.photoPreview || '';
 }
 
+function getValidationStatus(report) {
+  return normalizeLocationValidationStatus(report.locationValidation?.status);
+}
+
+function getValidationLabel(report) {
+  return report.locationValidation?.label || getLocationValidationLabel(report.locationValidation?.status);
+}
+
+function formatCoordinate(value) {
+  const coordinate = Number(value);
+  return Number.isFinite(coordinate) ? coordinate.toFixed(5) : 'Unavailable';
+}
+
+function formatDistance(value) {
+  const distance = Number(value);
+  return Number.isFinite(distance) ? `${Math.round(distance)}m` : 'Not compared';
+}
+
+function hasCoordinatePair(lat, lng) {
+  return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+}
+
 function formatDate(value) {
   let date = null;
 
@@ -216,6 +244,8 @@ function ReportDetailsDrawer({ report, adminId, isSaving, onClose, onSave }) {
   const imageUrl = report ? getReportImage(report) : '';
   const lat = report ? getReportLatitude(report) : null;
   const lng = report ? getReportLongitude(report) : null;
+  const validation = report?.locationValidation || {};
+  const validationStatus = report ? getValidationStatus(report) : 'unavailable';
 
   useEffect(() => {
     setNextStatus(report?.status || REPORT_STATUS.SUBMITTED);
@@ -299,6 +329,41 @@ function ReportDetailsDrawer({ report, adminId, isSaving, onClose, onSave }) {
             <div>
               <span>Submitted</span>
               <strong>{formatDate(report.createdAt)}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="report-detail-card">
+          <div className="validation-detail-header">
+            <h3>EXIF & GPS Validation</h3>
+            <span className={`validation-chip validation-chip--${validationStatus}`}>
+              {getValidationLabel(report)}
+            </span>
+          </div>
+          <div className={`validation-summary validation-summary--${validationStatus}`}>
+            <strong>{validation.message || 'Location validation has not been completed.'}</strong>
+            <p>{validation.helper || 'EXIF/device GPS details will appear here when available.'}</p>
+          </div>
+          <div className="validation-detail-grid">
+            <div>
+              <span>Photo GPS</span>
+              <strong>{validation.hasExifGps ? 'Detected' : 'Not Found'}</strong>
+              <small>{formatCoordinate(validation.exifLat)}, {formatCoordinate(validation.exifLng)}</small>
+            </div>
+            <div>
+              <span>Device GPS</span>
+              <strong>{hasCoordinatePair(validation.deviceLat, validation.deviceLng) ? 'Available' : 'Unavailable'}</strong>
+              <small>{formatCoordinate(validation.deviceLat)}, {formatCoordinate(validation.deviceLng)}</small>
+            </div>
+            <div>
+              <span>Distance Difference</span>
+              <strong>{formatDistance(validation.distanceMeters)}</strong>
+              <small>EXIF compared with browser GPS</small>
+            </div>
+            <div>
+              <span>Accuracy</span>
+              <strong>{validation.deviceAccuracy ? `+/- ${validation.deviceAccuracy}m` : 'Unavailable'}</strong>
+              <small>{validation.source || 'No validation source'}</small>
             </div>
           </div>
         </section>
@@ -554,6 +619,7 @@ export default function AnalyticsPage() {
                   <th>Category</th>
                   <th>Severity</th>
                   <th>Status</th>
+                  <th>Validation</th>
                   <th>Reported Date</th>
                   <th>Actions</th>
                 </tr>
@@ -562,6 +628,7 @@ export default function AnalyticsPage() {
                 {displayedReports.map((report) => {
                   const imageUrl = getReportImage(report);
                   const severity = getSeverityLabel(report.severity || report.urgency);
+                  const validationStatus = getValidationStatus(report);
 
                   return (
                     <tr key={report.id}>
@@ -592,6 +659,11 @@ export default function AnalyticsPage() {
                       <td>
                         <span className={`report-status report-status--${getStatusClass(report.status)}`}>
                           {getStatusLabel(report.status)}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`validation-chip validation-chip--${validationStatus}`}>
+                          {getValidationLabel(report)}
                         </span>
                       </td>
                       <td>{formatDate(report.createdAt)}</td>

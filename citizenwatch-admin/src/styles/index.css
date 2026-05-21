@@ -267,6 +267,7 @@
 @media (max-width: 620px) {
   .command-kpi-grid,
   .report-detail-grid,
+  .validation-detail-grid,
   .incident-summary-grid {
     grid-template-columns: 1fr;
   }
@@ -1958,6 +1959,7 @@ select:focus-visible {
 .asset-date-grid,
 .degradation,
 .maintenance-history,
+.selected-asset-card .validation-summary,
 .schedule-button {
   margin-left: 1.1rem;
   margin-right: 1.1rem;
@@ -2962,7 +2964,8 @@ select:focus-visible {
 }
 
 .severity-chip,
-.report-status {
+.report-status,
+.validation-chip {
   border-radius: 999px;
   display: inline-flex;
   font-size: 0.68rem;
@@ -3025,6 +3028,64 @@ select:focus-visible {
 
 .report-status--rejected {
   color: #dc2626;
+}
+
+.validation-chip {
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 24px;
+  white-space: nowrap;
+}
+
+.validation-chip::before {
+  border-radius: 50%;
+  content: "";
+  height: 6px;
+  width: 6px;
+}
+
+.validation-chip--verified,
+.validation-chip--photo-gps-detected {
+  background: #dcfce7;
+  color: #047857;
+}
+
+.validation-chip--verified::before,
+.validation-chip--photo-gps-detected::before {
+  background: #16a34a;
+}
+
+.validation-chip--needs-review,
+.validation-chip--device-gps,
+.validation-chip--manual-location,
+.validation-chip--test-location {
+  background: #fef3c7;
+  color: #a16207;
+}
+
+.validation-chip--needs-review::before,
+.validation-chip--device-gps::before,
+.validation-chip--manual-location::before,
+.validation-chip--test-location::before {
+  background: #f59e0b;
+}
+
+.validation-chip--suspicious {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.validation-chip--suspicious::before {
+  background: #dc2626;
+}
+
+.validation-chip--unavailable {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.validation-chip--unavailable::before {
+  background: #94a3b8;
 }
 
 .reports-table-card td > button {
@@ -3118,7 +3179,8 @@ select:focus-visible {
 
 .report-detail-card h3,
 .report-detail-copy span,
-.report-detail-meta span {
+.report-detail-meta span,
+.validation-detail-grid span {
   color: #64748b;
   font-size: 0.64rem;
   font-weight: 900;
@@ -3130,6 +3192,76 @@ select:focus-visible {
 .report-detail-card small {
   color: #64748b;
   font-size: 0.72rem;
+}
+
+.validation-detail-header {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.validation-summary {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.8rem;
+}
+
+.validation-summary strong {
+  color: #0f172a;
+  font-size: 0.82rem;
+}
+
+.validation-summary p {
+  color: #64748b;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.validation-summary--verified,
+.validation-summary--photo-gps-detected {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.validation-summary--needs-review,
+.validation-summary--device-gps,
+.validation-summary--manual-location,
+.validation-summary--test-location {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.validation-summary--suspicious {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.validation-summary--unavailable {
+  background: #f8fafc;
+}
+
+.validation-detail-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.validation-detail-grid div {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.validation-detail-grid strong {
+  color: #0f172a;
+  display: block;
+  font-size: 0.82rem;
+  margin: 0.25rem 0 0.15rem;
 }
 
 .report-detail-evidence {
