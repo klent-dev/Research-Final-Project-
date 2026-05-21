@@ -16,9 +16,8 @@ const statusActions = [
 ];
 const severityOrder = {
   critical: 0,
-  high: 1,
-  medium: 2,
-  low: 3
+  moderate: 1,
+  minor: 2
 };
 
 function getStatusClass(status) {

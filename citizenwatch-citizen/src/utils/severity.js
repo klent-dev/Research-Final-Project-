@@ -1,19 +1,19 @@
-export const SEVERITY_LEVELS = ['Low', 'Medium', 'Critical'];
+export const SEVERITY_LEVELS = ['Minor', 'Moderate', 'Critical'];
 
-export function normalizeUrgency(urgency = 'Medium') {
+export function normalizeUrgency(urgency = 'Moderate') {
   const normalized = String(urgency || '').trim().toLowerCase();
 
   if (normalized === 'critical' || normalized === 'high') {
     return 'Critical';
   }
 
-  if (normalized === 'low') {
-    return 'Low';
+  if (normalized === 'minor' || normalized === 'low') {
+    return 'Minor';
   }
 
-  return 'Medium';
+  return 'Moderate';
 }
 
-export function getSeverityTone(urgency = 'Medium') {
+export function getSeverityTone(urgency = 'Moderate') {
   return normalizeUrgency(urgency).toLowerCase();
 }

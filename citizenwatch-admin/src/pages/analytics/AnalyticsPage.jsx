@@ -25,7 +25,7 @@ const categoryOptions = [
   'Others'
 ];
 
-const severityOptions = ['All Severities', 'Critical', 'High', 'Medium', 'Low'];
+const severityOptions = ['All Severities', 'Critical', 'Moderate', 'Minor'];
 
 const statusOptions = [
   { value: '', label: 'All Statuses' },
@@ -71,7 +71,17 @@ function getStatusLabel(status) {
 }
 
 function getSeverityClass(severity = '') {
-  return severity.toLowerCase().replaceAll(' ', '-');
+  const normalized = String(severity || '').toLowerCase();
+  if (normalized.includes('critical') || normalized.includes('high')) return 'critical';
+  if (normalized.includes('moderate') || normalized.includes('medium')) return 'moderate';
+  return 'minor';
+}
+
+function getSeverityLabel(severity = '') {
+  const severityClass = getSeverityClass(severity);
+  if (severityClass === 'critical') return 'Critical';
+  if (severityClass === 'moderate') return 'Moderate';
+  return 'Minor';
 }
 
 function getStatusClass(status = '') {
@@ -234,7 +244,7 @@ function ReportDetailsDrawer({ report, adminId, isSaving, onClose, onSave }) {
           <div>
             <strong>{report.trackingId || report.id}</strong>
             <span className={`severity-chip severity-chip--${getSeverityClass(report.severity || report.urgency)}`}>
-              {report.severity || report.urgency || 'Low'}
+              {getSeverityLabel(report.severity || report.urgency)}
             </span>
             <p>
               <span className={`report-status report-status--${getStatusClass(report.status)}`}>
@@ -385,7 +395,7 @@ export default function AnalyticsPage() {
 
   const displayedReports = useMemo(() => {
     return reports.filter((report) => {
-      const reportSeverity = report.severity || report.urgency || 'Low';
+      const reportSeverity = getSeverityLabel(report.severity || report.urgency);
 
       return (
         (categoryFilter === 'All Categories' || report.category === categoryFilter) &&
@@ -537,7 +547,7 @@ export default function AnalyticsPage() {
               <tbody>
                 {displayedReports.map((report) => {
                   const imageUrl = getReportImage(report);
-                  const severity = report.severity || report.urgency || 'Low';
+                  const severity = getSeverityLabel(report.severity || report.urgency);
 
                   return (
                     <tr key={report.id}>

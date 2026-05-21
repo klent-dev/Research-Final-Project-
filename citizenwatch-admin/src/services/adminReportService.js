@@ -112,12 +112,12 @@ export function getDisplayStatus(status = '') {
 }
 
 export function normalizeReportSeverity(report = {}) {
-  const normalized = String(report.severity || report.urgency || 'low').toLowerCase();
+  const normalized = String(report.severity || report.urgency || 'minor').toLowerCase();
 
   if (normalized.includes('critical')) return 'critical';
-  if (normalized.includes('high')) return 'high';
-  if (normalized.includes('medium')) return 'medium';
-  return 'low';
+  if (normalized.includes('high')) return 'critical';
+  if (normalized.includes('moderate') || normalized.includes('medium')) return 'moderate';
+  return 'minor';
 }
 
 export function normalizeReportCategory(report = {}) {

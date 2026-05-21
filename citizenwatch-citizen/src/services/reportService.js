@@ -110,7 +110,7 @@ function normalizeReportPayload(payload = {}, photoUrl = '') {
   const id = payload.id || createId();
   const trackingId = payload.trackingId || generateTrackingId();
   const issueType = payload.issueType || payload.category || 'Infrastructure Issue';
-  const urgency = payload.urgency || payload.severity || 'Medium';
+  const urgency = payload.urgency || payload.severity || 'Moderate';
   const createdBy = getCreatedBy(payload);
   const now = new Date().toISOString();
   const location = normalizeLocation(payload.location);

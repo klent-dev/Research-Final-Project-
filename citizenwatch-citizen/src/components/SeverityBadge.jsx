@@ -1,6 +1,6 @@
 import { normalizeUrgency } from '../utils/severity.js';
 
-export default function SeverityBadge({ severity = 'medium' }) {
+export default function SeverityBadge({ severity = 'moderate' }) {
   const normalizedSeverity = normalizeUrgency(severity);
 
   return (

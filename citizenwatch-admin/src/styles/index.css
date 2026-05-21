@@ -1797,12 +1797,14 @@ select:focus-visible {
   color: #c2410c;
 }
 
-.severity-pill--medium {
+.severity-pill--medium,
+.severity-pill--moderate {
   background: #fef3c7;
   color: #a16207;
 }
 
-.severity-pill--low {
+.severity-pill--low,
+.severity-pill--minor {
   background: #dbeee7;
   color: #007a36;
 }
@@ -2890,12 +2892,14 @@ select:focus-visible {
   color: #dc2626;
 }
 
-.severity-chip--medium {
+.severity-chip--medium,
+.severity-chip--moderate {
   background: #ffedd5;
   color: #ea580c;
 }
 
-.severity-chip--low {
+.severity-chip--low,
+.severity-chip--minor {
   background: #e2e8f0;
   color: #475569;
 }

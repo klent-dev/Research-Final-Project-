@@ -11,9 +11,8 @@ const CEBU_CENTER = {
 const statusOrder = ['Pending', 'In Progress', 'Completed'];
 const severityOrder = {
   critical: 0,
-  high: 1,
-  medium: 2,
-  low: 3
+  moderate: 1,
+  minor: 2
 };
 
 const markerIcons = {
@@ -154,7 +153,7 @@ export default function DashboardPage() {
     () => ['All Districts', ...Array.from(new Set(normalizedReports.map((report) => report.district))).sort()],
     [normalizedReports]
   );
-  const severities = ['All Severities', 'critical', 'high', 'medium', 'low'];
+  const severities = ['All Severities', 'critical', 'moderate', 'minor'];
 
   const filteredReports = useMemo(
     () =>
@@ -173,7 +172,7 @@ export default function DashboardPage() {
         const hasCoordinates = Boolean(getReportPosition(report));
         const isOpen = report.normalizedStatus !== 'completed';
         const isPendingOrSevere =
-          report.normalizedStatus === 'pending' || ['critical', 'high'].includes(report.normalizedSeverity);
+          report.normalizedStatus === 'pending' || report.normalizedSeverity === 'critical';
 
         return hasCoordinates && isOpen && isPendingOrSevere;
       }),
@@ -183,7 +182,7 @@ export default function DashboardPage() {
   const urgentReports = useMemo(
     () =>
       actionableReports
-        .filter((report) => ['critical', 'high'].includes(report.normalizedSeverity))
+        .filter((report) => report.normalizedSeverity === 'critical')
         .sort((first, second) => {
           const severityDiff = severityOrder[first.normalizedSeverity] - severityOrder[second.normalizedSeverity];
           if (severityDiff !== 0) return severityDiff;

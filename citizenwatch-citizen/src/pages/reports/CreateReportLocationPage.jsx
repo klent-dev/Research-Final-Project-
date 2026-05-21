@@ -77,7 +77,7 @@ function SafeCreateLocationMap({ reportLocation, hasLocation, mapRef }) {
         />
 
         {hasLocation && (
-          <Marker icon={getMarkerBySeverity('Low')} position={[reportLocation.lat, reportLocation.lng]}>
+          <Marker icon={getMarkerBySeverity('Minor')} position={[reportLocation.lat, reportLocation.lng]}>
             <Popup>{reportLocation.address}</Popup>
           </Marker>
         )}

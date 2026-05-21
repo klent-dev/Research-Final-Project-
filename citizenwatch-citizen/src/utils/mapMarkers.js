@@ -12,7 +12,7 @@ export const HomePreviewMarker = L.divIcon({
   iconSize: [16, 16]
 });
 
-export function ReportMapMarker(urgency = 'Medium') {
+export function ReportMapMarker(urgency = 'Moderate') {
   const tone = getSeverityTone(urgency);
 
   return L.divIcon({

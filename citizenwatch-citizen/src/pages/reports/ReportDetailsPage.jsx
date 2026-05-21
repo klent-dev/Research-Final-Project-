@@ -56,7 +56,9 @@ function formatSubmittedDate(value) {
 }
 
 function formatUrgencyLabel(value) {
-  return value || 'Medium';
+  if (String(value || '').toLowerCase() === 'low') return 'Minor';
+  if (String(value || '').toLowerCase() === 'medium') return 'Moderate';
+  return value || 'Moderate';
 }
 
 function ReportDetailMapBridge({ position }) {

@@ -1401,12 +1401,14 @@ textarea {
   background: var(--success);
 }
 
-.severity-badge--low {
+.severity-badge--low,
+.severity-badge--minor {
   background: rgba(22, 163, 74, 0.12);
   color: var(--primary-dark);
 }
 
-.severity-badge--medium {
+.severity-badge--medium,
+.severity-badge--moderate {
   background: rgba(245, 158, 11, 0.14);
   color: var(--warning);
 }
@@ -2012,7 +2014,8 @@ textarea {
   background: var(--danger);
 }
 
-.report-card--low .report-card__priority {
+.report-card--low .report-card__priority,
+.report-card--minor .report-card__priority {
   background: var(--success);
 }
 
@@ -3225,13 +3228,15 @@ textarea {
   --pin-shadow: rgba(220, 38, 38, 0.38);
 }
 
-.report-map-pin-marker--medium {
+.report-map-pin-marker--medium,
+.report-map-pin-marker--moderate {
   --pin-color: #f59e0b;
   --pin-ring: rgba(245, 158, 11, 0.20);
   --pin-shadow: rgba(245, 158, 11, 0.32);
 }
 
-.report-map-pin-marker--low {
+.report-map-pin-marker--low,
+.report-map-pin-marker--minor {
   --pin-color: #16a34a;
   --pin-ring: rgba(22, 163, 74, 0.18);
   --pin-shadow: rgba(22, 163, 74, 0.30);

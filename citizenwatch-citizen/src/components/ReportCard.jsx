@@ -5,7 +5,7 @@ import MapPreview from './MapPreview.jsx';
 
 export default function ReportCard({ report }) {
   return (
-    <article className={`report-card report-card--${report.priority ?? 'medium'}`}>
+    <article className={`report-card report-card--${report.priority ?? 'moderate'}`}>
       <span className="report-card__priority" aria-hidden="true" />
       <div className="report-card__header">
         <div>
@@ -13,7 +13,7 @@ export default function ReportCard({ report }) {
           <h3>{report.title}</h3>
         </div>
         <div className="report-card__badges">
-          <SeverityBadge severity={report.severity ?? 'Medium'} />
+          <SeverityBadge severity={report.severity ?? 'Moderate'} />
           <StatusBadge status={report.status} />
         </div>
       </div>
