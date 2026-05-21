@@ -184,7 +184,9 @@ export default function CreateReportLocationPage() {
   const isGpsLocation = reportLocation?.source === 'gps';
   const isExifLocation = reportLocation?.source === 'exif';
   const hasAccuracy = Number.isFinite(Number(reportLocation?.accuracy));
-  const LocationValidationIcon = locationValidation?.tone === 'danger' ? FaExclamationTriangle : FaCheckCircle;
+  const LocationValidationIcon = ['danger', 'warning'].includes(locationValidation?.tone)
+    ? FaExclamationTriangle
+    : FaCheckCircle;
 
   const updateLocationValidationState = useCallback(({
     nextExifLocation = createExifLocation(draft),

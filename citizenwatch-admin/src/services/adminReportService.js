@@ -130,7 +130,7 @@ export function normalizeLocationValidationStatus(status = '') {
   if (normalized.includes('verified')) return 'verified';
   if (normalized.includes('needs-review') || normalized.includes('review')) return 'needs-review';
   if (normalized.includes('suspicious') || normalized.includes('mismatch')) return 'suspicious';
-  if (normalized.includes('photo') || normalized.includes('exif')) return 'photo-gps-detected';
+  if (normalized.includes('photo') || normalized.includes('exif')) return 'needs-review';
   if (normalized.includes('device')) return 'device-gps';
   if (normalized.includes('manual')) return 'manual-location';
   if (normalized.includes('test')) return 'test-location';
@@ -143,7 +143,7 @@ export function getLocationValidationLabel(status = '') {
   if (normalized === 'verified') return 'Verified';
   if (normalized === 'needs-review') return 'Needs Review';
   if (normalized === 'suspicious') return 'Location Mismatch';
-  if (normalized === 'photo-gps-detected') return 'Photo GPS';
+  if (normalized === 'photo-gps-detected') return 'Needs Review';
   if (normalized === 'device-gps') return 'Device GPS';
   if (normalized === 'manual-location') return 'Manual Location';
   if (normalized === 'test-location') return 'Test Location';
@@ -170,7 +170,7 @@ export function normalizeLocationValidation(report = {}) {
   return {
     ...validation,
     status,
-    label: validation.label || getLocationValidationLabel(status),
+    label: status === 'needs-review' ? getLocationValidationLabel(status) : validation.label || getLocationValidationLabel(status),
     message: validation.message || 'Location validation has not been completed.',
     helper: validation.helper || 'EXIF/device GPS details will appear here when available.',
     distanceMeters: Number.isFinite(distance) ? Math.round(distance) : null,

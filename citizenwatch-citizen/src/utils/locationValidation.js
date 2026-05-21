@@ -104,11 +104,11 @@ export function validatePhotoLocation({
 
   if (exifPoint) {
     return {
-      status: 'photo_gps_detected',
-      tone: 'success',
-      label: 'Photo GPS Detected',
-      message: 'Using location extracted from uploaded photo.',
-      helper: 'Device GPS is not available for distance comparison yet.',
+      status: 'needs_review',
+      tone: 'warning',
+      label: 'Needs Review',
+      message: 'Photo GPS detected, but device GPS is unavailable.',
+      helper: 'The photo location cannot be fully verified until it is compared with current device GPS.',
       distanceMeters: null,
       source: 'exif_only',
       checkedAt: new Date().toISOString()
@@ -119,7 +119,7 @@ export function validatePhotoLocation({
     return {
       status: 'device_gps',
       tone: 'warning',
-      label: 'Device GPS',
+      label: 'Device GPS Only',
       message: 'No photo GPS found. Using current device location.',
       helper: 'Photos taken directly from the camera usually include GPS metadata.',
       distanceMeters: null,

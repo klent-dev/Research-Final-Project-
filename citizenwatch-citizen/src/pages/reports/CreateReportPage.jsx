@@ -80,11 +80,11 @@ function getMetadataStatus({ draft, hasLocation, hasSelectedPhoto }) {
 
   if (draft.hasExifGps) {
     return {
-      tone: 'success',
-      badge: 'Photo GPS Verified',
+      tone: 'warning',
+      badge: 'Photo GPS Detected',
       icon: FaCheckCircle,
       title: 'Photo GPS metadata detected',
-      helper: 'Location extracted from uploaded photo.'
+      helper: 'Location extracted from uploaded photo. Device GPS comparison happens in the next step.'
     };
   }
 
