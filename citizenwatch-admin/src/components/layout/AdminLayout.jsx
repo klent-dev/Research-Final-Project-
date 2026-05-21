@@ -69,8 +69,6 @@ export function AdminLayout() {
           ))}
         </nav>
 
-        <button className="sidebar-new-report" type="button">New Report</button>
-
         <div className="sidebar-account">
           <span aria-hidden="true">?</span>
           <div>
