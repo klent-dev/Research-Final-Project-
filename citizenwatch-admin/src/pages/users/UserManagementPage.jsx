@@ -120,7 +120,7 @@ function SectionCard({ children, eyebrow, title }) {
   );
 }
 
-function AccountSettings({ passwordForm, passwordMessage, settings, updatePassword, updateSection }) {
+function AccountSettings({ settings, updateSection }) {
   return (
     <div className="admin-settings-section-grid">
       <SectionCard eyebrow="Admin only" title="Account Settings">
@@ -164,33 +164,6 @@ function AccountSettings({ passwordForm, passwordMessage, settings, updatePasswo
           label="Two-Factor Authentication"
           onChange={(value) => updateSection('account', { twoFactorEnabled: value })}
         />
-      </SectionCard>
-
-      <SectionCard eyebrow="Security" title="Change Password">
-        <div className="admin-settings-form-grid">
-          <FormField label="Current Password">
-            <input
-              onChange={(event) => updatePassword({ currentPassword: event.target.value })}
-              type="password"
-              value={passwordForm.currentPassword}
-            />
-          </FormField>
-          <FormField label="New Password">
-            <input
-              onChange={(event) => updatePassword({ newPassword: event.target.value })}
-              type="password"
-              value={passwordForm.newPassword}
-            />
-          </FormField>
-          <FormField label="Confirm Password">
-            <input
-              onChange={(event) => updatePassword({ confirmPassword: event.target.value })}
-              type="password"
-              value={passwordForm.confirmPassword}
-            />
-          </FormField>
-        </div>
-        {passwordMessage && <p className="admin-settings-validation">{passwordMessage}</p>}
       </SectionCard>
     </div>
   );
@@ -397,13 +370,7 @@ export default function AdminSettingsPage() {
   const [settings, setSettings] = useState(readSettings);
   const [reports, setReports] = useState([]);
   const [roleOverrides, setRoleOverrides] = useState({});
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
   const [feedback, setFeedback] = useState('');
-  const [passwordMessage, setPasswordMessage] = useState('');
 
   useEffect(() => subscribeReportsForModeration({ maxItems: 200 }, setReports), []);
 
@@ -453,33 +420,13 @@ export default function AdminSettingsPage() {
     setFeedback('');
   }
 
-  function updatePassword(updates) {
-    setPasswordForm((currentForm) => ({ ...currentForm, ...updates }));
-    setPasswordMessage('');
-    setFeedback('');
-  }
-
   function updateCitizenRole(citizenId, role) {
     setRoleOverrides((currentRoles) => ({ ...currentRoles, [citizenId]: role }));
     setFeedback('Role change saved as a UI placeholder.');
   }
 
   function handleSave() {
-    if (passwordForm.newPassword || passwordForm.confirmPassword || passwordForm.currentPassword) {
-      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-        setPasswordMessage('New password and confirm password do not match.');
-        return;
-      }
-
-      if (passwordForm.newPassword.length > 0 && passwordForm.newPassword.length < 8) {
-        setPasswordMessage('New password must be at least 8 characters.');
-        return;
-      }
-    }
-
     writeSettings(settings);
-    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    setPasswordMessage('');
     setFeedback('Settings updated successfully.');
   }
 
@@ -501,10 +448,7 @@ export default function AdminSettingsPage() {
     if (activeTab === 'account') {
       return (
         <AccountSettings
-          passwordForm={passwordForm}
-          passwordMessage={passwordMessage}
           settings={settings}
-          updatePassword={updatePassword}
           updateSection={updateSection}
         />
       );

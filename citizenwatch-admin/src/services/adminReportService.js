@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDocs,
   onSnapshot,
@@ -256,6 +257,26 @@ export function updateReportStatus({
   };
 
   return updateDoc(doc(db, 'reports', reportId), updatePayload);
+}
+
+export async function deleteReport(reportId) {
+  if (!shouldUseFirestore()) {
+    clearLocalReportStorage();
+    notifyReportListeners();
+    return;
+  }
+
+  await deleteDoc(doc(db, 'reports', reportId));
+}
+
+export async function deleteReports(reportIds = []) {
+  const uniqueReportIds = Array.from(new Set(reportIds)).filter(Boolean);
+
+  if (uniqueReportIds.length === 0) {
+    return;
+  }
+
+  await Promise.all(uniqueReportIds.map((reportId) => deleteReport(reportId)));
 }
 
 export function updateLocalReport() {

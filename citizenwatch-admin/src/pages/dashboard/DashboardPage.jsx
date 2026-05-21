@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import { getReportCoordinates, subscribeReportsForModeration } from '../../services/adminReportService.js';
+import { ReportMapMarker } from '../../utils/mapMarkers.js';
 
 const CEBU_CENTER = {
   lat: 10.3157,
@@ -13,33 +13,6 @@ const severityOrder = {
   critical: 0,
   moderate: 1,
   minor: 2
-};
-
-const markerIcons = {
-  critical: L.divIcon({
-    className: 'admin-leaflet-marker admin-leaflet-marker--critical',
-    html: '<span></span>',
-    iconAnchor: [13, 13],
-    iconSize: [26, 26]
-  }),
-  utility: L.divIcon({
-    className: 'admin-leaflet-marker admin-leaflet-marker--utility',
-    html: '<span></span>',
-    iconAnchor: [13, 13],
-    iconSize: [26, 26]
-  }),
-  safety: L.divIcon({
-    className: 'admin-leaflet-marker admin-leaflet-marker--safety',
-    html: '<span></span>',
-    iconAnchor: [13, 13],
-    iconSize: [26, 26]
-  }),
-  selected: L.divIcon({
-    className: 'admin-leaflet-marker admin-leaflet-marker--selected',
-    html: '<span></span>',
-    iconAnchor: [16, 16],
-    iconSize: [32, 32]
-  })
 };
 
 function toDate(value) {
@@ -72,15 +45,6 @@ function getIncidentCluster(report) {
   }
 
   return 'Critical Infrastructure';
-}
-
-function getMarkerIcon(report, selectedReportId) {
-  if (report.id === selectedReportId) return markerIcons.selected;
-
-  const cluster = getIncidentCluster(report);
-  if (cluster === 'Utility Maintenance') return markerIcons.utility;
-  if (cluster === 'Public Safety') return markerIcons.safety;
-  return markerIcons.critical;
 }
 
 function formatRelativeTime(value) {
@@ -206,6 +170,18 @@ export default function DashboardPage() {
   }));
   const totalReports = normalizedReports.length || 1;
 
+  function handleZoomIn() {
+    mapRef.current?.zoomIn();
+  }
+
+  function handleZoomOut() {
+    mapRef.current?.zoomOut();
+  }
+
+  function handleCenterMap() {
+    mapRef.current?.setView([CEBU_CENTER.lat, CEBU_CENTER.lng], 13);
+  }
+
   return (
     <main className="command-dashboard">
       <section className="command-content">
@@ -283,7 +259,7 @@ export default function DashboardPage() {
                 center={[CEBU_CENTER.lat, CEBU_CENTER.lng]}
                 className="dashboard-leaflet-map"
                 dragging
-                scrollWheelZoom={false}
+                scrollWheelZoom
                 zoom={13}
                 zoomControl={false}
               >
@@ -295,18 +271,30 @@ export default function DashboardPage() {
                 {actionableReports.map((report) => (
                   <Marker
                     eventHandlers={{ click: () => setSelectedReportId(report.id) }}
-                    icon={getMarkerIcon(report, selectedReportId)}
+                    icon={ReportMapMarker(report.normalizedSeverity, { selected: report.id === selectedReportId })}
                     key={report.id}
                     position={getReportPosition(report)}
                   >
-                    <Popup>
-                      <strong>{getReportTitle(report)}</strong>
-                      <br />
-                      {getIncidentCluster(report)}
+                    <Popup className="report-map-popup" closeButton offset={[0, -12]}>
+                      <div className="map-popup-card">
+                        <div className="map-popup-header">
+                          <strong>{getReportTitle(report)}</strong>
+                          <span className={`community-status-pill community-status-pill--${report.normalizedStatus}`}>
+                            {report.displayStatus}
+                          </span>
+                        </div>
+                        <p>{getIncidentCluster(report)}</p>
+                        {report.description && <small>{report.description}</small>}
+                      </div>
                     </Popup>
                   </Marker>
                 ))}
               </MapContainer>
+              <div className="community-map-controls admin-map-controls" aria-label="Map controls">
+                <button onClick={handleZoomIn} type="button" aria-label="Zoom in">+</button>
+                <button onClick={handleZoomOut} type="button" aria-label="Zoom out">-</button>
+                <button onClick={handleCenterMap} type="button" aria-label="Center map">o</button>
+              </div>
               <div className="map-legend">
                 <span><i className="legend-dot legend-dot--red" />Critical Infrastructure</span>
                 <span><i className="legend-dot legend-dot--green" />Utility Maintenance</span>

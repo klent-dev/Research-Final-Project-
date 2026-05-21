@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
-import { subscribeReportsForModeration, updateReportStatus } from '../../services/adminReportService.js';
+import { deleteReports, subscribeReportsForModeration, updateReportStatus } from '../../services/adminReportService.js';
 import { useAdminAuth } from '../../hooks/useAdminAuth.js';
 import { REPORT_STATUS } from '../../utils/constants.js';
+import { ReportMapMarker } from '../../utils/mapMarkers.js';
 
 const categoryOptions = [
   'All Categories',
@@ -41,13 +41,6 @@ const REPORT_MAP_CENTER = {
   lat: 14.5995,
   lng: 120.9842
 };
-
-const reportDetailIcon = L.divIcon({
-  className: 'community-leaflet-marker community-leaflet-marker--road report-detail-leaflet-marker',
-  html: '<span></span>',
-  iconAnchor: [22, 22],
-  iconSize: [44, 44]
-});
 
 function Icon({ name }) {
   const paths = {
@@ -192,16 +185,23 @@ function ReportDetailMap({ report }) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {hasCoordinates && (
-          <Marker icon={reportDetailIcon} position={position}>
-            <Popup>
-              <strong>{report.category || 'Infrastructure Report'}</strong>
-              <br />
-              {getReportAddress(report)}
+          <Marker icon={ReportMapMarker(report.severity || report.urgency)} position={position}>
+            <Popup className="report-map-popup" closeButton offset={[0, -12]}>
+              <div className="map-popup-card">
+                <div className="map-popup-header">
+                  <strong>{report.category || 'Infrastructure Report'}</strong>
+                  <span className={`community-status-pill community-status-pill--${getStatusClass(report.status)}`}>
+                    {getStatusLabel(report.status)}
+                  </span>
+                </div>
+                <p>{getReportAddress(report)}</p>
+                {report.description && <small>{report.description}</small>}
+              </div>
             </Popup>
           </Marker>
         )}
       </MapContainer>
-      <div className="report-detail-map-controls" aria-label="Map controls">
+      <div className="community-map-controls report-detail-map-controls" aria-label="Map controls">
         <button onClick={handleZoomIn} type="button" aria-label="Zoom in">+</button>
         <button onClick={handleZoomOut} type="button" aria-label="Zoom out">-</button>
         <button onClick={handleCenterMap} type="button" aria-label="Center report map">o</button>
@@ -450,7 +450,11 @@ export default function AnalyticsPage() {
     ));
   }
 
-  function handleDeleteSelectedReports() {
+  async function handleDeleteSelectedReports() {
+    const deletedReports = reports.filter((report) => selectedReportIds.includes(report.id));
+
+    setIsSaving(true);
+    setErrorMessage('');
     setReports((currentReports) => (
       currentReports.filter((report) => !selectedReportIds.includes(report.id))
     ));
@@ -460,6 +464,16 @@ export default function AnalyticsPage() {
     }
 
     setSelectedReportIds([]);
+
+    try {
+      await deleteReports(selectedReportIds);
+    } catch (error) {
+      console.error('Unable to delete selected reports:', error);
+      setReports((currentReports) => [...deletedReports, ...currentReports]);
+      setErrorMessage('Unable to delete selected reports from Firebase.');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function handleClearFilters() {
@@ -600,8 +614,8 @@ export default function AnalyticsPage() {
         {selectedCount > 0 && (
           <div className="reports-delete-bar">
             <span>{selectedCount} selected</span>
-            <button onClick={handleDeleteSelectedReports} type="button">
-              Delete Selected
+            <button disabled={isSaving} onClick={handleDeleteSelectedReports} type="button">
+              {isSaving ? 'Deleting...' : 'Delete Selected'}
             </button>
           </div>
         )}

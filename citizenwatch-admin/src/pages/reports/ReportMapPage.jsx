@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import {
   getReportCoordinates,
-  subscribeReportsForModeration,
-  updateReportStatus
+  subscribeReportsForModeration
 } from '../../services/adminReportService.js';
+import { ReportMapMarker } from '../../utils/mapMarkers.js';
 
 const GIS_CENTER = {
   lat: 10.3157,
@@ -14,20 +13,20 @@ const GIS_CENTER = {
 
 const primaryCategories = ['Drainage', 'Street Lighting', 'Flooding', 'Road Maintenance', 'Waste Management'];
 const categoryOptions = ['All', ...primaryCategories, 'Others'];
-
-const criticalIncidentIcon = L.divIcon({
-  className: 'gis-leaflet-marker gis-leaflet-marker--critical',
-  html: '<span></span>',
-  iconAnchor: [14, 14],
-  iconSize: [28, 28]
-});
-
-const utilityIncidentIcon = L.divIcon({
-  className: 'gis-leaflet-marker gis-leaflet-marker--utility',
-  html: '<span></span>',
-  iconAnchor: [12, 12],
-  iconSize: [24, 24]
-});
+const reportStatusFilters = [
+  {
+    id: 'actionable',
+    label: 'Actionable Reports',
+    tone: 'actionable',
+    statuses: new Set(['pending', 'submitted', 'under_review', 'under review', 'in_progress', 'in progress'])
+  },
+  {
+    id: 'closed',
+    label: 'Completed / Closed Reports',
+    tone: 'closed',
+    statuses: new Set(['verified', 'resolved', 'rejected', 'completed', 'closed'])
+  }
+];
 
 function Icon({ name }) {
   const paths = {
@@ -149,6 +148,25 @@ function formatDate(value) {
   });
 }
 
+function getReportFilterStatus(report = {}) {
+  return String(report.status || report.normalizedStatus || report.displayStatus || '')
+    .trim()
+    .toLowerCase()
+    .replaceAll('-', '_');
+}
+
+function matchesActiveStatusFilters(report, activeStatusFilters) {
+  const activeFilters = reportStatusFilters.filter((filter) => activeStatusFilters[filter.id]);
+
+  if (activeFilters.length === 0) {
+    return true;
+  }
+
+  const status = getReportFilterStatus(report);
+
+  return activeFilters.some((filter) => filter.statuses.has(status));
+}
+
 function GisMap({ mapRef, reports, onSelectReport }) {
   function handleZoomIn() {
     mapRef.current?.zoomIn();
@@ -169,7 +187,7 @@ function GisMap({ mapRef, reports, onSelectReport }) {
         center={[GIS_CENTER.lat, GIS_CENTER.lng]}
         className="gis-leaflet-map"
         dragging
-        scrollWheelZoom={false}
+        scrollWheelZoom
         zoom={14}
         zoomControl={false}
       >
@@ -181,7 +199,6 @@ function GisMap({ mapRef, reports, onSelectReport }) {
         {reports.map((report) => {
           const position = getReportPosition(report);
           const category = getReportCategory(report);
-          const isCritical = report.normalizedSeverity === 'critical';
 
           if (!position) {
             return null;
@@ -192,22 +209,29 @@ function GisMap({ mapRef, reports, onSelectReport }) {
               eventHandlers={{
                 click: () => onSelectReport(report)
               }}
-              icon={isCritical ? criticalIncidentIcon : utilityIncidentIcon}
+              icon={ReportMapMarker(report.normalizedSeverity)}
               key={report.id}
               position={position}
               title={category}
             >
-              <Popup>
-                <strong>{category}</strong>
-                <br />
-                {getReportTitle(report)}
+              <Popup className="report-map-popup" closeButton offset={[0, -12]}>
+                <div className="map-popup-card">
+                  <div className="map-popup-header">
+                    <strong>{category}</strong>
+                    <span className={`community-status-pill community-status-pill--${report.normalizedStatus}`}>
+                      {report.displayStatus}
+                    </span>
+                  </div>
+                  <p>{getReportTitle(report)}</p>
+                  <small>{getReportAddress(report)}</small>
+                </div>
               </Popup>
             </Marker>
           );
         })}
       </MapContainer>
 
-      <div className="gis-map-controls">
+      <div className="community-map-controls gis-map-controls">
         <button onClick={handleZoomIn} type="button" aria-label="Zoom in">+</button>
         <button onClick={handleZoomOut} type="button" aria-label="Zoom out">-</button>
         <button onClick={handleCenterMap} type="button" aria-label="Center map">o</button>
@@ -216,7 +240,7 @@ function GisMap({ mapRef, reports, onSelectReport }) {
   );
 }
 
-function ReportDetailsPanel({ report, onClose, onStatusUpdate }) {
+function ReportDetailsPanel({ report, onClose }) {
   const imageUrl = getReportImage(report);
 
   function handleEnlarge() {
@@ -260,12 +284,6 @@ function ReportDetailsPanel({ report, onClose, onStatusUpdate }) {
         </div>
       </section>
 
-      <section className="incident-actions">
-        <button onClick={() => onStatusUpdate(report, 'under_review')} type="button">Under Review</button>
-        <button onClick={() => onStatusUpdate(report, 'verified')} type="button">Verified</button>
-        <button onClick={() => onStatusUpdate(report, 'resolved')} type="button">Resolved</button>
-        <button onClick={() => onStatusUpdate(report, 'rejected')} type="button">Rejected</button>
-      </section>
     </aside>
   );
 }
@@ -273,6 +291,10 @@ function ReportDetailsPanel({ report, onClose, onStatusUpdate }) {
 export default function ReportMapPage() {
   const mapRef = useRef(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [activeStatusFilters, setActiveStatusFilters] = useState({
+    actionable: false,
+    closed: false
+  });
   const [reports, setReports] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
   const [mapMessage, setMapMessage] = useState('Loading reports...');
@@ -295,29 +317,23 @@ export default function ReportMapPage() {
         (report) =>
           getReportPosition(report) &&
           !report.deleted &&
-          !report.isDeleted &&
-          !['completed', 'rejected'].includes(report.normalizedStatus)
+          !report.isDeleted
       ),
     [reports]
   );
   const filteredReports = useMemo(() => {
-    if (selectedCategory === 'All') {
-      return mapReports;
-    }
+    const categoryReports = selectedCategory === 'All'
+      ? mapReports
+      : mapReports.filter((report) => getVisibleCategory(getReportCategory(report)) === selectedCategory);
 
-    return mapReports.filter((report) => getVisibleCategory(getReportCategory(report)) === selectedCategory);
-  }, [mapReports, selectedCategory]);
+    return categoryReports.filter((report) => matchesActiveStatusFilters(report, activeStatusFilters));
+  }, [activeStatusFilters, mapReports, selectedCategory]);
 
-  function handleStatusUpdate(report, status) {
-    updateReportStatus({
-      reportId: report.id,
-      status,
-      adminId: 'local-admin'
-    });
-
-    if (['resolved', 'rejected'].includes(status)) {
-      setSelectedReport(null);
-    }
+  function handleToggleStatusFilter(filterId) {
+    setActiveStatusFilters((currentFilters) => ({
+      ...currentFilters,
+      [filterId]: !currentFilters[filterId]
+    }));
   }
 
   return (
@@ -345,6 +361,25 @@ export default function ReportMapPage() {
           {mapMessage && filteredReports.length === 0 && <p className="gis-map-status">{mapMessage}</p>}
 
           <aside className="map-categories-panel">
+            <section className="map-status-filter-panel" aria-label="Report status map filters">
+              <header>
+                <h2>Map Filters</h2>
+              </header>
+              <div className="map-status-toggle-list">
+                {reportStatusFilters.map((filter) => (
+                  <label className={`map-status-toggle map-status-toggle--${filter.tone}`} key={filter.id}>
+                    <input
+                      checked={activeStatusFilters[filter.id]}
+                      onChange={() => handleToggleStatusFilter(filter.id)}
+                      type="checkbox"
+                    />
+                    <span aria-hidden="true" />
+                    <strong>{filter.label}</strong>
+                  </label>
+                ))}
+              </div>
+            </section>
+
             <header>
               <h2>Categories</h2>
             </header>
@@ -367,7 +402,6 @@ export default function ReportMapPage() {
         {selectedReport && (
           <ReportDetailsPanel
             onClose={() => setSelectedReport(null)}
-            onStatusUpdate={handleStatusUpdate}
             report={selectedReport}
           />
         )}
