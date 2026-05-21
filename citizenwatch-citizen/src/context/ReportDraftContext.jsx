@@ -22,6 +22,17 @@ const initialDraft = {
     subAddress: '',
     source: null
   },
+  deviceLocation: null,
+  locationValidation: {
+    status: '',
+    tone: '',
+    label: '',
+    message: '',
+    helper: '',
+    distanceMeters: null,
+    source: '',
+    checkedAt: ''
+  },
   issueType: '',
   urgency: '',
   description: ''
@@ -39,6 +50,10 @@ function sanitizeDraft(draft = {}) {
     location: {
       ...initialDraft.location,
       ...(draft.location || {})
+    },
+    locationValidation: {
+      ...initialDraft.locationValidation,
+      ...(draft.locationValidation || {})
     }
   };
 }
@@ -151,7 +166,60 @@ export function useReportDraft() {
   const context = useContext(ReportDraftContext);
 
   if (!context) {
-    throw new Error('useReportDraft must be used within ReportDraftProvider.');
+    console.warn('ReportDraftProvider was not found. Using sessionStorage report draft fallback.');
+
+    return {
+      draft: readStoredDraft(),
+      updateDraft: (updates) => {
+        const nextDraft = sanitizeDraft({
+          ...readStoredDraft(),
+          ...updates,
+          updatedAt: new Date().toISOString()
+        });
+        persistDraft(nextDraft);
+      },
+      updatePhoto: (file, previewUrl) => {
+        const nextDraft = sanitizeDraft({
+          ...readStoredDraft(),
+          selectedFile: file || null,
+          photoPreview: previewUrl || '',
+          fileName: file?.name || '',
+          fileSize: file?.size ? formatFileSize(file.size) : '',
+          metadataPreview: null,
+          exifLat: null,
+          exifLng: null,
+          exifTimestamp: '',
+          hasExifGps: false,
+          evidenceCapturedAt: previewUrl ? new Date().toISOString() : ''
+        });
+        persistDraft(nextDraft);
+      },
+      updateLocation: (locationData) => {
+        const nextDraft = sanitizeDraft({
+          ...readStoredDraft(),
+          location: {
+            ...initialDraft.location,
+            ...(locationData || {})
+          },
+          updatedAt: new Date().toISOString()
+        });
+        persistDraft(nextDraft);
+      },
+      updateIssueDetails: (details) => {
+        const nextDraft = sanitizeDraft({
+          ...readStoredDraft(),
+          ...details,
+          updatedAt: new Date().toISOString()
+        });
+        persistDraft(nextDraft);
+      },
+      resetDraft: () => {
+        if (canUseSessionStorage()) {
+          window.sessionStorage.removeItem(REPORT_DRAFT_STORAGE_KEY);
+        }
+      },
+      getDraft: readStoredDraft
+    };
   }
 
   return context;

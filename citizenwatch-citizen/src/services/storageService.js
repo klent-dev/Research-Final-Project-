@@ -1,4 +1,4 @@
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { storage } from '../firebase/storage.js';
 
 export async function uploadReportPhoto({ file, reportId, userId }) {
@@ -6,12 +6,27 @@ export async function uploadReportPhoto({ file, reportId, userId }) {
     throw new Error('Firebase Storage is not configured.');
   }
 
-  const safeName = file.name.replaceAll(' ', '-').toLowerCase();
+  const fileName = file?.name || 'report-photo.jpg';
+  const fileType = file?.type || 'image/jpeg';
+  const safeName = fileName.replaceAll(' ', '-').toLowerCase();
   const photoRef = ref(storage, `reports/${userId}/${reportId}/${Date.now()}-${safeName}`);
   const snapshot = await uploadBytes(photoRef, file, {
-    contentType: file.type
+    contentType: fileType
   });
 
   return getDownloadURL(snapshot.ref);
+}
+
+export async function deleteReportPhotoByUrl(photoUrl) {
+  if (!photoUrl) {
+    return;
+  }
+
+  if (!storage) {
+    throw new Error('Firebase Storage is not configured.');
+  }
+
+  const photoRef = ref(storage, photoUrl);
+  await deleteObject(photoRef);
 }
 

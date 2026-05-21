@@ -151,7 +151,6 @@ export default function CreateReportPage() {
   const cameraInputRef = useRef(null);
   const objectUrlRef = useRef('');
   const scrollPositionRef = useRef(0);
-  const autoAdvanceRef = useRef(false);
   const navigate = useNavigate();
   const selectedFileName = selectedFile?.name || draft.fileName || '';
   const selectedFileSize = selectedFile ? formatFileSize(selectedFile) : draft.fileSize || '';
@@ -209,7 +208,6 @@ export default function CreateReportPage() {
     setSelectedFile(file);
     setPreviewUrl(nextPreviewUrl);
     setStepError('');
-    autoAdvanceRef.current = false;
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -262,12 +260,6 @@ export default function CreateReportPage() {
         }
       });
 
-      if (hasExifGps && !autoAdvanceRef.current) {
-        autoAdvanceRef.current = true;
-        window.setTimeout(() => {
-          navigate('/reports/create/details');
-        }, 650);
-      }
     } catch (error) {
       console.warn('Unable to read image EXIF metadata.', error);
       updateDraft({
@@ -300,7 +292,6 @@ export default function CreateReportPage() {
 
     setSelectedFile(null);
     setPreviewUrl('');
-    autoAdvanceRef.current = false;
 
     updateDraft({
       selectedFile: null,

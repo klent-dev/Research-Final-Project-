@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -16,16 +16,26 @@ import {
 import PageContainer from '../../components/PageContainer.jsx';
 import {
   formatStatusLabel,
-  getReportById,
+  getReportById as getLocalReportById,
   getStatusColor
 } from '../../services/localReportService.js';
+import { isFirebaseConfigured } from '../../firebase/config.js';
+import { getReportById as getFirebaseReportById } from '../../services/reportService.js';
 import { ReportMapMarker } from '../../utils/mapMarkers.js';
 import '../../styles/reportDetails.css';
 
 function hasValidCoordinates(report) {
-  return Boolean(
-    Number.isFinite(Number(report?.location?.lat)) &&
-    Number.isFinite(Number(report?.location?.lng))
+  const lat = Number(report?.location?.lat);
+  const lng = Number(report?.location?.lng);
+
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180 &&
+    !(lat === 0 && lng === 0)
   );
 }
 
@@ -90,7 +100,56 @@ function getTimelineState(status, step) {
 export default function ReportDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const report = getReportById(id);
+  const [report, setReport] = useState(() => getLocalReportById(id));
+  const [isLoading, setIsLoading] = useState(() => isFirebaseConfigured && !getLocalReportById(id));
+
+  useEffect(() => {
+    let ignore = false;
+    const localReport = getLocalReportById(id);
+
+    if (localReport) {
+      setReport(localReport);
+      setIsLoading(false);
+      return undefined;
+    }
+
+    if (!isFirebaseConfigured) {
+      setReport(null);
+      setIsLoading(false);
+      return undefined;
+    }
+
+    setIsLoading(true);
+    getFirebaseReportById(id)
+      .then((firebaseReport) => {
+        if (!ignore) {
+          setReport(firebaseReport);
+          setIsLoading(false);
+        }
+      })
+      .catch((error) => {
+        console.warn('Unable to load report details from Firebase.', error);
+        if (!ignore) {
+          setReport(null);
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <PageContainer className="report-details-page">
+        <section className="report-details-empty">
+          <h2>Loading report...</h2>
+          <p>Please wait while we retrieve the report details.</p>
+        </section>
+      </PageContainer>
+    );
+  }
 
   if (!report) {
     return (
@@ -116,6 +175,7 @@ export default function ReportDetailsPage() {
   const hasLocation = hasValidCoordinates(report);
   const locationPosition = hasLocation ? [Number(report.location.lat), Number(report.location.lng)] : null;
   const statusTone = getStatusColor(report.status);
+  const reportPhoto = report.photoPreview || report.photoUrl || report.imageUrl || '';
   const timelineSteps = [
     ['submitted', 'Submitted'],
     ['under_review', 'Under Review'],
@@ -139,8 +199,8 @@ export default function ReportDetailsPage() {
       </header>
 
       <section className="report-details-photo-card">
-        {report.photoPreview ? (
-          <img src={report.photoPreview} alt={`${report.issueType} report evidence`} />
+        {reportPhoto ? (
+          <img src={reportPhoto} alt={`${report.issueType} report evidence`} />
         ) : (
           <div className="report-details-photo-empty">
             <FaEye aria-hidden="true" />

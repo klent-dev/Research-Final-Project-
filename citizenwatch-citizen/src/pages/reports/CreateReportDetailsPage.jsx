@@ -13,7 +13,12 @@ import {
 } from 'react-icons/fa';
 import responseImage from '../../assets/images/Response.png';
 import { useReportDraft } from '../../context/ReportDraftContext.jsx';
-import { buildReportFromDraft, clearReports } from '../../services/localReportService.js';
+import {
+  buildReportFromDraft,
+  generateTrackingId,
+  saveReport,
+  setLastSubmittedReportReference
+} from '../../services/localReportService.js';
 import { createInfrastructureReport } from '../../services/reportService.js';
 import { SEVERITY_LEVELS, normalizeUrgency } from '../../utils/severity.js';
 
@@ -28,6 +33,21 @@ const issueTypes = [
 const urgencyLevels = SEVERITY_LEVELS;
 const SAVED_DRAFT_STORAGE_KEY = 'citizenwatch_saved_report_draft';
 
+function hasValidDraftLocation(location) {
+  const lat = Number(location?.lat);
+  const lng = Number(location?.lng);
+
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180 &&
+    !(lat === 0 && lng === 0)
+  );
+}
+
 export default function CreateReportDetailsPage() {
   const { draft, resetDraft, updateIssueDetails } = useReportDraft();
   const [selectedIssueType, setSelectedIssueType] = useState(draft.issueType || 'Drainage');
@@ -39,10 +59,7 @@ export default function CreateReportDetailsPage() {
   const photoPreview = draft.photoPreview || responseImage;
   const hasPhoto = Boolean(draft.photoPreview);
   const locationLabel = draft.location?.address || 'Location pending';
-  const hasLocation = Boolean(
-    Number.isFinite(Number(draft.location?.lat)) &&
-    Number.isFinite(Number(draft.location?.lng))
-  );
+  const hasLocation = hasValidDraftLocation(draft.location);
 
   useEffect(() => {
     if (!hasPhoto) {
@@ -144,19 +161,51 @@ export default function CreateReportDetailsPage() {
 
     const reportPayload = buildReportFromDraft({
       ...nextDraft,
+      trackingId: generateTrackingId(),
       status: 'under_review',
-      createdBy: 'local-citizen'
+      createdBy: 'demo-user',
+      selectedFile: draft.selectedFile,
+      photoFile: draft.selectedFile,
+      exif: {
+        hasGps: Boolean(draft.hasExifGps),
+        lat: draft.exifLat ?? null,
+        lng: draft.exifLng ?? null,
+        timestamp: draft.exifTimestamp || ''
+      }
     });
 
     try {
-      const firestoreReportId = await createInfrastructureReport(reportPayload);
-      clearReports();
+      const { reportId, trackingId, report } = await createInfrastructureReport(reportPayload);
+      setLastSubmittedReportReference({
+        ...report,
+        id: reportId,
+        reportId,
+        trackingId
+      });
       resetDraft();
-      console.log('Report saved to Firebase:', firestoreReportId);
-      navigate('/reports/create/success');
+      console.log('Report saved to Firebase:', reportId);
+      navigate('/reports/create/success', {
+        state: {
+          reportId,
+          trackingId
+        }
+      });
     } catch (error) {
       console.warn('Unable to save report to Firebase.', error);
-      setStepError('Unable to submit report right now. Please try again.');
+      const localReport = saveReport({
+        ...reportPayload,
+        syncedToFirestore: false
+      });
+
+      setLastSubmittedReportReference(localReport);
+      resetDraft();
+      console.log('Report saved locally for research testing:', localReport.id);
+      navigate('/reports/create/success', {
+        state: {
+          reportId: localReport.id,
+          trackingId: localReport.trackingId
+        }
+      });
     } finally {
       setIsSubmitting(false);
     }

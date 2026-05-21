@@ -1,10 +1,10 @@
 import { normalizeUrgency } from '../utils/severity.js';
-import { isFirebaseConfigured } from '../firebase/config.js';
 
 export const REPORTS_STORAGE_KEY = 'citizenwatch_reports';
 export const ALERTS_STORAGE_KEY = 'citizenwatch_alerts';
 export const REPORT_DRAFT_STORAGE_KEY = 'citizenwatch_report_draft';
 export const LAST_SUBMITTED_REPORT_KEY = 'citizenwatch_last_submitted_report_id';
+export const LAST_SUBMITTED_REPORT_REF_KEY = 'citizenwatch_last_submitted_report';
 
 const DEFAULT_CREATED_BY = 'local-citizen';
 
@@ -40,6 +40,14 @@ function writeJson(storage, key, value) {
   } catch (error) {
     console.warn(`Unable to write ${key} to storage.`, error);
   }
+}
+
+function notifyReportsChanged() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.dispatchEvent(new Event('citizenwatch:reports-updated'));
 }
 
 function createId() {
@@ -85,6 +93,8 @@ function normalizeReport(report) {
     },
     photoPreview: report.photoPreview || '',
     photoUrl: report.photoPreview || report.photoUrl || '',
+    deviceLocation: report.deviceLocation || null,
+    locationValidation: report.locationValidation || null,
     createdBy: report.createdBy || DEFAULT_CREATED_BY,
     reporterId: report.reporterId || report.createdBy || DEFAULT_CREATED_BY,
     reporterName: report.reporterName || '',
@@ -94,11 +104,6 @@ function normalizeReport(report) {
 }
 
 export function getReports() {
-  if (isFirebaseConfigured) {
-    clearReports();
-    return [];
-  }
-
   const reports = readJson(window.localStorage, REPORTS_STORAGE_KEY, []);
 
   if (!Array.isArray(reports)) {
@@ -118,6 +123,7 @@ export function saveReport(report) {
   // TODO: Replace localStorage with Firestore backend
   writeJson(window.localStorage, REPORTS_STORAGE_KEY, nextReports);
   setLastSubmittedReportId(nextReport.id);
+  notifyReportsChanged();
 
   return nextReport;
 }
@@ -137,6 +143,7 @@ export function markReportSynced(localReportId, firestoreReportId) {
   );
 
   writeJson(window.localStorage, REPORTS_STORAGE_KEY, nextReports);
+  notifyReportsChanged();
   return nextReports;
 }
 
@@ -151,6 +158,7 @@ export function deleteReport(id) {
   // TODO: Replace localStorage with Firestore backend
   writeJson(window.localStorage, REPORTS_STORAGE_KEY, nextReports);
   deleteLinkedAlerts(id);
+  notifyReportsChanged();
 
   if (canUseStorage(window.sessionStorage)) {
     const lastSubmittedId = window.sessionStorage.getItem(LAST_SUBMITTED_REPORT_KEY);
@@ -169,9 +177,12 @@ export function clearReports() {
 
   window.localStorage.removeItem(REPORTS_STORAGE_KEY);
   window.localStorage.removeItem(ALERTS_STORAGE_KEY);
+  window.localStorage.removeItem(LAST_SUBMITTED_REPORT_REF_KEY);
+  notifyReportsChanged();
 
   if (canUseStorage(window.sessionStorage)) {
     window.sessionStorage.removeItem(LAST_SUBMITTED_REPORT_KEY);
+    window.sessionStorage.removeItem(LAST_SUBMITTED_REPORT_REF_KEY);
   }
 }
 
@@ -183,6 +194,7 @@ export function updateReportStatus(id, status) {
   );
 
   writeJson(window.localStorage, REPORTS_STORAGE_KEY, nextReports);
+  notifyReportsChanged();
   return nextReports.find((report) => report.id === id) || null;
 }
 
@@ -300,21 +312,61 @@ export function setLastSubmittedReportId(id) {
   window.sessionStorage.setItem(LAST_SUBMITTED_REPORT_KEY, id);
 }
 
+export function setLastSubmittedReportReference(report) {
+  if (!canUseStorage(window.sessionStorage) || !report) {
+    return;
+  }
+
+  const submittedReference = {
+    id: report.id || report.reportId || '',
+    reportId: report.reportId || report.id || '',
+    trackingId: report.trackingId || '',
+    issueType: report.issueType || report.category || '',
+    status: report.status || 'under_review',
+    createdAt: report.createdAt || new Date().toISOString()
+  };
+
+  writeJson(window.sessionStorage, LAST_SUBMITTED_REPORT_REF_KEY, submittedReference);
+
+  if (canUseStorage(window.localStorage)) {
+    writeJson(window.localStorage, LAST_SUBMITTED_REPORT_REF_KEY, submittedReference);
+  }
+
+  if (report.id || report.reportId) {
+    window.sessionStorage.setItem(LAST_SUBMITTED_REPORT_KEY, report.id || report.reportId);
+  }
+}
+
+export function getLastSubmittedReportReference() {
+  return (
+    readJson(window.sessionStorage, LAST_SUBMITTED_REPORT_REF_KEY, null) ||
+    readJson(window.localStorage, LAST_SUBMITTED_REPORT_REF_KEY, null)
+  );
+}
+
 export function getLastSubmittedReport() {
-  if (!canUseStorage(window.sessionStorage)) {
+  if (!canUseStorage(window.sessionStorage) && !canUseStorage(window.localStorage)) {
     return null;
   }
 
-  const id = window.sessionStorage.getItem(LAST_SUBMITTED_REPORT_KEY);
+  const submittedReference = getLastSubmittedReportReference();
+  if (submittedReference) {
+    return submittedReference;
+  }
+
+  const id = canUseStorage(window.sessionStorage)
+    ? window.sessionStorage.getItem(LAST_SUBMITTED_REPORT_KEY)
+    : '';
   return id ? getReportById(id) : null;
 }
 
 export function buildReportFromDraft(draft) {
   const now = new Date().toISOString();
 
-  return normalizeReport({
+  return {
+    ...normalizeReport({
     id: createId(),
-    trackingId: generateTrackingId(),
+    trackingId: draft.trackingId || generateTrackingId(),
     issueType: draft.issueType,
     urgency: draft.urgency,
     description: draft.description,
@@ -323,8 +375,14 @@ export function buildReportFromDraft(draft) {
     updatedAt: now,
     location: draft.location,
     photoPreview: draft.photoPreview,
-    createdBy: DEFAULT_CREATED_BY
-  });
+    createdBy: draft.createdBy || DEFAULT_CREATED_BY
+    }),
+    selectedFile: draft.selectedFile || null,
+    photoFile: draft.photoFile || draft.selectedFile || null,
+    exif: draft.exif || null,
+    deviceLocation: draft.deviceLocation || null,
+    locationValidation: draft.locationValidation || null
+  };
 }
 
 function deleteLinkedAlerts(reportId) {

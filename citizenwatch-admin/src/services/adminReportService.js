@@ -22,7 +22,6 @@ const LOCAL_STORAGE_REPORT_KEYS = [
 export const REJECTED_REPORT_REASON = 'This report is either fake, not traceable, or no problem was found after review.';
 
 const listeners = new Set();
-let cachedReports = null;
 
 function shouldUseFirestore() {
   return Boolean(isFirebaseConfigured && db);
@@ -265,7 +264,6 @@ export function updateLocalReport() {
 }
 
 export function resetLocalReports() {
-  cachedReports = [];
   clearLocalReportStorage();
   notifyReportListeners();
 }

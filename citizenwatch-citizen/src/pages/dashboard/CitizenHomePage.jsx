@@ -16,7 +16,8 @@ import {
   FaTrash
 } from 'react-icons/fa';
 import PageContainer from '../../components/PageContainer.jsx';
-import { getReports } from '../../services/localReportService.js';
+import { useReports } from '../../hooks/useReports.js';
+import { hasValidCoordinates } from '../../services/mapService.js';
 import { HomePreviewMarker } from '../../utils/mapMarkers.js';
 
 const LAHUG_CENTER = {
@@ -52,9 +53,8 @@ function HomeMapBridge({ mapRef }) {
 export default function CitizenHomePage() {
   const [userLocation, setUserLocation] = useState(null);
   const mapRef = useRef(null);
-  // TODO: Replace localStorage with Firestore backend
-  const reports = getReports();
-  const nearbyReports = reports.filter((report) => report.location?.lat && report.location?.lng).slice(0, 3);
+  const { reports } = useReports();
+  const nearbyReports = reports.filter(hasValidCoordinates).slice(0, 3);
   const impactStats = [
     { label: 'Submitted', value: reports.length.toString() },
     {
@@ -163,7 +163,7 @@ export default function CitizenHomePage() {
       <section className="citizen-nearby-card">
         <header className="nearby-header">
           <div className="nearby-title-group">
-            <h2>Nearby Reports</h2>
+            <h2>Map Reports</h2>
             <p>Live activity in your current district</p>
           </div>
           <Link className="expand-map-button" to="/map">
@@ -206,7 +206,7 @@ export default function CitizenHomePage() {
             {nearbyReports.length === 0 && (
               <div className="citizen-map-empty-state">
                 <FaMapMarkerAlt aria-hidden="true" />
-                <h3>No nearby reports available.</h3>
+                <h3>No map reports available.</h3>
                 <p>Live district activity will appear here.</p>
               </div>
             )}

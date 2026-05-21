@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   FaCheck,
   FaCopy,
@@ -12,7 +12,16 @@ import { getLastSubmittedReport } from '../../services/localReportService.js';
 
 export default function CreateReportSuccessPage() {
   const navigate = useNavigate();
-  const submittedReport = getLastSubmittedReport();
+  const location = useLocation();
+  const submittedReport = useMemo(() => (
+    location.state?.trackingId
+      ? {
+          id: location.state.reportId,
+          reportId: location.state.reportId,
+          trackingId: location.state.trackingId
+        }
+      : getLastSubmittedReport()
+  ), [location.state]);
   const trackingId = submittedReport?.trackingId || 'Pending';
 
   useEffect(() => {

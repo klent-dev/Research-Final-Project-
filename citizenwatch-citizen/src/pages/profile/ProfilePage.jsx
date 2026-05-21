@@ -15,7 +15,8 @@ import { HiOutlineBadgeCheck } from 'react-icons/hi';
 import PageContainer from '../../components/PageContainer.jsx';
 import communityImage from '../../assets/images/Community.png';
 import responseImage from '../../assets/images/Response.png';
-import { formatReportDate, formatStatusLabel, getReports, getStatusColor } from '../../services/localReportService.js';
+import { useReports } from '../../hooks/useReports.js';
+import { formatReportDate, formatStatusLabel, getStatusColor } from '../../services/localReportService.js';
 
 const citizenProfile = {
   // TODO: Replace with Firebase Auth user profile after authentication is re-enabled
@@ -41,8 +42,7 @@ const quickActions = [
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  // TODO: Replace localStorage with Firestore backend
-  const reports = getReports();
+  const { reports } = useReports();
   const stats = [
     { label: 'Submitted', value: reports.length.toString(), icon: FaRegFileAlt, tone: 'green' },
     {
@@ -121,7 +121,7 @@ export default function ProfilePage() {
                 onClick={() => navigate(`/reports/${report.id}`)}
                 type="button"
               >
-                <img src={report.photoPreview || responseImage} alt="" />
+                <img src={report.photoPreview || report.photoUrl || report.imageUrl || responseImage} alt="" />
                 <div>
                   <h3>{report.title}</h3>
                   <time>{formatReportDate(report.createdAt)}</time>

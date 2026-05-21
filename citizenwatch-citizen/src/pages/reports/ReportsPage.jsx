@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FaBullhorn,
@@ -12,75 +11,22 @@ import PageContainer from '../../components/PageContainer.jsx';
 import communityImage from '../../assets/images/Community.png';
 import responseImage from '../../assets/images/Response.png';
 import {
-  clearReports,
   deleteReport,
   formatStatusLabel,
   formatReportDate,
-  getReports,
   getStatusColor
 } from '../../services/localReportService.js';
-import { getCitizenReports } from '../../services/reportService.js';
 import { isFirebaseConfigured } from '../../firebase/config.js';
-import { useAuth } from '../../hooks/useAuth.js';
+import { useReports } from '../../hooks/useReports.js';
+import { deleteInfrastructureReport } from '../../services/reportService.js';
 
 export default function ReportsPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const [reports, setReports] = useState(() => (isFirebaseConfigured ? [] : getReports()));
-  const [syncMessage, setSyncMessage] = useState('');
+  const { reports, error, refreshReports } = useReports();
+  const syncMessage = error || (!isFirebaseConfigured ? 'Firebase is not configured. Add your Firebase env values to submit and load reports.' : '');
   const resolvedReports = reports.filter((report) => report.status === 'resolved');
 
-  useEffect(() => {
-    if (isFirebaseConfigured) {
-      return undefined;
-    }
-
-    function refreshLocalReports() {
-      setReports(getReports());
-    }
-
-    window.addEventListener('storage', refreshLocalReports);
-    window.addEventListener('citizenwatch:reports-updated', refreshLocalReports);
-
-    return () => {
-      window.removeEventListener('storage', refreshLocalReports);
-      window.removeEventListener('citizenwatch:reports-updated', refreshLocalReports);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isFirebaseConfigured) {
-      setSyncMessage('Firebase is not configured. Add your Firebase env values to submit and load reports.');
-      return;
-    }
-
-    let ignore = false;
-
-    async function loadFirebaseReports() {
-      clearReports();
-
-      try {
-        const nextReports = await getCitizenReports(user?.uid || 'anonymous-citizen');
-        if (!ignore) {
-          setReports(nextReports);
-        }
-        setSyncMessage('');
-      } catch (error) {
-        console.warn('Unable to load reports from Firestore.', error);
-        if (!ignore) {
-          setSyncMessage('Unable to load reports from Firebase. Check Firebase configuration.');
-        }
-      }
-    }
-
-    loadFirebaseReports();
-
-    return () => {
-      ignore = true;
-    };
-  }, [user]);
-
-  function handleDeleteReport(event, reportId) {
+  async function handleDeleteReport(event, report) {
     event.stopPropagation();
     const confirmed = window.confirm('Are you sure you want to delete this report?');
 
@@ -88,7 +34,18 @@ export default function ReportsPage() {
       return;
     }
 
-    setReports(deleteReport(reportId));
+    try {
+      if (isFirebaseConfigured) {
+        await deleteInfrastructureReport(report);
+        deleteReport(report.id);
+      } else {
+        deleteReport(report.id);
+        refreshReports();
+      }
+    } catch (error) {
+      console.warn('Unable to delete report from Firebase.', error);
+      window.alert('Unable to delete this report. Please check your connection and try again.');
+    }
   }
 
   function handleOpenReport(reportId) {
@@ -164,7 +121,7 @@ export default function ReportsPage() {
                 role="button"
                 tabIndex={0}
               >
-                <img src={report.photoPreview || responseImage} alt="" />
+                <img src={report.photoPreview || report.photoUrl || report.imageUrl || responseImage} alt="" />
                 <div className="reports-list-card__body">
                   <div>
                     <h3>{report.title}</h3>
@@ -176,7 +133,7 @@ export default function ReportsPage() {
                         aria-label="Delete report"
                         className="reports-delete-button"
                         onKeyDown={(event) => event.stopPropagation()}
-                        onClick={(event) => handleDeleteReport(event, report.id)}
+                        onClick={(event) => handleDeleteReport(event, report)}
                         type="button"
                       >
                         <FiTrash2 aria-hidden="true" />

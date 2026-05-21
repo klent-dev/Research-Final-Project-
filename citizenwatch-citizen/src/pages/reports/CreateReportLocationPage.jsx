@@ -6,12 +6,14 @@ import {
   FaArrowLeft,
   FaArrowRight,
   FaCheckCircle,
+  FaExclamationTriangle,
   FaGavel,
   FaInfoCircle,
   FaLocationArrow,
   FaMapMarkerAlt
 } from 'react-icons/fa';
 import { useReportDraft } from '../../context/ReportDraftContext.jsx';
+import { validatePhotoLocation } from '../../utils/locationValidation.js';
 import { getMarkerBySeverity } from '../../utils/mapMarkers.js';
 
 const LAHUG_CENTER = {
@@ -35,9 +37,10 @@ function LocationMapBridge({ location, mapRef }) {
 
   useEffect(() => {
     mapRef.current = map;
-    window.setTimeout(() => map.invalidateSize(), 0);
+    const resizeTimer = window.setTimeout(() => map.invalidateSize(), 0);
 
     return () => {
+      window.clearTimeout(resizeTimer);
       if (mapRef.current === map) {
         mapRef.current = null;
       }
@@ -56,10 +59,53 @@ function LocationMapBridge({ location, mapRef }) {
   return null;
 }
 
+function SafeCreateLocationMap({ reportLocation, hasLocation, mapRef }) {
+  try {
+    return (
+      <MapContainer
+        attributionControl={false}
+        center={[LAHUG_CENTER.lat, LAHUG_CENTER.lng]}
+        className="create-location-leaflet-map"
+        scrollWheelZoom
+        zoom={14}
+        zoomControl={false}
+      >
+        <LocationMapBridge location={reportLocation} mapRef={mapRef} />
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+
+        {hasLocation && (
+          <Marker icon={getMarkerBySeverity('Low')} position={[reportLocation.lat, reportLocation.lng]}>
+            <Popup>{reportLocation.address}</Popup>
+          </Marker>
+        )}
+      </MapContainer>
+    );
+  } catch (error) {
+    console.warn('Create report location map failed to render.', error);
+    return (
+      <div className="create-location-map-fallback">
+        <FaMapMarkerAlt aria-hidden="true" />
+        <p>Map preview is unavailable.</p>
+      </div>
+    );
+  }
+}
+
 function hasValidLocation(location) {
+  const lat = Number(location?.lat);
+  const lng = Number(location?.lng);
+
   return (
-    Number.isFinite(Number(location?.lat)) &&
-    Number.isFinite(Number(location?.lng))
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180 &&
+    !(lat === 0 && lng === 0)
   );
 }
 
@@ -110,11 +156,23 @@ function createExifLocation(draft) {
 
 export default function CreateReportLocationPage() {
   const navigate = useNavigate();
-  const { draft, updateLocation } = useReportDraft();
-  // TODO: Connect browser Geolocation API and reverse geocoding
-  // TODO: Compare EXIF GPS with browser GPS for validation scoring
+  const { draft, updateDraft, updateLocation } = useReportDraft();
+  // TODO: Add reverse geocoding for human-readable address
   const [reportLocation, setReportLocation] = useState(() => (
     normalizeSelectedLocation(draft.location) || createExifLocation(draft)
+  ));
+  const [deviceLocation, setDeviceLocation] = useState(() => (
+    normalizeSelectedLocation(draft.deviceLocation) || null
+  ));
+  const [locationValidation, setLocationValidation] = useState(() => (
+    draft.locationValidation?.status
+      ? draft.locationValidation
+      : validatePhotoLocation({
+        exifLocation: createExifLocation(draft),
+        deviceLocation: draft.deviceLocation,
+        manualLocation: draft.location?.source === 'manual' ? draft.location : null,
+        selectedLocation: draft.location
+      })
   ));
   const [isManualAddressOpen, setIsManualAddressOpen] = useState(false);
   const [manualAddress, setManualAddress] = useState(() => draft.location?.source === 'manual' ? draft.location.address : '');
@@ -126,6 +184,28 @@ export default function CreateReportLocationPage() {
   const isGpsLocation = reportLocation?.source === 'gps';
   const isExifLocation = reportLocation?.source === 'exif';
   const hasAccuracy = Number.isFinite(Number(reportLocation?.accuracy));
+  const LocationValidationIcon = locationValidation?.tone === 'danger' ? FaExclamationTriangle : FaCheckCircle;
+
+  const updateLocationValidationState = useCallback(({
+    nextExifLocation = createExifLocation(draft),
+    nextDeviceLocation = deviceLocation,
+    nextSelectedLocation = reportLocation
+  } = {}) => {
+    const nextValidation = validatePhotoLocation({
+      exifLocation: nextExifLocation,
+      deviceLocation: nextDeviceLocation,
+      manualLocation: nextSelectedLocation?.source === 'manual' ? nextSelectedLocation : null,
+      selectedLocation: nextSelectedLocation
+    });
+
+    setLocationValidation(nextValidation);
+    updateDraft({
+      deviceLocation: nextDeviceLocation || null,
+      locationValidation: nextValidation
+    });
+
+    return nextValidation;
+  }, [deviceLocation, draft, reportLocation, updateDraft]);
 
   useEffect(() => {
     if (!hasPhoto) {
@@ -139,8 +219,24 @@ export default function CreateReportLocationPage() {
   }, [hasPhoto, navigate]);
 
   const requestUserLocation = useCallback(() => {
+    const applyTestingLocation = (message) => {
+      const fallbackLocation = normalizeSelectedLocation(createTestLocation());
+      setReportLocation(fallbackLocation);
+      updateLocation(fallbackLocation);
+      updateLocationValidationState({
+        nextExifLocation: null,
+        nextDeviceLocation: null,
+        nextSelectedLocation: fallbackLocation
+      });
+      setLocationError(message);
+      mapRef.current?.flyTo([fallbackLocation.lat, fallbackLocation.lng], 15, {
+        animate: true,
+        duration: 0.8
+      });
+    };
+
     if (!navigator.geolocation) {
-      setLocationError('GPS is not supported by this browser.');
+      applyTestingLocation('GPS is not supported by this browser. A temporary test location was selected.');
       return;
     }
 
@@ -157,23 +253,59 @@ export default function CreateReportLocationPage() {
         };
 
         const normalizedLocation = normalizeSelectedLocation(nextLocation);
+        setDeviceLocation(normalizedLocation);
+        setLocationError('');
+        const exifLocation = createExifLocation(draft);
+
+        if (exifLocation) {
+          const normalizedExifLocation = normalizeSelectedLocation(exifLocation);
+          setReportLocation(normalizedExifLocation);
+          updateLocation(normalizedExifLocation);
+          updateLocationValidationState({
+            nextExifLocation: normalizedExifLocation,
+            nextDeviceLocation: normalizedLocation,
+            nextSelectedLocation: normalizedExifLocation
+          });
+          mapRef.current?.flyTo([normalizedExifLocation.lat, normalizedExifLocation.lng], 16, {
+            animate: true,
+            duration: 0.8
+          });
+          return;
+        }
+
         setReportLocation(normalizedLocation);
         updateLocation(normalizedLocation);
-        setLocationError('');
+        updateLocationValidationState({
+          nextExifLocation: null,
+          nextDeviceLocation: normalizedLocation,
+          nextSelectedLocation: normalizedLocation
+        });
         mapRef.current?.flyTo([normalizedLocation.lat, normalizedLocation.lng], 16, {
           animate: true,
           duration: 0.8
         });
       },
       () => {
-        const fallbackLocation = normalizeSelectedLocation(createTestLocation());
-        setReportLocation(fallbackLocation);
-        updateLocation(fallbackLocation);
-        setLocationError('GPS unavailable. A temporary test location was selected.');
-        mapRef.current?.flyTo([fallbackLocation.lat, fallbackLocation.lng], 15, {
-          animate: true,
-          duration: 0.8
-        });
+        const exifLocation = createExifLocation(draft);
+
+        if (exifLocation) {
+          const normalizedExifLocation = normalizeSelectedLocation(exifLocation);
+          setReportLocation(normalizedExifLocation);
+          updateLocation(normalizedExifLocation);
+          updateLocationValidationState({
+            nextExifLocation: normalizedExifLocation,
+            nextDeviceLocation: null,
+            nextSelectedLocation: normalizedExifLocation
+          });
+          setLocationError('Device GPS unavailable. Photo GPS is being used for this report.');
+          mapRef.current?.flyTo([normalizedExifLocation.lat, normalizedExifLocation.lng], 16, {
+            animate: true,
+            duration: 0.8
+          });
+          return;
+        }
+
+        applyTestingLocation('GPS unavailable. A temporary test location was selected.');
       },
       {
         enableHighAccuracy: true,
@@ -181,16 +313,14 @@ export default function CreateReportLocationPage() {
         maximumAge: 60000
       }
     );
-  }, [updateLocation]);
+  }, [draft, updateLocation, updateLocationValidationState]);
 
   useEffect(() => {
-    const hasExifLocation = Boolean(createExifLocation(draft));
-
-    if (hasPhoto && !hasLocation && !hasExifLocation && !hasRequestedBrowserLocationRef.current) {
+    if (hasPhoto && !hasRequestedBrowserLocationRef.current) {
       hasRequestedBrowserLocationRef.current = true;
       requestUserLocation();
     }
-  }, [draft, hasLocation, hasPhoto, requestUserLocation]);
+  }, [hasPhoto, requestUserLocation]);
 
   useEffect(() => {
     if (!hasPhoto) {
@@ -203,6 +333,11 @@ export default function CreateReportLocationPage() {
       const normalizedLocation = normalizeSelectedLocation(exifLocation);
       setReportLocation(normalizedLocation);
       updateLocation(normalizedLocation);
+      updateLocationValidationState({
+        nextExifLocation: normalizedLocation,
+        nextDeviceLocation: deviceLocation,
+        nextSelectedLocation: normalizedLocation
+      });
       setLocationError('');
       mapRef.current?.flyTo([normalizedLocation.lat, normalizedLocation.lng], 16, {
         animate: true,
@@ -212,8 +347,13 @@ export default function CreateReportLocationPage() {
 
     if (hasValidLocation(reportLocation) && reportLocation.source === 'exif' && !hasValidLocation(draft.location)) {
       updateLocation(normalizeSelectedLocation(reportLocation));
+      updateLocationValidationState({
+        nextExifLocation: reportLocation,
+        nextDeviceLocation: deviceLocation,
+        nextSelectedLocation: reportLocation
+      });
     }
-  }, [draft, hasPhoto, reportLocation, updateLocation]);
+  }, [deviceLocation, draft, hasPhoto, reportLocation, updateLocation, updateLocationValidationState]);
 
   useEffect(() => {
     if (hasLocation) {
@@ -232,6 +372,11 @@ export default function CreateReportLocationPage() {
 
     // TODO: Connect real GPS verification and map coordinates after UI is completed
     updateLocation(normalizeSelectedLocation(reportLocation));
+    updateLocationValidationState({
+      nextExifLocation: createExifLocation(draft),
+      nextDeviceLocation: deviceLocation,
+      nextSelectedLocation: reportLocation
+    });
     navigate('/reports/create/details');
   }
 
@@ -261,6 +406,11 @@ export default function CreateReportLocationPage() {
     const normalizedLocation = normalizeSelectedLocation(nextLocation);
     setReportLocation(normalizedLocation);
     updateLocation(normalizedLocation);
+    updateLocationValidationState({
+      nextExifLocation: createExifLocation(draft),
+      nextDeviceLocation: deviceLocation,
+      nextSelectedLocation: normalizedLocation
+    });
     setLocationError('');
     setIsManualAddressOpen(false);
     mapRef.current?.flyTo([normalizedLocation.lat, normalizedLocation.lng], 15, {
@@ -293,26 +443,7 @@ export default function CreateReportLocationPage() {
       </section>
 
       <section className="location-map-preview" aria-label="Live location map preview">
-        <MapContainer
-          attributionControl={false}
-          center={[LAHUG_CENTER.lat, LAHUG_CENTER.lng]}
-          className="create-location-leaflet-map"
-          scrollWheelZoom
-          zoom={14}
-          zoomControl={false}
-        >
-          <LocationMapBridge location={reportLocation} mapRef={mapRef} />
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-
-          {hasLocation && (
-            <Marker icon={getMarkerBySeverity('Low')} position={[reportLocation.lat, reportLocation.lng]}>
-              <Popup>{reportLocation.address}</Popup>
-            </Marker>
-          )}
-        </MapContainer>
+        <SafeCreateLocationMap hasLocation={hasLocation} mapRef={mapRef} reportLocation={reportLocation} />
 
         <div className={hasLocation ? 'gps-verified-pill' : 'gps-verified-pill gps-verified-pill--waiting'}>
           {hasLocation && <FaCheckCircle aria-hidden="true" />}
@@ -361,6 +492,15 @@ export default function CreateReportLocationPage() {
           <p>
             Exact location data helps municipal authorities identify and respond to infrastructure issues 30% faster.
           </p>
+        </div>
+
+        <div className={`location-validation-card location-validation-card--${locationValidation?.tone || 'neutral'}`}>
+          <LocationValidationIcon aria-hidden="true" />
+          <div>
+            <span>{locationValidation?.label || 'Location Validation'}</span>
+            <strong>{locationValidation?.message || 'Waiting for location validation.'}</strong>
+            <p>{locationValidation?.helper || 'Upload a photo and allow GPS to compare location accuracy.'}</p>
+          </div>
         </div>
 
         <button

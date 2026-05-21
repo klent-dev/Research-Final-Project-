@@ -24,12 +24,13 @@ import {
   filterReports,
   formatDistance,
   formatReportAge,
+  hasValidCoordinates,
   getVisibleCategory,
   getReportDistanceKm,
   getStatusTone,
-  loadMapReports,
   sortReportsByDistance
 } from '../../services/mapService.js';
+import { useReports } from '../../hooks/useReports.js';
 import { ReportMapMarker } from '../../utils/mapMarkers.js';
 import '../../styles/map.css';
 
@@ -97,34 +98,17 @@ class MapErrorBoundary extends Component {
 
 export default function MapPage() {
   const [activeFilter, setActiveFilter] = useState('All');
-  const [reports, setReports] = useState([]);
+  const { reports } = useReports();
   const [userLocation, setUserLocation] = useState(null);
   const [mapMessage, setMapMessage] = useState('');
   const mapRef = useRef(null);
 
-  const filteredReports = useMemo(() => filterReports(reports, activeFilter), [activeFilter, reports]);
+  const validReports = useMemo(() => reports.filter(hasValidCoordinates), [reports]);
+  const filteredReports = useMemo(() => filterReports(validReports, activeFilter), [activeFilter, validReports]);
   const nearbyReports = useMemo(
     () => sortReportsByDistance(filteredReports, userLocation).slice(0, 3),
     [filteredReports, userLocation]
   );
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function fetchReports() {
-      const loadedReports = await loadMapReports();
-
-      if (!ignore) {
-        setReports(loadedReports);
-      }
-    }
-
-    fetchReports();
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
 
   function handleZoomIn() {
     mapRef.current?.zoomIn();
@@ -263,7 +247,7 @@ export default function MapPage() {
 
       <section className="community-nearby-section">
         <header>
-          <h2>Nearby Reports</h2>
+          <h2>Map Reports</h2>
           <button type="button">See All</button>
         </header>
 
@@ -295,7 +279,7 @@ export default function MapPage() {
           ) : (
             <div className="community-map-empty">
               <FaMapMarkerAlt aria-hidden="true" />
-              <h3>No nearby reports available.</h3>
+              <h3>No map reports available.</h3>
               <p>Reported infrastructure issues will appear here.</p>
             </div>
           )}

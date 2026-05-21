@@ -10,7 +10,15 @@ export function hasValidCoordinates(report) {
   const lat = Number(report?.location?.lat);
   const lng = Number(report?.location?.lng);
 
-  return Number.isFinite(lat) && Number.isFinite(lng);
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180 &&
+    !(lat === 0 && lng === 0)
+  );
 }
 
 export function normalizeReport(report) {

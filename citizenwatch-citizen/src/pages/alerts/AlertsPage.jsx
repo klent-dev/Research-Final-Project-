@@ -7,15 +7,15 @@ import {
 } from 'react-icons/fa';
 import PageContainer from '../../components/PageContainer.jsx';
 import communityImage from '../../assets/images/Community.png';
-import { formatRelativeTime, getReports } from '../../services/localReportService.js';
+import { useReports } from '../../hooks/useReports.js';
+import { formatRelativeTime } from '../../services/localReportService.js';
 import '../../styles/alerts.css';
 
 const filters = ['All', 'Reports', 'Nearby', 'System'];
 
 export default function AlertsPage() {
   const [activeFilter, setActiveFilter] = useState('All');
-  // TODO: Replace localStorage with Firestore backend
-  const reports = getReports();
+  const { reports } = useReports();
   const alerts = reports.map((report) => ({
     id: `report-${report.id}`,
     title: 'Report Submitted',
