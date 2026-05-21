@@ -5,6 +5,7 @@ export const ALERTS_STORAGE_KEY = 'citizenwatch_alerts';
 export const REPORT_DRAFT_STORAGE_KEY = 'citizenwatch_report_draft';
 export const LAST_SUBMITTED_REPORT_KEY = 'citizenwatch_last_submitted_report_id';
 export const LAST_SUBMITTED_REPORT_REF_KEY = 'citizenwatch_last_submitted_report';
+export const HIDDEN_REPORTS_STORAGE_KEY = 'citizenwatch_hidden_report_ids';
 
 const DEFAULT_CREATED_BY = 'local-citizen';
 
@@ -170,6 +171,59 @@ export function deleteReport(id) {
   return nextReports;
 }
 
+function getReportIdentityKeys(reportOrId) {
+  if (!reportOrId) {
+    return [];
+  }
+
+  if (typeof reportOrId === 'string') {
+    return [reportOrId];
+  }
+
+  return [
+    reportOrId.id,
+    reportOrId.reportId,
+    reportOrId.firestoreReportId,
+    reportOrId.trackingId
+  ].filter(Boolean);
+}
+
+export function getHiddenReportIds() {
+  return readJson(window.localStorage, HIDDEN_REPORTS_STORAGE_KEY, []);
+}
+
+export function isReportHiddenForCitizen(report) {
+  const hiddenIds = new Set(getHiddenReportIds());
+  return getReportIdentityKeys(report).some((key) => hiddenIds.has(key));
+}
+
+export function hideReportForCitizen(report) {
+  const reportKeys = getReportIdentityKeys(report);
+
+  if (reportKeys.length === 0) {
+    return getReports();
+  }
+
+  const hiddenIds = new Set(getHiddenReportIds());
+  reportKeys.forEach((key) => hiddenIds.add(key));
+  writeJson(window.localStorage, HIDDEN_REPORTS_STORAGE_KEY, Array.from(hiddenIds));
+
+  const reports = getReports();
+  const nextReports = reports.filter((savedReport) => !getReportIdentityKeys(savedReport).some((key) => hiddenIds.has(key)));
+  writeJson(window.localStorage, REPORTS_STORAGE_KEY, nextReports);
+  reportKeys.forEach(deleteLinkedAlerts);
+  notifyReportsChanged();
+
+  if (canUseStorage(window.sessionStorage)) {
+    const lastSubmittedId = window.sessionStorage.getItem(LAST_SUBMITTED_REPORT_KEY);
+    if (reportKeys.includes(lastSubmittedId)) {
+      window.sessionStorage.removeItem(LAST_SUBMITTED_REPORT_KEY);
+    }
+  }
+
+  return nextReports;
+}
+
 export function clearReports() {
   if (!canUseStorage(window.localStorage)) {
     return;
@@ -177,6 +231,7 @@ export function clearReports() {
 
   window.localStorage.removeItem(REPORTS_STORAGE_KEY);
   window.localStorage.removeItem(ALERTS_STORAGE_KEY);
+  window.localStorage.removeItem(HIDDEN_REPORTS_STORAGE_KEY);
   window.localStorage.removeItem(LAST_SUBMITTED_REPORT_REF_KEY);
   notifyReportsChanged();
 

@@ -11,14 +11,13 @@ import PageContainer from '../../components/PageContainer.jsx';
 import communityImage from '../../assets/images/Community.png';
 import responseImage from '../../assets/images/Response.png';
 import {
-  deleteReport,
   formatStatusLabel,
   formatReportDate,
-  getStatusColor
+  getStatusColor,
+  hideReportForCitizen
 } from '../../services/localReportService.js';
 import { isFirebaseConfigured } from '../../firebase/config.js';
 import { useReports } from '../../hooks/useReports.js';
-import { deleteInfrastructureReport } from '../../services/reportService.js';
 
 export default function ReportsPage() {
   const navigate = useNavigate();
@@ -35,16 +34,11 @@ export default function ReportsPage() {
     }
 
     try {
-      if (isFirebaseConfigured) {
-        await deleteInfrastructureReport(report);
-        deleteReport(report.id);
-      } else {
-        deleteReport(report.id);
-        refreshReports();
-      }
+      hideReportForCitizen(report);
+      refreshReports();
     } catch (error) {
-      console.warn('Unable to delete report from Firebase.', error);
-      window.alert('Unable to delete this report. Please check your connection and try again.');
+      console.warn('Unable to remove report from your local view.', error);
+      window.alert('Unable to remove this report from your view. Please try again.');
     }
   }
 

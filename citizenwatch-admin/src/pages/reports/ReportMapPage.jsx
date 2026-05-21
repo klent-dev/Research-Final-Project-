@@ -270,7 +270,10 @@ function ReportDetailsPanel({ report, onClose }) {
             <strong>{report.sourceType || report.source || 'Citizen App'}</strong>
           </div>
         </div>
-        <p>{report.description || 'No report description provided.'}</p>
+        <div className="incident-description-block">
+          <h4>Description</h4>
+          <p>{report.description || 'No report description provided.'}</p>
+        </div>
       </section>
 
       <section className="evidence-section">

@@ -17,6 +17,7 @@ import PageContainer from '../../components/PageContainer.jsx';
 import {
   formatStatusLabel,
   getReportById as getLocalReportById,
+  isReportHiddenForCitizen,
   getStatusColor
 } from '../../services/localReportService.js';
 import { isFirebaseConfigured } from '../../firebase/config.js';
@@ -102,15 +103,24 @@ function getTimelineState(status, step) {
 export default function ReportDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [report, setReport] = useState(() => getLocalReportById(id));
+  const [report, setReport] = useState(() => {
+    const localReport = getLocalReportById(id);
+    return localReport && !isReportHiddenForCitizen(localReport) ? localReport : null;
+  });
   const [isLoading, setIsLoading] = useState(() => isFirebaseConfigured && !getLocalReportById(id));
 
   useEffect(() => {
     let ignore = false;
     const localReport = getLocalReportById(id);
 
-    if (localReport) {
+    if (localReport && !isReportHiddenForCitizen(localReport)) {
       setReport(localReport);
+      setIsLoading(false);
+      return undefined;
+    }
+
+    if (isReportHiddenForCitizen(id)) {
+      setReport(null);
       setIsLoading(false);
       return undefined;
     }
@@ -125,7 +135,7 @@ export default function ReportDetailsPage() {
     getFirebaseReportById(id)
       .then((firebaseReport) => {
         if (!ignore) {
-          setReport(firebaseReport);
+          setReport(firebaseReport && !isReportHiddenForCitizen(firebaseReport) ? firebaseReport : null);
           setIsLoading(false);
         }
       })

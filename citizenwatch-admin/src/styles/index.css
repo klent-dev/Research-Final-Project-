@@ -2533,6 +2533,22 @@ select:focus-visible {
   line-height: 1.65;
 }
 
+.incident-description-block {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.incident-description-block h4 {
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-weight: 900;
+  margin: 0;
+}
+
+.incident-description-block p {
+  margin: 0;
+}
+
 .evidence-section {
   margin-top: 1.5rem;
 }
