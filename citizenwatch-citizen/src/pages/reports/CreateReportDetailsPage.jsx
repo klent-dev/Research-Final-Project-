@@ -164,7 +164,6 @@ export default function CreateReportDetailsPage() {
       ...nextDraft,
       trackingId: generateTrackingId(),
       status: 'under_review',
-      createdBy: 'demo-user',
       selectedFile: draft.selectedFile,
       photoFile: draft.selectedFile,
       exif: {

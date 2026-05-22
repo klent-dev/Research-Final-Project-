@@ -6,6 +6,7 @@ import {
   updateProfile
 } from 'firebase/auth';
 import { auth } from '../firebase/auth.js';
+import { createCitizenUserProfile } from './userService.js';
 
 export function listenToAuthChanges(callback) {
   if (!auth) {
@@ -16,11 +17,30 @@ export function listenToAuthChanges(callback) {
   return onAuthStateChanged(auth, callback);
 }
 
-export async function registerCitizen({ email, password, displayName }) {
+export async function registerCitizen({
+  email,
+  password,
+  displayName,
+  fullName,
+  phoneNumber,
+  barangay = ''
+}) {
   if (!auth) throw new Error('Firebase Auth is not configured.');
 
   const credential = await createUserWithEmailAndPassword(auth, email, password);
-  await updateProfile(credential.user, { displayName });
+  const resolvedName = fullName || displayName || '';
+
+  if (resolvedName) {
+    await updateProfile(credential.user, { displayName: resolvedName });
+  }
+
+  await createCitizenUserProfile(credential.user.uid, {
+    fullName: resolvedName,
+    email,
+    phoneNumber,
+    barangay
+  });
+
   return credential.user;
 }
 

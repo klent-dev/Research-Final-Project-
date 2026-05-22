@@ -2,25 +2,46 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Research/demo mode:
-    // Citizen and Admin auth are intentionally bypassed while testing.
-    // Keep deletes blocked so records remain traceable.
-    match /reports/{reportId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if false;
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'lgu_admin';
+    }
+
+    function ownsReport() {
+      return signedIn() && resource.data.createdBy == request.auth.uid;
     }
 
     match /users/{userId} {
-      allow read: if true;
-      allow create, update: if true;
+      allow create: if signedIn() && request.auth.uid == userId;
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow update: if signedIn() && (
+        request.auth.uid == userId ||
+        isAdmin()
+      );
+      allow delete: if false;
+    }
+
+    match /reports/{reportId} {
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid;
+
+      allow read: if ownsReport() || isAdmin();
+
+      allow update: if isAdmin() || (
+        ownsReport()
+        && request.resource.data.createdBy == resource.data.createdBy
+      );
+
       allow delete: if false;
     }
 
     match /{document=**} {
-      allow read: if true;
-      allow write: if false;
+      allow read, write: if false;
     }
   }
 }

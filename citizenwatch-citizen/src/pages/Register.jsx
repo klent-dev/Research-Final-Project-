@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaArrowRight, FaShieldAlt } from 'react-icons/fa';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import PageContainer from '../components/PageContainer.jsx';
+import { registerCitizen } from '../services/authService.js';
 
 const initialForm = {
   fullName: '',
@@ -55,7 +56,7 @@ export default function Register() {
     setSuccessMessage('');
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     const validationErrors = validateForm(formData);
     setErrors(validationErrors);
@@ -63,12 +64,29 @@ export default function Register() {
     if (Object.keys(validationErrors).length > 0) return;
 
     setIsSubmitting(true);
-    setSuccessMessage('Account details saved for UI preview.');
+    setSuccessMessage('');
 
-    window.setTimeout(() => {
-      // TODO: Re-enable Firebase authentication after UI is completed
+    try {
+      await registerCitizen({
+        email: formData.email.trim(),
+        password: formData.password,
+        fullName: formData.fullName.trim(),
+        displayName: formData.fullName.trim(),
+        phoneNumber: formData.phone.trim()
+      });
+      setSuccessMessage('Account created successfully.');
       navigate('/home', { replace: true });
-    }, 350);
+    } catch (error) {
+      console.error('Citizen registration failed:', error);
+      setErrors((current) => ({
+        ...current,
+        form: error.code === 'auth/email-already-in-use'
+          ? 'This email is already registered. Please log in instead.'
+          : 'Unable to create account. Please check your details and try again.'
+      }));
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -169,6 +187,7 @@ export default function Register() {
             {errors.confirmPassword && <small className="field-error">{errors.confirmPassword}</small>}
           </label>
 
+          {errors.form && <p className="form-error">{errors.form}</p>}
           {successMessage && <p className="form-success">{successMessage}</p>}
 
           <div className="register-auth-actions">

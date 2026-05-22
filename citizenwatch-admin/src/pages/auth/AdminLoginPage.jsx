@@ -50,7 +50,6 @@ export default function AdminLoginPage() {
               <span aria-hidden="true">@</span>
               <input
                 autoComplete="email"
-                defaultValue="admin@lgu.gov.ph"
                 name="email"
                 placeholder="admin@lgu.gov.ph"
                 required
@@ -68,7 +67,6 @@ export default function AdminLoginPage() {
               <span aria-hidden="true">#</span>
               <input
                 autoComplete="current-password"
-                defaultValue="password"
                 name="password"
                 placeholder="Password"
                 required

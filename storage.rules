@@ -2,17 +2,18 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Research/demo mode:
-    // Allows citizen evidence uploads without requiring Firebase Auth.
-    // Lock this down before production.
-    match /reports/{allPaths=**} {
-      allow read: if true;
-      allow write: if true;
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /reports/{userId}/{reportId}/{fileName} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == userId;
+      allow delete: if signedIn() && request.auth.uid == userId;
     }
 
     match /{allPaths=**} {
-      allow read: if true;
-      allow write: if false;
+      allow read, write: if false;
     }
   }
 }

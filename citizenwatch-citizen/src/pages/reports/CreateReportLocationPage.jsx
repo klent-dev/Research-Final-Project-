@@ -144,6 +144,28 @@ function createExifLocation(draft) {
   };
 }
 
+function getGeolocationMessage(error) {
+  if (error?.code === 1) {
+    return 'Location permission is blocked for this browser. Please allow location access in your phone settings or enter the address manually.';
+  }
+
+  if (error?.code === 2) {
+    return 'GPS signal is unavailable. Move near a window or outdoors, then try again.';
+  }
+
+  if (error?.code === 3) {
+    return 'GPS is taking too long to respond. Move near a window or outdoors, then try again.';
+  }
+
+  return 'GPS unavailable. Please allow location access or enter the address manually.';
+}
+
+function requestBrowserPosition(options) {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+  });
+}
+
 export default function CreateReportLocationPage() {
   const navigate = useNavigate();
   const { draft, updateDraft, updateLocation } = useReportDraft();
@@ -211,14 +233,34 @@ export default function CreateReportLocationPage() {
     }
   }, [hasPhoto, navigate]);
 
-  const requestUserLocation = useCallback(() => {
+  const requestUserLocation = useCallback(async () => {
     if (!navigator.geolocation) {
       setLocationError('GPS is not supported by this browser. Please enter the address manually.');
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
+    try {
+      let position = null;
+
+      try {
+        position = await requestBrowserPosition({
+          enableHighAccuracy: true,
+          timeout: 20000,
+          maximumAge: 0
+        });
+      } catch (firstError) {
+        if (firstError?.code === 1) {
+          throw firstError;
+        }
+
+        position = await requestBrowserPosition({
+          enableHighAccuracy: false,
+          timeout: 30000,
+          maximumAge: 120000
+        });
+      }
+
+      if (position) {
         const nextLocation = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
@@ -261,8 +303,8 @@ export default function CreateReportLocationPage() {
           animate: true,
           duration: 0.8
         });
-      },
-      () => {
+      }
+    } catch (error) {
         const exifLocation = createExifLocation(draft);
 
         if (exifLocation) {
@@ -289,14 +331,8 @@ export default function CreateReportLocationPage() {
           nextDeviceLocation: null,
           nextSelectedLocation: null
         });
-        setLocationError('GPS unavailable. Please allow location access or enter the address manually.');
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 0
-      }
-    );
+        setLocationError(getGeolocationMessage(error));
+    }
   }, [draft, updateLocation, updateLocationValidationState]);
 
   useEffect(() => {

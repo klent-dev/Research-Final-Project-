@@ -1,6 +1,17 @@
-import { Outlet } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth.js';
+import { LoadingScreen } from './LoadingScreen.jsx';
 
 export function ProtectedRoute() {
-  // TODO: Re-enable Firebase authentication after UI is completed
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
   return <Outlet />;
 }

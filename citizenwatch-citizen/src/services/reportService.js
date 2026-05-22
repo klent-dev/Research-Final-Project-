@@ -34,7 +34,7 @@ function getReportsRef() {
 }
 
 function getCreatedBy(payload = {}) {
-  return auth?.currentUser?.uid || payload.createdBy || payload.reporterId || 'demo-user';
+  return auth?.currentUser?.uid || payload.createdBy || payload.reporterId || '';
 }
 
 function getReportDocumentIdCandidates(report) {
@@ -194,6 +194,10 @@ export async function createInfrastructureReport(reportDraft = {}) {
   const createdBy = getCreatedBy(reportDraft);
   const location = normalizeLocation(reportDraft.location);
 
+  if (!createdBy) {
+    throw new Error('Please sign in before submitting a report.');
+  }
+
   if (!hasValidLocation(location)) {
     throw new Error('Please confirm a valid report location before submitting.');
   }
@@ -241,15 +245,15 @@ export async function createInfrastructureReport(reportDraft = {}) {
   };
 }
 
-export async function getReportsByUser(userId = 'demo-user') {
+export async function getReportsByUser(userId = '') {
   const reportsRef = getReportsRef();
 
   if (!reportsRef) {
     return [];
   }
 
-  if (!userId || userId === 'demo-user') {
-    return getMapReports();
+  if (!userId) {
+    return [];
   }
 
   const reportsQuery = query(reportsRef, where('createdBy', '==', userId));
@@ -282,7 +286,7 @@ export function subscribeToReports(callback) {
   });
 }
 
-export function subscribeToReportsByUser(userId = 'demo-user', callback, onError) {
+export function subscribeToReportsByUser(userId = '', callback, onError) {
   const reportsRef = getReportsRef();
 
   if (!reportsRef) {
@@ -290,14 +294,9 @@ export function subscribeToReportsByUser(userId = 'demo-user', callback, onError
     return () => {};
   }
 
-  if (!userId || userId === 'demo-user') {
-    return onSnapshot(
-      reportsRef,
-      (snapshot) => {
-        callback(sortReportsByNewest(snapshot.docs.map((reportDoc) => ({ id: reportDoc.id, ...reportDoc.data() }))));
-      },
-      onError
-    );
+  if (!userId) {
+    callback([]);
+    return () => {};
   }
 
   const reportsQuery = query(reportsRef, where('createdBy', '==', userId));
@@ -372,7 +371,7 @@ export async function voidInfrastructureReport(report, reason = 'Deleted by citi
   }
 
   const now = new Date().toISOString();
-  const userId = auth?.currentUser?.uid || 'demo-user';
+  const userId = auth?.currentUser?.uid || '';
 
   await updateDoc(doc(db, 'reports', reportId), {
     status: REPORT_STATUS.VOIDED_BY_CITIZEN,

@@ -43,10 +43,16 @@ export function useReports() {
       return;
     }
 
+    if (!user?.uid) {
+      setReports([]);
+      setError('');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const nextReports = await getCitizenReports(user?.uid || 'demo-user');
+      const nextReports = await getCitizenReports(user.uid);
       setReports(mergeFirebaseAndLocalReports(nextReports));
       setError('');
     } catch (loadError) {
@@ -80,8 +86,15 @@ export function useReports() {
     }
 
     setIsLoading(true);
+    if (!user?.uid) {
+      setReports([]);
+      setError('');
+      setIsLoading(false);
+      return undefined;
+    }
+
     const unsubscribe = subscribeToReportsByUser(
-      user?.uid || 'demo-user',
+      user.uid,
       (nextReports) => {
         setReports(mergeFirebaseAndLocalReports(nextReports));
         setError('');

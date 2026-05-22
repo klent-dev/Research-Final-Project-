@@ -16,23 +16,18 @@ import PageContainer from '../../components/PageContainer.jsx';
 import communityImage from '../../assets/images/Community.png';
 import responseImage from '../../assets/images/Response.png';
 import { useReports } from '../../hooks/useReports.js';
+import { useAuth } from '../../hooks/useAuth.js';
+import { logoutCitizen } from '../../services/authService.js';
 import { formatReportDate, formatStatusLabel, getStatusColor } from '../../services/localReportService.js';
 
 const citizenProfile = {
-  // TODO: Replace with Firebase Auth user profile after authentication is re-enabled
+  // TODO: Replace remaining placeholders with editable Firebase user profile fields.
   fullName: 'Klent Ian Ca\u00f1ada',
   email: 'klent.canada@example.com',
   phone: '+63 912 345 6789',
   barangay: 'Lahug',
   memberSince: '2026'
 };
-
-const accountRows = [
-  ['Full Name', citizenProfile.fullName],
-  ['Email', citizenProfile.email],
-  ['Phone', citizenProfile.phone],
-  ['Barangay', citizenProfile.barangay]
-];
 
 const quickActions = [
   { label: 'My Reports', icon: FaRegFileAlt, to: '/reports' },
@@ -42,7 +37,16 @@ const quickActions = [
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { reports } = useReports();
+  const displayName = user?.displayName || citizenProfile.fullName;
+  const email = user?.email || citizenProfile.email;
+  const accountRows = [
+    ['Full Name', displayName],
+    ['Email', email],
+    ['Phone', citizenProfile.phone],
+    ['Barangay', citizenProfile.barangay]
+  ];
   const stats = [
     { label: 'Submitted', value: reports.length.toString(), icon: FaRegFileAlt, tone: 'green' },
     {
@@ -59,9 +63,14 @@ export default function ProfilePage() {
     }
   ];
 
-  function handleLogout() {
-    // TODO: Reconnect Firebase signOut after authentication is re-enabled
-    navigate('/login', { replace: true });
+  async function handleLogout() {
+    try {
+      await logoutCitizen();
+    } catch (error) {
+      console.error('Citizen logout failed:', error);
+    } finally {
+      navigate('/login', { replace: true });
+    }
   }
 
   return (
@@ -69,14 +78,14 @@ export default function ProfilePage() {
       <section className="profile-hero-card">
         <div className="profile-avatar-wrap">
           <div className="profile-avatar-ring">
-            <img src={communityImage} alt={`${citizenProfile.fullName} profile`} />
+            <img src={communityImage} alt={`${displayName} profile`} />
           </div>
           <span className="profile-verified-dot" aria-label="Citizen reporter">
             <FaCheck aria-hidden="true" />
           </span>
         </div>
 
-        <h1>{citizenProfile.fullName}</h1>
+        <h1>{displayName}</h1>
         <span className="profile-reporter-badge">
           <FaShieldAlt aria-hidden="true" />
           Citizen Reporter

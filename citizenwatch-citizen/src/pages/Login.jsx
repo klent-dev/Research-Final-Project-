@@ -6,6 +6,7 @@ import PageContainer from '../components/PageContainer.jsx';
 import responseImage from '../assets/images/Response.png';
 import communityImage from '../assets/images/Community.png';
 import infrastructureImage from '../assets/images/Infrastructure.png';
+import { loginCitizen } from '../services/authService.js';
 
 const initialLoginForm = {
   email: '',
@@ -16,16 +17,38 @@ export default function Login() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState(initialLoginForm);
   const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleChange(event) {
     const { name, value } = event.target;
     setFormData((current) => ({ ...current, [name]: value }));
+    setErrorMessage('');
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    // TODO: Re-enable Firebase authentication after UI is completed
-    navigate('/home', { replace: true });
+    setErrorMessage('');
+
+    if (!formData.email.trim() || !formData.password) {
+      setErrorMessage('Please enter your email and password.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await loginCitizen({
+        email: formData.email.trim(),
+        password: formData.password
+      });
+      navigate('/home', { replace: true });
+    } catch (error) {
+      console.error('Citizen login failed:', error);
+      setErrorMessage('Sign in failed. Please check your email and password.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -82,8 +105,10 @@ export default function Login() {
                 </div>
               </label>
 
-              <button className="login-submit" type="submit">
-                Login
+              {errorMessage && <p className="form-error">{errorMessage}</p>}
+
+              <button className="login-submit" disabled={isSubmitting} type="submit">
+                {isSubmitting ? 'Signing In...' : 'Login'}
                 <FaSignInAlt aria-hidden="true" />
               </button>
             </form>
