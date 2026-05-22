@@ -267,7 +267,7 @@ export default function MapPage() {
                     <h3>{report.title}</h3>
                     <p>
                       <FaMapMarkerAlt aria-hidden="true" />
-                      {formatDistance(distance)} <span aria-hidden="true">•</span> {formatReportAge(report.createdAt)}
+                      {formatDistance(distance)} <span aria-hidden="true">&bull;</span> {formatReportAge(report.createdAt)}
                     </p>
                   </div>
                   <span className={`community-status-pill community-status-pill--${tone}`}>
