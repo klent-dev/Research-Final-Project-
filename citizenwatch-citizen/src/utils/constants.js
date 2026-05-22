@@ -4,7 +4,8 @@ export const REPORT_STATUS = {
   VERIFIED: 'verified',
   IN_PROGRESS: 'in_progress',
   RESOLVED: 'resolved',
-  REJECTED: 'rejected'
+  REJECTED: 'rejected',
+  VOIDED_BY_CITIZEN: 'voided_by_citizen'
 };
 
 export const REPORT_CATEGORIES = [

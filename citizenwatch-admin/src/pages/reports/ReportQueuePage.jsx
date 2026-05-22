@@ -8,8 +8,8 @@ import {
 } from '../../services/adminReportService.js';
 
 const categoryFilters = ['All Assets', 'Roads', 'Drainage', 'Streetlights', 'Bridges'];
-const statusFilters = ['All Statuses', 'Pending', 'In Progress', 'Completed'];
-const statusOrder = ['Pending', 'In Progress', 'Completed'];
+const statusFilters = ['All Statuses', 'Pending', 'In Progress', 'Completed', 'Voided by Citizen'];
+const statusOrder = ['Pending', 'In Progress', 'Completed', 'Voided by Citizen'];
 const statusActions = [
   { label: 'Under Review', value: 'under_review' },
   { label: 'Verified', value: 'verified' },
@@ -47,6 +47,10 @@ function formatValidationDistance(report) {
 function ReportProgress({ report }) {
   if (report.normalizedStatus === 'rejected') {
     return <p className="report-rejected-note">{REJECTED_REPORT_REASON}</p>;
+  }
+
+  if (report.normalizedStatus === 'voided') {
+    return <p className="report-voided-note">This report was deleted by the citizen and is now marked void.</p>;
   }
 
   return (
@@ -257,6 +261,8 @@ export default function ReportQueuePage() {
                 <span>Progress</span>
                 {selectedReport.normalizedStatus === 'rejected' ? (
                   <p className="report-rejected-note">{REJECTED_REPORT_REASON}</p>
+                ) : selectedReport.normalizedStatus === 'voided' ? (
+                  <p className="report-voided-note">This report was deleted by the citizen and is now marked void.</p>
                 ) : (
                   <>
                     <div><i style={{ width: `${selectedReport.progress}%` }} /></div>

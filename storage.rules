@@ -1,0 +1,18 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Research/demo mode:
+    // Allows citizen evidence uploads without requiring Firebase Auth.
+    // Lock this down before production.
+    match /reports/{allPaths=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

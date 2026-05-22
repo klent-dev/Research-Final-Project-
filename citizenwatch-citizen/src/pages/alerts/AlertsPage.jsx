@@ -13,20 +13,31 @@ import '../../styles/alerts.css';
 
 const filters = ['All', 'Reports', 'Nearby', 'System'];
 
+function isRejectedReport(report = {}) {
+  const normalizedStatus = String(report.status || '').toLowerCase().replaceAll('_', ' ');
+  return report.rejectedByAdmin || report.adminDeleted || normalizedStatus.includes('reject') || normalizedStatus.includes('not verified');
+}
+
 export default function AlertsPage() {
   const [activeFilter, setActiveFilter] = useState('All');
   const { reports } = useReports();
-  const alerts = reports.map((report) => ({
-    id: `report-${report.id}`,
-    title: 'Report Submitted',
-    message: `Your ${report.issueType} report has been received and is under review.`,
-    time: formatRelativeTime(report.createdAt),
-    category: 'Reports',
-    status: 'Today',
-    tone: 'reports',
-    icon: FaClipboardList,
-    unread: true
-  }));
+  const alerts = reports.map((report) => {
+    const rejected = isRejectedReport(report);
+
+    return {
+      id: `report-${report.id}`,
+      title: rejected ? 'Report Not Verified' : 'Report Submitted',
+      message: rejected
+        ? report.rejectionReason || `Your ${report.issueType} report was reviewed by LGU staff but could not be verified. It has been closed.`
+        : `Your ${report.issueType} report has been received and is under review.`,
+      time: formatRelativeTime(report.updatedAt || report.createdAt),
+      category: 'Reports',
+      status: rejected ? 'Closed' : 'Today',
+      tone: rejected ? 'nearby' : 'reports',
+      icon: rejected ? FaExclamationTriangle : FaClipboardList,
+      unread: true
+    };
+  });
 
   const filteredAlerts = activeFilter === 'All'
     ? alerts

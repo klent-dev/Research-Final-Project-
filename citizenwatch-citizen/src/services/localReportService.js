@@ -197,6 +197,22 @@ export function isReportHiddenForCitizen(report) {
   return getReportIdentityKeys(report).some((key) => hiddenIds.has(key));
 }
 
+export function isReportVoidedByCitizen(report = {}) {
+  const normalizedStatus = String(report.status || '').trim().toLowerCase();
+
+  return (
+    report.deletedByCitizen === true ||
+    report.voidedByCitizen === true ||
+    normalizedStatus === 'voided_by_citizen' ||
+    normalizedStatus === 'voided by citizen' ||
+    normalizedStatus === 'deleted_by_citizen'
+  );
+}
+
+export function isReportVisibleForCitizen(report) {
+  return !isReportHiddenForCitizen(report) && !isReportVoidedByCitizen(report);
+}
+
 export function hideReportForCitizen(report) {
   const reportKeys = getReportIdentityKeys(report);
 
@@ -310,6 +326,14 @@ export function formatReportDate(value) {
 export function getStatusColor(status = '') {
   const normalized = status.toUpperCase();
 
+  if (normalized.includes('REJECT') || normalized.includes('NOT VERIFIED')) {
+    return 'rejected';
+  }
+
+  if (normalized.includes('VOID') || normalized.includes('DELETED') || normalized.includes('CANCEL')) {
+    return 'voided';
+  }
+
   if (normalized.includes('RESOLVED')) {
     return 'resolved';
   }
@@ -330,6 +354,19 @@ export function formatStatusLabel(status = '') {
 
   if (normalized === 'in_progress' || normalized === 'in progress') {
     return 'IN PROGRESS';
+  }
+
+  if (normalized === 'rejected' || normalized === 'not_verified' || normalized === 'not verified') {
+    return 'NOT VERIFIED';
+  }
+
+  if (
+    normalized === 'voided_by_citizen' ||
+    normalized === 'voided by citizen' ||
+    normalized === 'deleted_by_citizen' ||
+    normalized === 'cancelled'
+  ) {
+    return 'VOIDED BY CITIZEN';
   }
 
   return normalized ? normalized.replace(/_/g, ' ').toUpperCase() : 'UNDER REVIEW';

@@ -4,6 +4,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   onSnapshot,
   query,
   setDoc,
@@ -34,6 +35,19 @@ function getReportsRef() {
 
 function getCreatedBy(payload = {}) {
   return auth?.currentUser?.uid || payload.createdBy || payload.reporterId || 'demo-user';
+}
+
+function getReportDocumentIdCandidates(report) {
+  if (!report || typeof report === 'string') {
+    return [report].filter(Boolean);
+  }
+
+  return [
+    report.firestoreReportId,
+    report.firebaseReportId,
+    report.id,
+    report.reportId
+  ].filter(Boolean);
 }
 
 function normalizeLocation(location = {}) {
@@ -327,6 +341,48 @@ export async function deleteInfrastructureReport(report) {
   }
 
   await deleteDoc(doc(db, 'reports', reportId));
+}
+
+export async function voidInfrastructureReport(report, reason = 'Deleted by citizen') {
+  if (!db || !report) {
+    throw new Error('Firebase is not configured yet.');
+  }
+
+  const reportsRef = getReportsRef();
+  const candidateIds = getReportDocumentIdCandidates(report);
+  let reportId = '';
+
+  for (const candidateId of candidateIds) {
+    const snapshot = await getDoc(doc(db, 'reports', candidateId));
+
+    if (snapshot.exists()) {
+      reportId = snapshot.id;
+      break;
+    }
+  }
+
+  if (!reportId && typeof report !== 'string' && report.trackingId && reportsRef) {
+    const trackingQuery = query(reportsRef, where('trackingId', '==', report.trackingId), limit(1));
+    const trackingSnapshot = await getDocs(trackingQuery);
+    reportId = trackingSnapshot.docs[0]?.id || '';
+  }
+
+  if (!reportId) {
+    throw new Error('Unable to find this report in Firebase.');
+  }
+
+  const now = new Date().toISOString();
+  const userId = auth?.currentUser?.uid || 'demo-user';
+
+  await updateDoc(doc(db, 'reports', reportId), {
+    status: REPORT_STATUS.VOIDED_BY_CITIZEN,
+    deletedByCitizen: true,
+    voidedByCitizen: true,
+    voidReason: reason,
+    voidedAt: now,
+    voidedBy: userId,
+    updatedAt: now
+  });
 }
 
 export async function getMapReports() {

@@ -4,6 +4,6 @@ dist/
 .env.local
 .env.*.local
 *.log
+.firebase/
 .DS_Store
 Thumbs.db
-

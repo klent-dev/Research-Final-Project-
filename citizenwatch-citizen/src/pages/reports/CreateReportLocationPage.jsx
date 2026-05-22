@@ -13,6 +13,7 @@ import {
   FaMapMarkerAlt
 } from 'react-icons/fa';
 import { useReportDraft } from '../../context/ReportDraftContext.jsx';
+import { geocodeAddress } from '../../services/geocodingService.js';
 import { validatePhotoLocation } from '../../utils/locationValidation.js';
 import { getMarkerBySeverity } from '../../utils/mapMarkers.js';
 
@@ -20,17 +21,6 @@ const LAHUG_CENTER = {
   lat: 10.3403,
   lng: 123.9065
 };
-
-function createTestLocation() {
-  return {
-    lat: LAHUG_CENTER.lat,
-    lng: LAHUG_CENTER.lng,
-    accuracy: null,
-    address: 'Test location - Lahug, Cebu City',
-    source: 'test',
-    subAddress: 'Temporary testing location'
-  };
-}
 
 function LocationMapBridge({ location, mapRef }) {
   const map = useMap();
@@ -176,6 +166,7 @@ export default function CreateReportLocationPage() {
   ));
   const [isManualAddressOpen, setIsManualAddressOpen] = useState(false);
   const [manualAddress, setManualAddress] = useState(() => draft.location?.source === 'manual' ? draft.location.address : '');
+  const [isGeocodingManualAddress, setIsGeocodingManualAddress] = useState(false);
   const [locationError, setLocationError] = useState('');
   const mapRef = useRef(null);
   const hasRequestedBrowserLocationRef = useRef(false);
@@ -221,24 +212,8 @@ export default function CreateReportLocationPage() {
   }, [hasPhoto, navigate]);
 
   const requestUserLocation = useCallback(() => {
-    const applyTestingLocation = (message) => {
-      const fallbackLocation = normalizeSelectedLocation(createTestLocation());
-      setReportLocation(fallbackLocation);
-      updateLocation(fallbackLocation);
-      updateLocationValidationState({
-        nextExifLocation: null,
-        nextDeviceLocation: null,
-        nextSelectedLocation: fallbackLocation
-      });
-      setLocationError(message);
-      mapRef.current?.flyTo([fallbackLocation.lat, fallbackLocation.lng], 15, {
-        animate: true,
-        duration: 0.8
-      });
-    };
-
     if (!navigator.geolocation) {
-      applyTestingLocation('GPS is not supported by this browser. A temporary test location was selected.');
+      setLocationError('GPS is not supported by this browser. Please enter the address manually.');
       return;
     }
 
@@ -307,12 +282,19 @@ export default function CreateReportLocationPage() {
           return;
         }
 
-        applyTestingLocation('GPS unavailable. A temporary test location was selected.');
+        setReportLocation(null);
+        updateLocation(null);
+        updateLocationValidationState({
+          nextExifLocation: null,
+          nextDeviceLocation: null,
+          nextSelectedLocation: null
+        });
+        setLocationError('GPS unavailable. Please allow location access or enter the address manually.');
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000
+        timeout: 20000,
+        maximumAge: 0
       }
     );
   }, [draft, updateLocation, updateLocationValidationState]);
@@ -386,7 +368,7 @@ export default function CreateReportLocationPage() {
     setIsManualAddressOpen((isOpen) => !isOpen);
   }
 
-  function handleManualLocationSubmit(event) {
+  async function handleManualLocationSubmit(event) {
     event.preventDefault();
 
     const trimmedAddress = manualAddress.trim();
@@ -395,30 +377,36 @@ export default function CreateReportLocationPage() {
       return;
     }
 
-    const nextLocation = {
-      lat: LAHUG_CENTER.lat,
-      lng: LAHUG_CENTER.lng,
-      accuracy: null,
-      address: trimmedAddress,
-      source: 'manual',
-      // TODO: Add reverse geocoding for manual address coordinates
-      subAddress: 'Manual address entry'
-    };
-
-    const normalizedLocation = normalizeSelectedLocation(nextLocation);
-    setReportLocation(normalizedLocation);
-    updateLocation(normalizedLocation);
-    updateLocationValidationState({
-      nextExifLocation: createExifLocation(draft),
-      nextDeviceLocation: deviceLocation,
-      nextSelectedLocation: normalizedLocation
-    });
+    setIsGeocodingManualAddress(true);
     setLocationError('');
-    setIsManualAddressOpen(false);
-    mapRef.current?.flyTo([normalizedLocation.lat, normalizedLocation.lng], 15, {
-      animate: true,
-      duration: 0.8
-    });
+
+    try {
+      const nextLocation = await geocodeAddress(trimmedAddress);
+
+      if (!nextLocation) {
+        setLocationError('Address not found. Please add a nearby landmark, barangay, or city.');
+        return;
+      }
+
+      const normalizedLocation = normalizeSelectedLocation(nextLocation);
+      setReportLocation(normalizedLocation);
+      updateLocation(normalizedLocation);
+      updateLocationValidationState({
+        nextExifLocation: createExifLocation(draft),
+        nextDeviceLocation: deviceLocation,
+        nextSelectedLocation: normalizedLocation
+      });
+      setIsManualAddressOpen(false);
+      mapRef.current?.flyTo([normalizedLocation.lat, normalizedLocation.lng], 15, {
+        animate: true,
+        duration: 0.8
+      });
+    } catch (error) {
+      console.warn('Manual address geocoding failed.', error);
+      setLocationError('Unable to find this address right now. Please check your connection and try again.');
+    } finally {
+      setIsGeocodingManualAddress(false);
+    }
   }
 
   return (
@@ -455,9 +443,7 @@ export default function CreateReportLocationPage() {
                 ? 'Photo GPS detected'
                 : isGpsLocation
                   ? 'Using current device location'
-                  : reportLocation?.source === 'test'
-                    ? 'Test location selected'
-                    : 'Manual location selected'
+                  : 'Manual location selected'
               : 'Waiting for GPS'}
           </span>
           {hasLocation && isGpsLocation && hasAccuracy && <strong>&plusmn; {reportLocation.accuracy}m</strong>}
@@ -536,7 +522,9 @@ export default function CreateReportLocationPage() {
               type="text"
               value={manualAddress}
             />
-            <button type="submit">Use This Address</button>
+            <button disabled={isGeocodingManualAddress} type="submit">
+              {isGeocodingManualAddress ? 'Finding Address...' : 'Use This Address'}
+            </button>
           </form>
         )}
       </section>

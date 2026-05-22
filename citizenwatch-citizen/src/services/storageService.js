@@ -8,7 +8,10 @@ export async function uploadReportPhoto({ file, reportId, userId }) {
 
   const fileName = file?.name || 'report-photo.jpg';
   const fileType = file?.type || 'image/jpeg';
-  const safeName = fileName.replaceAll(' ', '-').toLowerCase();
+  const safeName = fileName
+    .replace(/[^a-z0-9._-]/gi, '-')
+    .replace(/-+/g, '-')
+    .toLowerCase();
   const photoRef = ref(storage, `reports/${userId}/${reportId}/${Date.now()}-${safeName}`);
   const snapshot = await uploadBytes(photoRef, file, {
     contentType: fileType

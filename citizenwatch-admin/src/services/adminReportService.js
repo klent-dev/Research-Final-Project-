@@ -88,6 +88,10 @@ function applyFirestoreFilters(snapshot, filters = {}) {
 export function normalizeReportStatus(status = '') {
   const normalized = String(status).toLowerCase().replaceAll('_', ' ');
 
+  if (normalized.includes('void') || normalized.includes('cancel') || normalized.includes('deleted by citizen')) {
+    return 'voided';
+  }
+
   if (normalized.includes('complete') || normalized.includes('resolved')) {
     return 'completed';
   }
@@ -109,6 +113,7 @@ export function getDisplayStatus(status = '') {
   if (normalized === 'in_progress') return 'In Progress';
   if (normalized === 'completed') return 'Completed';
   if (normalized === 'rejected') return 'Rejected';
+  if (normalized === 'voided') return 'Voided by Citizen';
   return 'Pending';
 }
 
@@ -216,6 +221,7 @@ export function calculateReportProgress(report = {}) {
 
   if (status === 'completed') return 100;
   if (status === 'in_progress') return 50;
+  if (status === 'voided') return 0;
   return 0;
 }
 
@@ -230,9 +236,13 @@ export function normalizeAdminReport(report = {}) {
   const category = normalizeReportCategory(report);
   const coordinates = getReportCoordinates(report);
   const locationValidation = normalizeLocationValidation(report);
+  const effectiveStatus = report.deletedByCitizen || report.voidedByCitizen
+    ? 'voided_by_citizen'
+    : report.status;
 
   return {
     ...report,
+    status: effectiveStatus,
     id: report.id,
     reportId: report.reportId || report.trackingId || report.id,
     name: report.name || report.title || `${category} Report`,
@@ -247,8 +257,8 @@ export function normalizeAdminReport(report = {}) {
       'Location not provided',
     latitude: coordinates?.lat ?? null,
     longitude: coordinates?.lng ?? null,
-    normalizedStatus: normalizeReportStatus(report.status),
-    displayStatus: getDisplayStatus(report.status),
+    normalizedStatus: normalizeReportStatus(effectiveStatus),
+    displayStatus: getDisplayStatus(effectiveStatus),
     normalizedSeverity: normalizeReportSeverity(report),
     locationValidation,
     progress: calculateReportProgress(report),
@@ -323,6 +333,42 @@ export function updateReportStatus({
   };
 
   return updateDoc(doc(db, 'reports', reportId), updatePayload);
+}
+
+export async function markReportNotVerified({
+  reportId,
+  adminId,
+  reason = REJECTED_REPORT_REASON
+}) {
+  if (!shouldUseFirestore()) {
+    clearLocalReportStorage();
+    notifyReportListeners();
+    return;
+  }
+
+  await updateDoc(doc(db, 'reports', reportId), {
+    status: 'rejected',
+    rejectedByAdmin: true,
+    adminDeleted: true,
+    rejectionReason: reason,
+    adminNotes: reason,
+    remarks: reason,
+    reviewedBy: adminId || null,
+    updatedBy: adminId || null,
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function markReportsNotVerified(reportIds = [], options = {}) {
+  const uniqueReportIds = Array.from(new Set(reportIds)).filter(Boolean);
+
+  if (uniqueReportIds.length === 0) {
+    return;
+  }
+
+  await Promise.all(uniqueReportIds.map((reportId) => (
+    markReportNotVerified({ reportId, ...options })
+  )));
 }
 
 export async function deleteReport(reportId) {

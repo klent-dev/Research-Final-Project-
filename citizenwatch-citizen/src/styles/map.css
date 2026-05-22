@@ -533,6 +533,11 @@
   color: #475569;
 }
 
+.community-status-pill--rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .community-map-empty {
   align-items: center;
   background: #ffffff;

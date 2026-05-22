@@ -3905,6 +3905,11 @@ textarea {
   color: #b45309;
 }
 
+.profile-status-pill--rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .profile-setting-row {
   align-items: center;
   background: #ffffff;
@@ -6060,6 +6065,16 @@ textarea {
 .reports-status-pill--review {
   background: #fef3c7;
   color: #b45309;
+}
+
+.reports-status-pill--rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.reports-status-pill--voided {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 @media (min-width: 720px) {

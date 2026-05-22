@@ -67,6 +67,52 @@ function toIsoTimestamp(value) {
   return Number.isNaN(date.getTime()) ? '' : date.toISOString();
 }
 
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Unable to read selected photo.'));
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onerror = () => reject(new Error('Unable to prepare selected photo preview.'));
+    image.onload = () => resolve(image);
+    image.src = dataUrl;
+  });
+}
+
+async function createPreviewDataUrl(file) {
+  const originalDataUrl = await readFileAsDataUrl(file);
+
+  if (!file?.type?.startsWith('image/') || file.type.includes('svg') || file.type.includes('gif')) {
+    return originalDataUrl;
+  }
+
+  try {
+    const image = await loadImage(originalDataUrl);
+    const maxSide = 1280;
+    const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+      return originalDataUrl;
+    }
+
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.82);
+  } catch (error) {
+    console.warn('Unable to compress selected photo preview.', error);
+    return originalDataUrl;
+  }
+}
+
 function getMetadataStatus({ draft, hasLocation, hasSelectedPhoto }) {
   if (!hasSelectedPhoto) {
     return {
@@ -209,13 +255,18 @@ export default function CreateReportPage() {
     setPreviewUrl(nextPreviewUrl);
     setStepError('');
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const photoPreview = typeof reader.result === 'string' ? reader.result : '';
+    void processSelectedPhoto(file);
+  }
+
+  async function processSelectedPhoto(file) {
+    try {
+      const photoPreview = await createPreviewDataUrl(file);
       updatePhoto(file, photoPreview);
-      void extractPhotoMetadata(file, photoPreview);
-    };
-    reader.readAsDataURL(file);
+      await extractPhotoMetadata(file, photoPreview);
+    } catch (error) {
+      console.warn('Unable to prepare selected photo.', error);
+      setStepError('Unable to prepare this image. Please choose another photo.');
+    }
   }
 
   async function extractPhotoMetadata(file, photoPreview = '') {

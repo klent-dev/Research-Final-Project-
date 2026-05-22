@@ -1,0 +1,18 @@
+{
+  "projects": {
+    "default": "citizenwatch-7ccb2"
+  },
+  "targets": {
+    "citizenwatch-7ccb2": {
+      "hosting": {
+        "citizen": [
+          "citizenwatch-citizen"
+        ],
+        "admin": [
+          "citizenwatch-admin"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

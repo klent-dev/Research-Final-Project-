@@ -142,6 +142,38 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.report-details-rejection-note {
+  align-items: flex-start;
+  background: #fef2f2;
+  border: 1px solid rgba(220, 38, 38, 0.18);
+  border-radius: 1rem;
+  color: #991b1b;
+  display: flex;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+  padding: 0.85rem;
+}
+
+.report-details-rejection-note svg {
+  color: #dc2626;
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+}
+
+.report-details-rejection-note strong {
+  color: #991b1b;
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 0.2rem;
+}
+
+.report-details-rejection-note p {
+  color: #7f1d1d;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
 .report-details-info-grid div,
 .report-details-location-list {
   background: #f8fafc;

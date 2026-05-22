@@ -18,6 +18,7 @@ import {
 } from '../../services/localReportService.js';
 import { isFirebaseConfigured } from '../../firebase/config.js';
 import { useReports } from '../../hooks/useReports.js';
+import { voidInfrastructureReport } from '../../services/reportService.js';
 
 export default function ReportsPage() {
   const navigate = useNavigate();
@@ -34,11 +35,15 @@ export default function ReportsPage() {
     }
 
     try {
+      if (isFirebaseConfigured) {
+        await voidInfrastructureReport(report);
+      }
+
       hideReportForCitizen(report);
       refreshReports();
     } catch (error) {
-      console.warn('Unable to remove report from your local view.', error);
-      window.alert('Unable to remove this report from your view. Please try again.');
+      console.warn('Unable to void report.', error);
+      window.alert('Unable to void this report. Please check your connection and try again.');
     }
   }
 

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import {
-  deleteReports,
   getLocationValidationLabel,
+  markReportsNotVerified,
   normalizeLocationValidationStatus,
   subscribeReportsForModeration,
   updateReportStatus
@@ -40,7 +40,8 @@ const statusOptions = [
   { value: REPORT_STATUS.VERIFIED, label: 'Verified' },
   { value: REPORT_STATUS.IN_PROGRESS, label: 'In Progress' },
   { value: REPORT_STATUS.RESOLVED, label: 'Resolved' },
-  { value: REPORT_STATUS.REJECTED, label: 'Rejected' }
+  { value: REPORT_STATUS.REJECTED, label: 'Rejected' },
+  { value: REPORT_STATUS.VOIDED_BY_CITIZEN, label: 'Voided by Citizen' }
 ];
 
 const REPORT_MAP_CENTER = {
@@ -88,7 +89,7 @@ function getStatusClass(status = '') {
 }
 
 function canSelectReport(status = '') {
-  return [REPORT_STATUS.RESOLVED, REPORT_STATUS.REJECTED].includes(status);
+  return status !== REPORT_STATUS.REJECTED && status !== REPORT_STATUS.VOIDED_BY_CITIZEN;
 }
 
 function getCategoryTone(category = '') {
@@ -137,6 +138,14 @@ function formatDistance(value) {
 
 function hasCoordinatePair(lat, lng) {
   return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+}
+
+function isVoidedByCitizen(report = {}) {
+  return report.status === REPORT_STATUS.VOIDED_BY_CITIZEN || report.deletedByCitizen || report.voidedByCitizen;
+}
+
+function isRejectedByAdmin(report = {}) {
+  return report.status === REPORT_STATUS.REJECTED || report.rejectedByAdmin || report.adminDeleted;
 }
 
 function formatDate(value) {
@@ -298,6 +307,18 @@ function ReportDetailsDrawer({ report, adminId, isSaving, onClose, onSave }) {
 
         <section className="report-detail-card">
           <h3>Report Information</h3>
+          {isRejectedByAdmin(report) && (
+            <div className="report-rejected-banner">
+              <strong>Not Verified by LGU</strong>
+              <p>{report.rejectionReason || report.adminNotes || 'This report was closed by the admin because it could not be verified.'}</p>
+            </div>
+          )}
+          {isVoidedByCitizen(report) && (
+            <div className="report-voided-banner">
+              <strong>Voided by Citizen</strong>
+              <p>This report was deleted by the citizen and is kept for LGU traceability.</p>
+            </div>
+          )}
           <div className="report-detail-meta">
             <div>
               <span>Category</span>
@@ -470,6 +491,11 @@ export default function AnalyticsPage() {
     });
   }, [categoryFilter, reports, severityFilter, statusFilter]);
   const selectedCount = selectedReportIds.length;
+  const selectableReportIds = displayedReports
+    .filter((report) => canSelectReport(report.status))
+    .map((report) => report.id);
+  const allVisibleSelected = selectableReportIds.length > 0
+    && selectableReportIds.every((reportId) => selectedReportIds.includes(reportId));
 
   const tableMessage = useMemo(() => {
     if (isLoading) return 'Loading reports...';
@@ -515,27 +541,82 @@ export default function AnalyticsPage() {
     ));
   }
 
-  async function handleDeleteSelectedReports() {
-    const deletedReports = reports.filter((report) => selectedReportIds.includes(report.id));
+  function handleToggleVisibleReportSelection() {
+    setSelectedReportIds((currentIds) => {
+      if (allVisibleSelected) {
+        return currentIds.filter((reportId) => !selectableReportIds.includes(reportId));
+      }
+
+      return Array.from(new Set([...currentIds, ...selectableReportIds]));
+    });
+  }
+
+  async function handleMarkSelectedNotVerified() {
+    const selectedReports = reports.filter((report) => selectedReportIds.includes(report.id));
+
+    if (selectedReports.length === 0) {
+      return;
+    }
+
+    const shouldReject = window.confirm(
+      `Mark ${selectedReports.length} selected report${selectedReports.length === 1 ? '' : 's'} as not verified? Citizens will see that the LGU could not verify the report.`
+    );
+
+    if (!shouldReject) {
+      return;
+    }
+
+    const reason = 'Report was reviewed by LGU staff but could not be verified. It has been closed as not verified.';
 
     setIsSaving(true);
     setErrorMessage('');
     setReports((currentReports) => (
-      currentReports.filter((report) => !selectedReportIds.includes(report.id))
+      currentReports.map((report) => (
+        selectedReportIds.includes(report.id)
+          ? {
+              ...report,
+              adminDeleted: true,
+              adminNotes: reason,
+              rejectedByAdmin: true,
+              rejectionReason: reason,
+              remarks: reason,
+              status: REPORT_STATUS.REJECTED,
+              updatedAt: new Date().toISOString()
+            }
+          : report
+      ))
     ));
 
     if (selectedReport && selectedReportIds.includes(selectedReport.id)) {
-      setSelectedReport(null);
+      setSelectedReport((currentReport) => currentReport ? ({
+        ...currentReport,
+        adminDeleted: true,
+        adminNotes: reason,
+        rejectedByAdmin: true,
+        rejectionReason: reason,
+        remarks: reason,
+        status: REPORT_STATUS.REJECTED,
+        updatedAt: new Date().toISOString()
+      }) : null);
     }
 
+    const reportIds = selectedReportIds;
     setSelectedReportIds([]);
 
     try {
-      await deleteReports(selectedReportIds);
+      await markReportsNotVerified(reportIds, {
+        adminId: admin?.uid,
+        reason
+      });
     } catch (error) {
-      console.error('Unable to delete selected reports:', error);
-      setReports((currentReports) => [...deletedReports, ...currentReports]);
-      setErrorMessage('Unable to delete selected reports from Firebase.');
+      console.error('Unable to mark selected reports as not verified:', error);
+      setReports((currentReports) => (
+        currentReports.map((report) => {
+          const previousReport = selectedReports.find((item) => item.id === report.id);
+          return previousReport || report;
+        })
+      ));
+      setErrorMessage('Unable to mark selected reports as not verified.');
     } finally {
       setIsSaving(false);
     }
@@ -613,7 +694,15 @@ export default function AnalyticsPage() {
             <table>
               <thead>
                 <tr>
-                  <th aria-label="Selectable reports" />
+                  <th aria-label="Selectable reports">
+                    <input
+                      aria-label="Select visible reports"
+                      checked={allVisibleSelected}
+                      disabled={selectableReportIds.length === 0}
+                      onChange={handleToggleVisibleReportSelection}
+                      type="checkbox"
+                    />
+                  </th>
                   <th>Report ID</th>
                   <th>Thumbnail</th>
                   <th>Category</th>
@@ -638,6 +727,7 @@ export default function AnalyticsPage() {
                             aria-label={`Select ${report.trackingId || report.id}`}
                             checked={selectedReportIds.includes(report.id)}
                             onChange={() => handleToggleReportSelection(report.id)}
+                            onClick={(event) => event.stopPropagation()}
                             type="checkbox"
                           />
                         )}
@@ -686,8 +776,8 @@ export default function AnalyticsPage() {
         {selectedCount > 0 && (
           <div className="reports-delete-bar">
             <span>{selectedCount} selected</span>
-            <button disabled={isSaving} onClick={handleDeleteSelectedReports} type="button">
-              {isSaving ? 'Deleting...' : 'Delete Selected'}
+            <button disabled={isSaving} onClick={handleMarkSelectedNotVerified} type="button">
+              {isSaving ? 'Updating...' : 'Mark Not Verified'}
             </button>
           </div>
         )}

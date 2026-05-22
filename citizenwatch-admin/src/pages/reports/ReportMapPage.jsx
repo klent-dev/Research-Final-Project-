@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
+import { Circle, CircleMarker, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import {
   getReportCoordinates,
   subscribeReportsForModeration
@@ -10,6 +10,9 @@ const GIS_CENTER = {
   lat: 10.3157,
   lng: 123.8854
 };
+const MAX_ADMIN_LOCATION_ACCURACY_METERS = 1000;
+const TARGET_ADMIN_LOCATION_ACCURACY_METERS = 80;
+const ADMIN_LOCATION_WATCH_TIMEOUT_MS = 12000;
 
 const primaryCategories = ['Drainage', 'Street Lighting', 'Flooding', 'Road Maintenance', 'Waste Management'];
 const categoryOptions = ['All', ...primaryCategories, 'Others'];
@@ -24,7 +27,7 @@ const reportStatusFilters = [
     id: 'closed',
     label: 'Completed / Closed Reports',
     tone: 'closed',
-    statuses: new Set(['verified', 'resolved', 'rejected', 'completed', 'closed'])
+    statuses: new Set(['verified', 'resolved', 'rejected', 'completed', 'closed', 'voided', 'voided_by_citizen'])
   }
 ];
 
@@ -168,6 +171,27 @@ function matchesActiveStatusFilters(report, activeStatusFilters) {
 }
 
 function GisMap({ mapRef, reports, onSelectReport }) {
+  const [userLocation, setUserLocation] = useState(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState('');
+  const watchIdRef = useRef(null);
+  const watchTimeoutRef = useRef(null);
+  const bestLocationRef = useRef(null);
+
+  function clearLocationWatch() {
+    if (watchIdRef.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+
+    if (watchTimeoutRef.current) {
+      window.clearTimeout(watchTimeoutRef.current);
+      watchTimeoutRef.current = null;
+    }
+  }
+
+  useEffect(() => () => clearLocationWatch(), []);
+
   function handleZoomIn() {
     mapRef.current?.zoomIn();
   }
@@ -176,8 +200,108 @@ function GisMap({ mapRef, reports, onSelectReport }) {
     mapRef.current?.zoomOut();
   }
 
+  function getLocationFromCoords(coords) {
+    const latitude = Number(coords.latitude);
+    const longitude = Number(coords.longitude);
+    const accuracy = Math.round(coords.accuracy || 0);
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return null;
+    }
+
+    return {
+      accuracy,
+      lat: latitude,
+      lng: longitude
+    };
+  }
+
+  function moveToLocation(nextLocation) {
+    setUserLocation(nextLocation);
+    mapRef.current?.flyTo(
+      [nextLocation.lat, nextLocation.lng],
+      nextLocation.accuracy > MAX_ADMIN_LOCATION_ACCURACY_METERS ? 15 : 18,
+      { duration: 0.8 }
+    );
+  }
+
+  function getLocationMessage(nextLocation) {
+    const coordinateText = `${nextLocation.lat.toFixed(5)}, ${nextLocation.lng.toFixed(5)}`;
+
+    if (nextLocation.accuracy > MAX_ADMIN_LOCATION_ACCURACY_METERS) {
+      return `Approximate location returned: ${coordinateText} (+/- ${nextLocation.accuracy}m). Turn on Precise Location.`;
+    }
+
+    return `Location found: ${coordinateText} (+/- ${nextLocation.accuracy}m).`;
+  }
+
   function handleCenterMap() {
-    mapRef.current?.setView([GIS_CENTER.lat, GIS_CENTER.lng], 14);
+    if (!navigator.geolocation) {
+      setLocationError('Browser location is not supported.');
+      return;
+    }
+
+    clearLocationWatch();
+    setIsLocating(true);
+    setLocationError('Getting precise GPS location...');
+    bestLocationRef.current = null;
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      ({ coords }) => {
+        const nextLocation = getLocationFromCoords(coords);
+
+        if (!nextLocation) {
+          setLocationError('Browser returned an invalid location. Please try again.');
+          setIsLocating(false);
+          clearLocationWatch();
+          return;
+        }
+
+        const currentBest = bestLocationRef.current;
+        const isBetterReading = !currentBest || nextLocation.accuracy < currentBest.accuracy;
+
+        if (isBetterReading) {
+          bestLocationRef.current = nextLocation;
+          moveToLocation(nextLocation);
+          setLocationError(getLocationMessage(nextLocation));
+        }
+
+        if (nextLocation.accuracy <= TARGET_ADMIN_LOCATION_ACCURACY_METERS) {
+          clearLocationWatch();
+          setIsLocating(false);
+        }
+      },
+      (error) => {
+        console.error('Unable to get admin map location:', error);
+        setLocationError(
+          error.code === error.PERMISSION_DENIED
+            ? 'Location permission is blocked. Allow precise location for this site.'
+            : 'Unable to get your location. Check GPS/location services and try again.'
+        );
+        setIsLocating(false);
+        clearLocationWatch();
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: ADMIN_LOCATION_WATCH_TIMEOUT_MS
+      }
+    );
+
+    watchTimeoutRef.current = window.setTimeout(() => {
+      const bestLocation = bestLocationRef.current;
+
+      clearLocationWatch();
+      setIsLocating(false);
+
+      if (!bestLocation) {
+        setLocationError('No GPS reading received. Check location permission and try again.');
+        return;
+      }
+
+      moveToLocation(bestLocation);
+      setLocationError(getLocationMessage(bestLocation));
+    }, ADMIN_LOCATION_WATCH_TIMEOUT_MS);
   }
 
   return (
@@ -196,6 +320,40 @@ function GisMap({ mapRef, reports, onSelectReport }) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        {userLocation && (
+          <>
+            <Circle
+              center={[userLocation.lat, userLocation.lng]}
+              pathOptions={{
+                color: '#2563eb',
+                fillColor: '#60a5fa',
+                fillOpacity: 0.12,
+                weight: 1
+              }}
+              radius={Math.max(userLocation.accuracy || 25, 20)}
+            />
+            <CircleMarker
+              center={[userLocation.lat, userLocation.lng]}
+              pathOptions={{
+                color: '#ffffff',
+                fillColor: '#2563eb',
+                fillOpacity: 1,
+                weight: 3
+              }}
+              radius={8}
+            >
+              <Popup className="report-map-popup" closeButton offset={[0, -8]}>
+                <div className="map-popup-card">
+                  <div className="map-popup-header">
+                    <strong>Your Location</strong>
+                  </div>
+                  <p>{userLocation.lat.toFixed(5)}, {userLocation.lng.toFixed(5)}</p>
+                  <small>Accuracy: +/- {userLocation.accuracy || 0}m</small>
+                </div>
+              </Popup>
+            </CircleMarker>
+          </>
+        )}
         {reports.map((report) => {
           const position = getReportPosition(report);
           const category = getReportCategory(report);
@@ -234,8 +392,11 @@ function GisMap({ mapRef, reports, onSelectReport }) {
       <div className="community-map-controls gis-map-controls">
         <button onClick={handleZoomIn} type="button" aria-label="Zoom in">+</button>
         <button onClick={handleZoomOut} type="button" aria-label="Zoom out">-</button>
-        <button onClick={handleCenterMap} type="button" aria-label="Center map">o</button>
+        <button disabled={isLocating} onClick={handleCenterMap} type="button" aria-label="Center map on my location">
+          {isLocating ? '...' : 'o'}
+        </button>
       </div>
+      {locationError && <p className="gis-location-error">{locationError}</p>}
     </div>
   );
 }

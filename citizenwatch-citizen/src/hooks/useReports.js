@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { isFirebaseConfigured } from '../firebase/config.js';
-import { getReports, isReportHiddenForCitizen } from '../services/localReportService.js';
+import { getReports, isReportVisibleForCitizen } from '../services/localReportService.js';
 import { getCitizenReports, subscribeToReportsByUser } from '../services/reportService.js';
 import { useAuth } from './useAuth.js';
 
 function mergeFirebaseAndLocalReports(firebaseReports = []) {
-  const visibleFirebaseReports = firebaseReports.filter((report) => !isReportHiddenForCitizen(report));
+  const visibleFirebaseReports = firebaseReports.filter(isReportVisibleForCitizen);
   const localReports = getReports().filter(
-    (report) => !report.syncedToFirestore && !isReportHiddenForCitizen(report)
+    (report) => !report.syncedToFirestore && isReportVisibleForCitizen(report)
   );
   const firebaseKeys = new Set(
     visibleFirebaseReports.flatMap((report) => [

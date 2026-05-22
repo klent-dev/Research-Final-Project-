@@ -20,6 +20,7 @@ import {
   setLastSubmittedReportReference
 } from '../../services/localReportService.js';
 import { createInfrastructureReport } from '../../services/reportService.js';
+import { isFirebaseConfigured } from '../../firebase/config.js';
 import { SEVERITY_LEVELS, normalizeUrgency } from '../../utils/severity.js';
 
 const issueTypes = [
@@ -192,6 +193,12 @@ export default function CreateReportDetailsPage() {
       });
     } catch (error) {
       console.warn('Unable to save report to Firebase.', error);
+
+      if (isFirebaseConfigured) {
+        setStepError('Unable to submit report. Please check your connection and try again.');
+        return;
+      }
+
       const localReport = saveReport({
         ...reportPayload,
         syncedToFirestore: false

@@ -91,8 +91,8 @@ export default function CitizenHomePage() {
       () => {},
       {
         enableHighAccuracy: true,
-        timeout: 8000,
-        maximumAge: 60000
+        timeout: 20000,
+        maximumAge: 0
       }
     );
 

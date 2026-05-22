@@ -141,19 +141,6 @@ export function validatePhotoLocation({
     };
   }
 
-  if (selectedSource === 'test') {
-    return {
-      status: 'test_location',
-      tone: 'warning',
-      label: 'Testing Location',
-      message: 'Temporary testing location selected.',
-      helper: 'Use real GPS before production deployment.',
-      distanceMeters: null,
-      source: 'test',
-      checkedAt: new Date().toISOString()
-    };
-  }
-
   return {
     status: 'unavailable',
     tone: 'neutral',

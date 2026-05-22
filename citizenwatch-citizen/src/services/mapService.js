@@ -1,5 +1,5 @@
 import { getMapReports } from './reportService.js';
-import { getReports } from './localReportService.js';
+import { getReports, isReportVisibleForCitizen } from './localReportService.js';
 
 export const DEFAULT_MAP_CENTER = {
   lng: 123.8854,
@@ -41,7 +41,7 @@ export function normalizeReport(report) {
 }
 
 export async function loadMapReports() {
-  const localReports = getReports().filter(hasValidCoordinates).map(normalizeReport);
+  const localReports = getReports().filter(isReportVisibleForCitizen).filter(hasValidCoordinates).map(normalizeReport);
 
   if (localReports.length > 0) {
     return localReports;
@@ -49,7 +49,7 @@ export async function loadMapReports() {
 
   try {
     const reports = await getMapReports();
-    const validReports = reports.filter(hasValidCoordinates).map(normalizeReport);
+    const validReports = reports.filter(isReportVisibleForCitizen).filter(hasValidCoordinates).map(normalizeReport);
 
     if (validReports.length > 0) {
       return validReports;

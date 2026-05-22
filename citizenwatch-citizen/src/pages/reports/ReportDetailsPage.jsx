@@ -17,7 +17,7 @@ import PageContainer from '../../components/PageContainer.jsx';
 import {
   formatStatusLabel,
   getReportById as getLocalReportById,
-  isReportHiddenForCitizen,
+  isReportVisibleForCitizen,
   getStatusColor
 } from '../../services/localReportService.js';
 import { isFirebaseConfigured } from '../../firebase/config.js';
@@ -100,12 +100,17 @@ function getTimelineState(status, step) {
   return 'pending';
 }
 
+function isRejectedReport(report = {}) {
+  const normalizedStatus = String(report.status || '').toLowerCase().replaceAll('_', ' ');
+  return report.rejectedByAdmin || report.adminDeleted || normalizedStatus.includes('reject') || normalizedStatus.includes('not verified');
+}
+
 export default function ReportDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [report, setReport] = useState(() => {
     const localReport = getLocalReportById(id);
-    return localReport && !isReportHiddenForCitizen(localReport) ? localReport : null;
+    return localReport && isReportVisibleForCitizen(localReport) ? localReport : null;
   });
   const [isLoading, setIsLoading] = useState(() => isFirebaseConfigured && !getLocalReportById(id));
 
@@ -113,13 +118,13 @@ export default function ReportDetailsPage() {
     let ignore = false;
     const localReport = getLocalReportById(id);
 
-    if (localReport && !isReportHiddenForCitizen(localReport)) {
+    if (localReport && isReportVisibleForCitizen(localReport)) {
       setReport(localReport);
       setIsLoading(false);
       return undefined;
     }
 
-    if (isReportHiddenForCitizen(id)) {
+    if (localReport && !isReportVisibleForCitizen(localReport)) {
       setReport(null);
       setIsLoading(false);
       return undefined;
@@ -135,7 +140,7 @@ export default function ReportDetailsPage() {
     getFirebaseReportById(id)
       .then((firebaseReport) => {
         if (!ignore) {
-          setReport(firebaseReport && !isReportHiddenForCitizen(firebaseReport) ? firebaseReport : null);
+          setReport(firebaseReport && isReportVisibleForCitizen(firebaseReport) ? firebaseReport : null);
           setIsLoading(false);
         }
       })
@@ -187,6 +192,7 @@ export default function ReportDetailsPage() {
   const hasLocation = hasValidCoordinates(report);
   const locationPosition = hasLocation ? [Number(report.location.lat), Number(report.location.lng)] : null;
   const statusTone = getStatusColor(report.status);
+  const isRejected = isRejectedReport(report);
   const reportPhoto = report.photoPreview || report.photoUrl || report.imageUrl || '';
   const timelineSteps = [
     ['submitted', 'Submitted'],
@@ -232,6 +238,17 @@ export default function ReportDetailsPage() {
           <FaClipboardCheck aria-hidden="true" />
           <h2>Report Summary</h2>
         </header>
+        {isRejected && (
+          <div className="report-details-rejection-note">
+            <FaExclamationCircle aria-hidden="true" />
+            <div>
+              <strong>Not verified by LGU</strong>
+              <p>
+                {report.rejectionReason || report.adminNotes || 'This report was reviewed by LGU staff but could not be verified. It has been closed.'}
+              </p>
+            </div>
+          </div>
+        )}
         <div className="report-details-info-grid">
           <div>
             <span>Tracking ID</span>
