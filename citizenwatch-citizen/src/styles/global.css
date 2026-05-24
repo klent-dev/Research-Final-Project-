@@ -40,6 +40,7 @@ html {
   scroll-behavior: smooth;
   overflow-x: hidden;
   min-height: 100%;
+  width: 100%;
 }
 
 body {
@@ -48,11 +49,14 @@ body {
   min-width: 320px;
   overflow-x: hidden;
   overflow-y: auto;
+  width: 100%;
 }
 
 #root {
   min-height: 100vh;
   min-height: 100svh;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 button,
@@ -86,6 +90,8 @@ textarea {
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   color: var(--text);
+  font-size: 16px;
+  max-width: 100%;
   outline: none;
   padding: 0.95rem 1rem;
   transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
@@ -2361,6 +2367,14 @@ textarea {
   }
 }
 
+@media (max-width: 767px) {
+  .login-input input,
+  .register-form input,
+  .register-password-field input {
+    font-size: 16px;
+  }
+}
+
 @media (min-width: 1025px) {
   .login-screen {
     align-content: center;
@@ -2635,7 +2649,7 @@ textarea {
   }
 
   .register-form input {
-    font-size: 0.95rem;
+    font-size: 16px;
     min-height: 3rem;
     padding: 0 0.95rem;
   }
@@ -4157,10 +4171,10 @@ textarea {
   display: flex;
   flex-direction: column;
   max-width: 100%;
-  min-height: clamp(28rem, 96vw, 36rem);
+  min-height: clamp(25.5rem, 92vw, 34rem);
   min-width: 0;
   overflow: hidden;
-  padding: clamp(2rem, 8vw, 4.2rem) clamp(1.25rem, 5vw, 2.2rem);
+  padding: clamp(1.6rem, 6.4vw, 3.4rem) clamp(1rem, 4.4vw, 2rem);
   text-align: center;
   width: 100%;
 }
@@ -4172,35 +4186,36 @@ textarea {
   box-shadow: 0 14px 26px rgba(22, 163, 74, 0.22);
   color: #052e16;
   display: inline-flex;
-  font-size: clamp(3rem, 14vw, 4.4rem);
-  height: clamp(7rem, 30vw, 9.2rem);
+  font-size: clamp(2.4rem, 11vw, 3.8rem);
+  height: clamp(5.7rem, 24vw, 8rem);
   justify-content: center;
-  margin-bottom: clamp(2rem, 8vw, 3rem);
-  width: clamp(7rem, 30vw, 9.2rem);
+  margin-bottom: clamp(1.45rem, 6vw, 2.4rem);
+  width: clamp(5.7rem, 24vw, 8rem);
 }
 
 .evidence-dropzone h1 {
   color: var(--text);
-  font-size: clamp(1.45rem, 7vw, 2.25rem);
-  letter-spacing: -0.04em;
-  line-height: 1.22;
-  margin: 0 auto 0.9rem;
-  max-width: 420px;
+  font-size: clamp(1.18rem, 5.25vw, 1.75rem);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.2;
+  margin: 0 auto 0.75rem;
+  max-width: 18rem;
 }
 
 .evidence-dropzone p {
   color: #47564c;
-  font-size: clamp(1rem, 4.6vw, 1.45rem);
-  line-height: 1.42;
+  font-size: clamp(0.86rem, 3.6vw, 1rem);
+  line-height: 1.45;
   margin: 0 auto;
-  max-width: 420px;
+  max-width: 17rem;
 }
 
 .evidence-actions {
   display: grid;
-  gap: 0.85rem;
-  margin-top: clamp(2rem, 8vw, 3.4rem);
-  max-width: 410px;
+  gap: 0.7rem;
+  margin-top: clamp(1.55rem, 6.2vw, 2.5rem);
+  max-width: 24rem;
   min-width: 0;
   width: 100%;
 }
@@ -4212,11 +4227,13 @@ textarea {
   border-radius: 999px;
   cursor: pointer;
   display: inline-flex;
+  font-size: clamp(0.86rem, 3.8vw, 1rem);
   font-weight: 900;
-  gap: 0.65rem;
+  gap: 0.55rem;
   justify-content: center;
   max-width: 100%;
   min-width: 0;
+  padding: 0 1rem;
   transition: box-shadow var(--transition), transform var(--transition), background var(--transition);
 }
 
@@ -4495,6 +4512,15 @@ textarea {
   background: #e2e8f0;
 }
 
+.evidence-helper-text {
+  color: #047857;
+  font-size: clamp(0.78rem, 3.25vw, 0.9rem);
+  font-weight: 800;
+  line-height: 1.35;
+  margin: 0.45rem auto 0;
+  max-width: 16rem;
+}
+
 .metadata-row {
   align-items: center;
   background: #f0f2ff;
@@ -4646,13 +4672,34 @@ textarea {
 
   .evidence-dropzone {
     min-height: 24rem;
-    padding: 1.5rem 1rem;
+    padding: 1.35rem 0.9rem;
   }
 
   .evidence-camera-mark {
-    height: 5.7rem;
-    margin-bottom: 1.45rem;
-    width: 5.7rem;
+    height: 5.35rem;
+    margin-bottom: 1.2rem;
+    width: 5.35rem;
+  }
+
+  .evidence-dropzone h1 {
+    font-size: 1.1rem;
+    max-width: 13.5rem;
+  }
+
+  .evidence-dropzone p {
+    font-size: 0.78rem;
+    max-width: 12.8rem;
+  }
+
+  .evidence-helper-text {
+    font-size: 0.76rem !important;
+    max-width: 12.5rem;
+  }
+
+  .camera-button,
+  .file-button {
+    font-size: 0.82rem;
+    min-height: 2.55rem;
   }
 
   .metadata-row {
@@ -5052,6 +5099,28 @@ textarea {
 .location-validation-card--neutral {
   background: #f8fafc;
   color: #64748b;
+}
+
+.retry-gps-button {
+  align-items: center;
+  background: rgba(22, 163, 74, 0.12);
+  border: 0;
+  border-radius: 999px;
+  color: #047857;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 950;
+  gap: 0.35rem;
+  margin-top: 0.7rem;
+  padding: 0.55rem 0.85rem;
+  transition: transform var(--transition), background var(--transition);
+}
+
+.retry-gps-button:hover,
+.retry-gps-button:focus-visible {
+  background: rgba(22, 163, 74, 0.18);
+  transform: translateY(-1px);
 }
 
 .confirm-location-button {
@@ -6143,4 +6212,32 @@ textarea {
     overflow: hidden;
     text-overflow: ellipsis;
   }
+}
+
+/* iOS Safari zoom guard: keep form controls at 16px or larger without disabling pinch zoom. */
+html,
+body,
+#root {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+input,
+textarea,
+select,
+.login-screen input,
+.register-screen input {
+  box-sizing: border-box;
+  font-size: 16px;
+  max-width: 100%;
+}
+
+.login-form,
+.register-form,
+.login-panel,
+.register-card,
+.login-input,
+.register-password-field {
+  box-sizing: border-box;
+  max-width: 100%;
 }

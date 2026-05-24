@@ -126,6 +126,20 @@ function getValidationLabel(report) {
   return report.locationValidation?.label || getLocationValidationLabel(report.locationValidation?.status);
 }
 
+function getValidationSourceLabel(report) {
+  const source = String(report.locationValidation?.source || report.locationValidation?.status || '')
+    .replaceAll('_', ' ')
+    .replaceAll('-', ' ')
+    .trim();
+
+  return source ? source.replace(/\b\w/g, (letter) => letter.toUpperCase()) : 'Unavailable';
+}
+
+function formatTrustScore(report) {
+  const score = Number(report.locationValidation?.verificationScore);
+  return Number.isFinite(score) ? `${Math.round(score)}/100` : 'Unavailable';
+}
+
 function formatCoordinate(value) {
   const coordinate = Number(value);
   return Number.isFinite(coordinate) ? coordinate.toFixed(5) : 'Unavailable';
@@ -138,6 +152,20 @@ function formatDistance(value) {
 
 function hasCoordinatePair(lat, lng) {
   return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+}
+
+function formatCamera(validation = {}) {
+  const cameraName = [validation.cameraMake, validation.cameraModel].filter(Boolean).join(' ').trim();
+  const lensName = [validation.lensMake, validation.lensModel].filter(Boolean).join(' ').trim();
+
+  return cameraName || lensName || 'Unavailable';
+}
+
+function formatImageSize(validation = {}) {
+  const width = Number(validation.imageWidth);
+  const height = Number(validation.imageHeight);
+
+  return Number.isFinite(width) && Number.isFinite(height) ? `${width} x ${height}` : 'Image size unavailable';
 }
 
 function isVoidedByCitizen(report = {}) {
@@ -385,6 +413,26 @@ function ReportDetailsDrawer({ report, adminId, isSaving, onClose, onSave }) {
               <span>Accuracy</span>
               <strong>{validation.deviceAccuracy ? `+/- ${validation.deviceAccuracy}m` : 'Unavailable'}</strong>
               <small>{validation.source || 'No validation source'}</small>
+            </div>
+            <div>
+              <span>Trust Score</span>
+              <strong>{Number.isFinite(Number(validation.verificationScore)) ? `${validation.verificationScore}/100` : 'Unavailable'}</strong>
+              <small>{validation.verificationStatus || validation.status || 'No score yet'}</small>
+            </div>
+            <div>
+              <span>Admin Review</span>
+              <strong>{validation.requiresReview ? 'Required' : 'Not Required'}</strong>
+              <small>{validation.requiresReview ? 'Review metadata before resolution' : 'Metadata is within tolerance'}</small>
+            </div>
+            <div>
+              <span>EXIF Timestamp</span>
+              <strong>{validation.hasTimestamp ? formatDate(validation.exifTimestamp) : 'Unavailable'}</strong>
+              <small>{validation.hasTimestamp ? 'Photo timestamp detected' : 'No photo timestamp found'}</small>
+            </div>
+            <div>
+              <span>Camera Metadata</span>
+              <strong>{formatCamera(validation)}</strong>
+              <small>{formatImageSize(validation)}</small>
             </div>
           </div>
         </section>
@@ -709,6 +757,9 @@ export default function AnalyticsPage() {
                   <th>Severity</th>
                   <th>Status</th>
                   <th>Validation</th>
+                  <th>Trust Score</th>
+                  <th>Review</th>
+                  <th>GPS Source</th>
                   <th>Reported Date</th>
                   <th>Actions</th>
                 </tr>
@@ -756,6 +807,9 @@ export default function AnalyticsPage() {
                           {getValidationLabel(report)}
                         </span>
                       </td>
+                      <td>{formatTrustScore(report)}</td>
+                      <td>{report.locationValidation?.requiresReview ? 'Required' : 'No'}</td>
+                      <td>{getValidationSourceLabel(report)}</td>
                       <td>{formatDate(report.createdAt)}</td>
                       <td><button type="button" onClick={() => setSelectedReport(report)}>View Details</button></td>
                     </tr>

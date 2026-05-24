@@ -68,10 +68,36 @@ function normalizeStatus(status) {
   return status || 'submitted';
 }
 
+function summarizeRawExif(rawExif = {}) {
+  if (!rawExif || typeof rawExif !== 'object') {
+    return { keyCount: 0, keys: [], values: {} };
+  }
+
+  const keys = Object.keys(rawExif);
+  return {
+    keyCount: keys.length,
+    keys: keys.slice(0, 80),
+    values: {}
+  };
+}
+
+function compactExifForStorage(exif) {
+  if (!exif) {
+    return null;
+  }
+
+  return {
+    ...exif,
+    rawExif: null,
+    rawExifSummary: exif.rawExifSummary || summarizeRawExif(exif.rawExif)
+  };
+}
+
 function normalizeReport(report) {
   const now = new Date().toISOString();
   const issueType = report.issueType || report.category || 'Infrastructure Issue';
   const status = normalizeStatus(report.status);
+  const exif = compactExifForStorage(report.exif);
 
   return {
     id: report.id || createId(),
@@ -94,6 +120,11 @@ function normalizeReport(report) {
     },
     photoPreview: report.photoPreview || '',
     photoUrl: report.photoPreview || report.photoUrl || '',
+    exif,
+    hasExifGps: Boolean(report.hasExifGps || exif?.hasGps),
+    exifLat: report.exifLat ?? exif?.lat ?? exif?.gps?.lat ?? null,
+    exifLng: report.exifLng ?? exif?.lng ?? exif?.gps?.lng ?? null,
+    exifTimestamp: report.exifTimestamp || exif?.timestamp || exif?.timestamps?.primary || '',
     deviceLocation: report.deviceLocation || null,
     locationValidation: report.locationValidation || null,
     createdBy: report.createdBy || DEFAULT_CREATED_BY,
@@ -471,7 +502,7 @@ export function buildReportFromDraft(draft) {
     }),
     selectedFile: draft.selectedFile || null,
     photoFile: draft.photoFile || draft.selectedFile || null,
-    exif: draft.exif || null,
+    exif: compactExifForStorage(draft.exif),
     deviceLocation: draft.deviceLocation || null,
     locationValidation: draft.locationValidation || null
   };

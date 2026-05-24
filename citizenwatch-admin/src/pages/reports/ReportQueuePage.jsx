@@ -44,6 +44,45 @@ function formatValidationDistance(report) {
   return Number.isFinite(distance) ? `${Math.round(distance)}m difference` : 'No distance comparison';
 }
 
+function formatTrustScore(report) {
+  const score = Number(report.locationValidation?.verificationScore);
+  return Number.isFinite(score) ? `${Math.round(score)}/100` : 'Unavailable';
+}
+
+function formatValidationSource(report) {
+  const source = String(report.locationValidation?.source || report.locationValidation?.status || '')
+    .replaceAll('_', ' ')
+    .replaceAll('-', ' ')
+    .trim();
+
+  return source ? source.replace(/\b\w/g, (letter) => letter.toUpperCase()) : 'Unavailable';
+}
+
+function formatValidationTimestamp(report) {
+  const timestamp = report.locationValidation?.exifTimestamp;
+  const date = timestamp ? new Date(timestamp) : null;
+
+  if (!date || Number.isNaN(date.getTime())) {
+    return 'Unavailable';
+  }
+
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function formatValidationCamera(report) {
+  const validation = report.locationValidation || {};
+  const cameraName = [validation.cameraMake, validation.cameraModel].filter(Boolean).join(' ').trim();
+  const lensName = [validation.lensMake, validation.lensModel].filter(Boolean).join(' ').trim();
+
+  return cameraName || lensName || 'Unavailable';
+}
+
 function ReportProgress({ report }) {
   if (report.normalizedStatus === 'rejected') {
     return <p className="report-rejected-note">{REJECTED_REPORT_REASON}</p>;
@@ -178,6 +217,9 @@ export default function ReportQueuePage() {
                 <th>Progress</th>
                 <th>Severity</th>
                 <th>Validation</th>
+                <th>Trust Score</th>
+                <th>Review</th>
+                <th>GPS Source</th>
                 <th aria-label="Open report" />
               </tr>
             </thead>
@@ -206,6 +248,9 @@ export default function ReportQueuePage() {
                       {getValidationLabel(report)}
                     </span>
                   </td>
+                  <td>{formatTrustScore(report)}</td>
+                  <td>{report.locationValidation?.requiresReview ? 'Required' : 'No'}</td>
+                  <td>{formatValidationSource(report)}</td>
                   <td><button type="button" aria-label={`Open ${report.name}`}>›</button></td>
                 </tr>
               ))}
@@ -251,6 +296,26 @@ export default function ReportQueuePage() {
                 <div>
                   <span>GPS Difference</span>
                   <strong>{formatValidationDistance(selectedReport)}</strong>
+                </div>
+                <div>
+                  <span>Trust Score</span>
+                  <strong>
+                    {Number.isFinite(Number(selectedReport.locationValidation?.verificationScore))
+                      ? `${selectedReport.locationValidation.verificationScore}/100`
+                      : 'Unavailable'}
+                  </strong>
+                </div>
+                <div>
+                  <span>Review Needed</span>
+                  <strong>{selectedReport.locationValidation?.requiresReview ? 'Yes' : 'No'}</strong>
+                </div>
+                <div>
+                  <span>EXIF Timestamp</span>
+                  <strong>{formatValidationTimestamp(selectedReport)}</strong>
+                </div>
+                <div>
+                  <span>Camera Metadata</span>
+                  <strong>{formatValidationCamera(selectedReport)}</strong>
                 </div>
               </section>
               <section className={`validation-summary validation-summary--${getValidationStatus(selectedReport)}`}>

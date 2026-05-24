@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import exifr from 'exifr';
 import {
   FaArrowRight,
   FaCamera,
@@ -18,6 +17,10 @@ import {
   FaTimes
 } from 'react-icons/fa';
 import { useReportDraft } from '../../context/ReportDraftContext.jsx';
+import { reverseGeocodeLocation } from '../../services/geocodingService.js';
+import { readImageExif } from '../../services/exifValidationService.js';
+import { geolocationErrorMessage, getBestDevicePosition, normalizePositionLocation } from '../../utils/deviceLocation.js';
+import { getGpsAccuracyLevel } from '../../utils/locationValidation.js';
 
 const tips = [
   'Capture both a close-up and a wide shot for context.',
@@ -114,6 +117,8 @@ async function createPreviewDataUrl(file) {
 }
 
 function getMetadataStatus({ draft, hasLocation, hasSelectedPhoto }) {
+  const validationStatus = draft.locationValidation?.status || '';
+
   if (!hasSelectedPhoto) {
     return {
       tone: 'waiting',
@@ -124,13 +129,23 @@ function getMetadataStatus({ draft, hasLocation, hasSelectedPhoto }) {
     };
   }
 
-  if (draft.hasExifGps) {
+  if (validationStatus === 'suspicious') {
     return {
       tone: 'warning',
-      badge: 'Photo GPS Detected',
+      badge: 'Needs Review',
+      icon: FaExclamationTriangle,
+      title: 'Photo location differs from device location',
+      helper: 'LGU staff will review the GPS difference during validation.'
+    };
+  }
+
+  if (draft.hasExifGps) {
+    return {
+      tone: 'success',
+      badge: 'Photo GPS Verified',
       icon: FaCheckCircle,
       title: 'Photo GPS metadata detected',
-      helper: 'Location extracted from uploaded photo. Device GPS comparison happens in the next step.'
+      helper: 'Location extracted from uploaded photo.'
     };
   }
 
@@ -173,12 +188,44 @@ function getMetadataStatus({ draft, hasLocation, hasSelectedPhoto }) {
   };
 }
 
+function getDeviceGpsStatus(draft, isSamplingDeviceGps) {
+  if (isSamplingDeviceGps) {
+    return {
+      label: 'Checking GPS',
+      value: 'Finding best device GPS reading...'
+    };
+  }
+
+  const deviceLocation = draft.deviceLocation;
+  const accuracy = Number(deviceLocation?.accuracy);
+
+  if (
+    !Number.isFinite(Number(deviceLocation?.lat)) ||
+    !Number.isFinite(Number(deviceLocation?.lng))
+  ) {
+    return {
+      label: 'Device GPS',
+      value: 'Not captured yet'
+    };
+  }
+
+  const accuracyLevel = getGpsAccuracyLevel(accuracy);
+
+  return {
+    label: `Device GPS (${accuracyLevel.label})`,
+    value: Number.isFinite(accuracy)
+      ? `+/- ${Math.round(accuracy)}m`
+      : 'Available'
+  };
+}
+
 export default function CreateReportPage() {
   const { draft, updateDraft, updatePhoto } = useReportDraft();
   const location = useLocation();
   const [selectedFile, setSelectedFile] = useState(() => draft.selectedFile || null);
   const [previewUrl, setPreviewUrl] = useState(() => draft.photoPreview || '');
   const [stepError, setStepError] = useState(() => location.state?.validationError || '');
+  const [isSamplingDeviceGps, setIsSamplingDeviceGps] = useState(false);
   // TODO: Replace with real EXIF/GPS metadata after report submission
   const hasSelectedPhoto = Boolean(previewUrl || draft.photoPreview);
   const hasLocation = Boolean(
@@ -197,11 +244,13 @@ export default function CreateReportPage() {
   const cameraInputRef = useRef(null);
   const objectUrlRef = useRef('');
   const scrollPositionRef = useRef(0);
+  const pendingCaptureSourceRef = useRef('gallery');
   const navigate = useNavigate();
   const selectedFileName = selectedFile?.name || draft.fileName || '';
   const selectedFileSize = selectedFile ? formatFileSize(selectedFile) : draft.fileSize || '';
   const metadataStatus = getMetadataStatus({ draft, hasLocation, hasSelectedPhoto });
   const MetadataStatusIcon = metadataStatus.icon;
+  const deviceGpsStatus = getDeviceGpsStatus(draft, isSamplingDeviceGps);
 
   useEffect(() => () => {
     if (objectUrlRef.current) {
@@ -210,8 +259,9 @@ export default function CreateReportPage() {
   }, []);
 
   function handleUseCamera() {
-    // TODO: Connect camera capture, Firebase Storage, EXIF, and GPS validation after UI is completed
+    // TODO: Compare EXIF GPS with browser GPS for validation scoring
     scrollPositionRef.current = window.scrollY;
+    pendingCaptureSourceRef.current = 'camera';
     if (cameraInputRef.current) {
       cameraInputRef.current.value = '';
     }
@@ -220,6 +270,7 @@ export default function CreateReportPage() {
 
   function handleChooseFile() {
     scrollPositionRef.current = window.scrollY;
+    pendingCaptureSourceRef.current = 'gallery';
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -262,39 +313,79 @@ export default function CreateReportPage() {
     try {
       const photoPreview = await createPreviewDataUrl(file);
       updatePhoto(file, photoPreview);
-      await extractPhotoMetadata(file, photoPreview);
+      const metadataResult = await extractPhotoMetadata(file, photoPreview);
+      void captureStepOneDeviceLocation({
+        useAsFallbackLocation: !metadataResult?.hasExifGps
+      });
     } catch (error) {
       console.warn('Unable to prepare selected photo.', error);
       setStepError('Unable to prepare this image. Please choose another photo.');
     }
   }
 
+  async function enrichLocationAddress(locationData) {
+    try {
+      return await reverseGeocodeLocation(locationData) || locationData;
+    } catch (error) {
+      console.warn('Unable to reverse geocode device GPS.', error);
+      return locationData;
+    }
+  }
+
+  async function captureStepOneDeviceLocation({ useAsFallbackLocation = false } = {}) {
+    if (!navigator.geolocation) {
+      return;
+    }
+
+    setIsSamplingDeviceGps(true);
+
+    try {
+      const position = await getBestDevicePosition({
+        sampleMs: 6500,
+        timeout: 14000,
+        targetAccuracy: 30
+      });
+      const sampledLocation = normalizePositionLocation(position, 'gps');
+
+      if (!sampledLocation) {
+        return;
+      }
+
+      const nextDeviceLocation = await enrichLocationAddress(sampledLocation);
+
+      updateDraft({
+        deviceLocation: nextDeviceLocation,
+        ...(useAsFallbackLocation ? { location: nextDeviceLocation } : {})
+      });
+    } catch (error) {
+      console.warn('Step 1 device GPS sampling failed.', error);
+      updateDraft({
+        deviceLocationError: geolocationErrorMessage(error)
+      });
+    } finally {
+      setIsSamplingDeviceGps(false);
+    }
+  }
+
   async function extractPhotoMetadata(file, photoPreview = '') {
     try {
-      const [gpsData, parsedMetadata] = await Promise.all([
-        exifr.gps(file).catch(() => null),
-        exifr.parse(file, {
-          pick: ['DateTimeOriginal', 'CreateDate', 'ModifyDate']
-        }).catch(() => null)
-      ]);
-      const exifTimestamp =
-        parsedMetadata?.DateTimeOriginal ||
-        parsedMetadata?.CreateDate ||
-        parsedMetadata?.ModifyDate ||
-        '';
-      const exifLat = Number(gpsData?.latitude);
-      const exifLng = Number(gpsData?.longitude);
-      const hasExifGps = Number.isFinite(exifLat) && Number.isFinite(exifLng);
+      const exifMetadata = await readImageExif(file);
+      const exifLat = Number(exifMetadata.gps?.lat);
+      const exifLng = Number(exifMetadata.gps?.lng);
+      const hasExifGps = Boolean(exifMetadata.hasGps && Number.isFinite(exifLat) && Number.isFinite(exifLng));
       const exifLocation = hasExifGps
         ? {
             lat: exifLat,
             lng: exifLng,
-            accuracy: null,
+            accuracy: Number.isFinite(Number(exifMetadata.gps?.accuracy))
+              ? Math.round(Number(exifMetadata.gps.accuracy))
+              : null,
             address: 'Photo location detected',
             source: 'exif',
             subAddress: `Lat: ${exifLat.toFixed(5)}, Lng: ${exifLng.toFixed(5)}`
           }
         : null;
+      const captureSource = pendingCaptureSourceRef.current || 'gallery';
 
       updateDraft({
         selectedFile: file || null,
@@ -303,14 +394,19 @@ export default function CreateReportPage() {
         fileSize: file?.size ? formatFileSize(file) : draft.fileSize || '',
         exifLat: hasExifGps ? exifLat : null,
         exifLng: hasExifGps ? exifLng : null,
-        exifTimestamp: toIsoTimestamp(exifTimestamp),
+        exifTimestamp: exifMetadata.timestamp || toIsoTimestamp(exifMetadata.timestamp),
         hasExifGps,
+        captureSource,
+        directCameraCapture: captureSource === 'camera',
+        exif: exifMetadata,
         ...(exifLocation ? { location: exifLocation } : {}),
         metadataPreview: {
-          location: hasExifGps ? 'Photo GPS detected' : 'Metadata pending validation'
+          location: hasExifGps ? 'Photo GPS detected' : 'Metadata pending validation',
+          warnings: exifMetadata.warnings || []
         }
       });
 
+      return { hasExifGps, exifLocation };
     } catch (error) {
       console.warn('Unable to read image EXIF metadata.', error);
       updateDraft({
@@ -318,10 +414,27 @@ export default function CreateReportPage() {
         exifLng: null,
         exifTimestamp: '',
         hasExifGps: false,
+        exif: {
+          hasExif: false,
+          hasGps: false,
+          hasTimestamp: false,
+          hasCameraInfo: false,
+          gps: null,
+          timestamp: '',
+          timestamps: { original: '', created: '', modified: '', gps: '', primary: '' },
+          camera: { make: '', model: '', software: '', lensMake: '', lensModel: '' },
+          image: { width: null, height: null, orientation: null, name: '', type: '', size: null, lastModified: '' },
+          rawExif: null,
+          rawExifSummary: { keyCount: 0, keys: [], values: {} },
+          warnings: ['Metadata pending validation.'],
+          validationStatus: 'unavailable'
+        },
         metadataPreview: {
           location: 'Metadata pending validation'
         }
       });
+
+      return { hasExifGps: false, exifLocation: null };
     }
   }
 
@@ -351,10 +464,15 @@ export default function CreateReportPage() {
       photoPreview: '',
       evidenceCapturedAt: '',
       metadataPreview: null,
+      exif: null,
       exifLat: null,
       exifLng: null,
       exifTimestamp: '',
-      hasExifGps: false
+      hasExifGps: false,
+      captureSource: '',
+      directCameraCapture: false,
+      deviceLocation: null,
+      deviceLocationError: ''
     });
   }
 
@@ -397,6 +515,9 @@ export default function CreateReportPage() {
             </div>
             <h1>Capture a clear photo of the issue</h1>
             <p>High-resolution images help responders resolve issues 40% faster.</p>
+            <p className="evidence-helper-text">
+              For better GPS accuracy, take a new photo directly from your camera.
+            </p>
 
             <div className="evidence-actions">
               <button className="camera-button" onClick={handleUseCamera} type="button">
@@ -490,9 +611,18 @@ export default function CreateReportPage() {
             </div>
           </div>
 
+          <div className="metadata-row">
+            <FaCrosshairs aria-hidden="true" />
+            <div>
+              <span>{deviceGpsStatus.label}</span>
+              <strong>{deviceGpsStatus.value}</strong>
+            </div>
+          </div>
+
           <p className="metadata-note">
             * GPS data will be automatically embedded into your report for precision dispatching.
             Screenshots and downloaded images may not contain location data.
+            Gallery/shared photos may have removed GPS metadata.
           </p>
         </section>
 

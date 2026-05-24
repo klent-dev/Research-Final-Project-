@@ -1,4 +1,5 @@
 const NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search';
+const NOMINATIM_REVERSE_URL = 'https://nominatim.openstreetmap.org/reverse';
 
 function normalizeQuery(address) {
   const trimmedAddress = String(address || '').trim();
@@ -34,6 +35,23 @@ function normalizeGeocodeResult(result) {
   };
 }
 
+function normalizeReverseGeocodeResult(result, fallbackLocation = {}) {
+  const lat = Number(result?.lat ?? fallbackLocation.lat);
+  const lng = Number(result?.lon ?? fallbackLocation.lng);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+
+  return {
+    ...fallbackLocation,
+    lat,
+    lng,
+    address: result?.display_name || fallbackLocation.address || 'Location detected',
+    subAddress: fallbackLocation.subAddress || `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`
+  };
+}
+
 export async function geocodeAddress(address) {
   const query = normalizeQuery(address);
 
@@ -61,4 +79,34 @@ export async function geocodeAddress(address) {
 
   const results = await response.json();
   return normalizeGeocodeResult(results?.[0]);
+}
+
+export async function reverseGeocodeLocation(location = {}) {
+  const lat = Number(location.lat ?? location.latitude);
+  const lng = Number(location.lng ?? location.longitude);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    format: 'jsonv2',
+    lat: String(lat),
+    lon: String(lng),
+    zoom: '18',
+    addressdetails: '1'
+  });
+
+  const response = await fetch(`${NOMINATIM_REVERSE_URL}?${params.toString()}`, {
+    headers: {
+      Accept: 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Unable to reverse geocode location.');
+  }
+
+  const result = await response.json();
+  return normalizeReverseGeocodeResult(result, location);
 }

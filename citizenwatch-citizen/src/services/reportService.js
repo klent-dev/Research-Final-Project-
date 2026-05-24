@@ -100,6 +100,47 @@ function dataUrlToBlob(dataUrl) {
   return new Blob([bytes], { type: mimeType });
 }
 
+function sanitizeForFirestore(value) {
+  if (value === undefined) {
+    return null;
+  }
+
+  if (value === null || value instanceof Date || typeof value !== 'object') {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(sanitizeForFirestore);
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, nestedValue]) => [key, sanitizeForFirestore(nestedValue)])
+  );
+}
+
+function summarizeRawExif(rawExif = {}) {
+  if (!rawExif || typeof rawExif !== 'object') {
+    return { keyCount: 0, keys: [], values: {} };
+  }
+
+  const keys = Object.keys(rawExif);
+  return {
+    keyCount: keys.length,
+    keys: keys.slice(0, 80),
+    values: {}
+  };
+}
+
+function compactExifForStorage(exif = {}) {
+  const rawExifSummary = exif.rawExifSummary || summarizeRawExif(exif.rawExif);
+
+  return {
+    ...exif,
+    rawExif: null,
+    rawExifSummary
+  };
+}
+
 async function resolvePhotoFile(payload, reportId) {
   if (payload.photoFile) {
     return payload.photoFile;
@@ -128,11 +169,22 @@ function normalizeReportPayload(payload = {}, photoUrl = '') {
   const createdBy = getCreatedBy(payload);
   const now = new Date().toISOString();
   const location = normalizeLocation(payload.location);
-  const exif = payload.exif || {
+  const sourceExif = compactExifForStorage(payload.exif || {
     hasGps: Boolean(payload.hasExifGps),
-    lat: payload.exifLat ?? null,
-    lng: payload.exifLng ?? null,
+    gps: payload.hasExifGps ? { lat: payload.exifLat ?? null, lng: payload.exifLng ?? null, altitude: null } : null,
     timestamp: payload.exifTimestamp || ''
+  });
+  const exifGps = sourceExif.gps || {};
+  const exifLat = sourceExif.lat ?? sourceExif.latitude ?? exifGps.lat ?? exifGps.latitude ?? payload.exifLat ?? null;
+  const exifLng = sourceExif.lng ?? sourceExif.longitude ?? exifGps.lng ?? exifGps.longitude ?? payload.exifLng ?? null;
+  const exifTimestamp = sourceExif.timestamp || sourceExif.timestamps?.primary || payload.exifTimestamp || '';
+  const exif = {
+    ...sourceExif,
+    hasGps: Boolean(sourceExif.hasGps || (exifLat !== null && exifLng !== null)),
+    gps: sourceExif.gps || (exifLat !== null && exifLng !== null ? { lat: exifLat, lng: exifLng, altitude: null } : null),
+    lat: exifLat,
+    lng: exifLng,
+    timestamp: exifTimestamp
   };
 
   return {
@@ -150,6 +202,10 @@ function normalizeReportPayload(payload = {}, photoUrl = '') {
     latitude: location.lat,
     longitude: location.lng,
     exif,
+    hasExifGps: Boolean(exif.hasGps),
+    exifLat,
+    exifLng,
+    exifTimestamp,
     deviceLocation: payload.deviceLocation || null,
     locationValidation: payload.locationValidation || null,
     photoUrl,
@@ -232,7 +288,7 @@ export async function createInfrastructureReport(reportDraft = {}) {
   );
 
   try {
-    await setDoc(doc(reportsRef, reportId), report);
+    await setDoc(doc(reportsRef, reportId), sanitizeForFirestore(report));
   } catch (error) {
     console.error('Firestore report creation failed:', error);
     throw new Error('Unable to submit report. Please check your connection and try again.');

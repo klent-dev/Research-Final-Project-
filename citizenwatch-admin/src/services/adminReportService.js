@@ -133,6 +133,7 @@ export function normalizeLocationValidationStatus(status = '') {
     .replaceAll(' ', '-');
 
   if (normalized.includes('verified')) return 'verified';
+  if (normalized.includes('good')) return 'verified';
   if (normalized.includes('needs-review') || normalized.includes('review')) return 'needs-review';
   if (normalized.includes('suspicious') || normalized.includes('mismatch')) return 'suspicious';
   if (normalized.includes('photo') || normalized.includes('exif')) return 'needs-review';
@@ -163,14 +164,21 @@ function toCoordinate(value) {
 export function normalizeLocationValidation(report = {}) {
   const validation = report.locationValidation || {};
   const exif = report.exif || {};
+  const photoGps = validation.photoGps || exif.gps || {};
+  const deviceGps = validation.deviceGps || report.deviceLocation || {};
   const deviceLocation = report.deviceLocation || {};
+  const camera = exif.camera || {};
+  const image = exif.image || {};
   const status = normalizeLocationValidationStatus(validation.status || validation.label || validation.source);
   const distance = Number(validation.distanceMeters);
-  const exifLat = toCoordinate(exif.lat ?? exif.latitude ?? report.exifLat);
-  const exifLng = toCoordinate(exif.lng ?? exif.longitude ?? report.exifLng);
-  const deviceLat = toCoordinate(deviceLocation.lat ?? deviceLocation.latitude);
-  const deviceLng = toCoordinate(deviceLocation.lng ?? deviceLocation.longitude);
-  const deviceAccuracy = Number(deviceLocation.accuracy);
+  const exifLat = toCoordinate(exif.lat ?? exif.latitude ?? photoGps.lat ?? photoGps.latitude ?? report.exifLat);
+  const exifLng = toCoordinate(exif.lng ?? exif.longitude ?? photoGps.lng ?? photoGps.longitude ?? report.exifLng);
+  const exifTimestamp = exif.timestamp || exif.timestamps?.primary || report.exifTimestamp || '';
+  const deviceLat = toCoordinate(deviceGps.lat ?? deviceGps.latitude ?? deviceLocation.lat ?? deviceLocation.latitude);
+  const deviceLng = toCoordinate(deviceGps.lng ?? deviceGps.longitude ?? deviceLocation.lng ?? deviceLocation.longitude);
+  const deviceAccuracy = Number(validation.gpsAccuracy ?? deviceGps.accuracy ?? deviceLocation.accuracy);
+  const photoGpsAccuracy = Number(photoGps.accuracy ?? exif.gpsAccuracy);
+  const score = Number(validation.verificationScore);
 
   return {
     ...validation,
@@ -182,11 +190,28 @@ export function normalizeLocationValidation(report = {}) {
     source: validation.source || 'none',
     exifLat,
     exifLng,
-    exifTimestamp: exif.timestamp || report.exifTimestamp || '',
-    hasExifGps: Boolean(report.hasExifGps || (exifLat !== null && exifLng !== null)),
+    exifTimestamp,
+    hasExifGps: Boolean(report.hasExifGps || exif.hasGps || validation.hasExifGps || (exifLat !== null && exifLng !== null)),
+    hasExif: Boolean(exif.hasExif),
+    hasTimestamp: Boolean(exif.hasTimestamp || exifTimestamp),
+    hasCameraInfo: Boolean(exif.hasCameraInfo || camera.make || camera.model || camera.software || camera.lensMake || camera.lensModel),
+    cameraMake: camera.make || '',
+    cameraModel: camera.model || '',
+    cameraSoftware: camera.software || '',
+    lensMake: camera.lensMake || '',
+    lensModel: camera.lensModel || '',
+    imageWidth: image.width ?? null,
+    imageHeight: image.height ?? null,
+    imageOrientation: image.orientation ?? null,
+    photoGpsAltitude: photoGps.altitude ?? null,
+    photoGpsAccuracy: Number.isFinite(photoGpsAccuracy) ? Math.round(photoGpsAccuracy) : null,
     deviceLat,
     deviceLng,
-    deviceAccuracy: Number.isFinite(deviceAccuracy) ? Math.round(deviceAccuracy) : null
+    deviceAccuracy: Number.isFinite(deviceAccuracy) ? Math.round(deviceAccuracy) : null,
+    gpsAccuracy: Number.isFinite(deviceAccuracy) ? Math.round(deviceAccuracy) : null,
+    verificationScore: Number.isFinite(score) ? Math.round(score) : null,
+    verificationStatus: validation.verificationStatus || status,
+    requiresReview: Boolean(validation.requiresReview)
   };
 }
 

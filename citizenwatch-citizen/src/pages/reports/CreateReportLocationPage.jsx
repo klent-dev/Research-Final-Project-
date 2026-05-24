@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
   FaArrowLeft,
@@ -10,11 +10,13 @@ import {
   FaGavel,
   FaInfoCircle,
   FaLocationArrow,
-  FaMapMarkerAlt
+  FaMapMarkerAlt,
+  FaRedo
 } from 'react-icons/fa';
 import { useReportDraft } from '../../context/ReportDraftContext.jsx';
-import { geocodeAddress } from '../../services/geocodingService.js';
-import { validatePhotoLocation } from '../../utils/locationValidation.js';
+import { geocodeAddress, reverseGeocodeLocation } from '../../services/geocodingService.js';
+import { geolocationErrorMessage, getBestDevicePosition, normalizePositionLocation } from '../../utils/deviceLocation.js';
+import { getGpsAccuracyLevel, validatePhotoLocation } from '../../utils/locationValidation.js';
 import { getMarkerBySeverity } from '../../utils/mapMarkers.js';
 
 const LAHUG_CENTER = {
@@ -49,7 +51,17 @@ function LocationMapBridge({ location, mapRef }) {
   return null;
 }
 
-function SafeCreateLocationMap({ reportLocation, hasLocation, mapRef }) {
+function ManualPinMapEvents({ onManualPin }) {
+  useMapEvents({
+    click(event) {
+      onManualPin?.(event.latlng);
+    }
+  });
+
+  return null;
+}
+
+function SafeCreateLocationMap({ reportLocation, hasLocation, mapRef, onManualPin }) {
   try {
     return (
       <MapContainer
@@ -61,6 +73,7 @@ function SafeCreateLocationMap({ reportLocation, hasLocation, mapRef }) {
         zoomControl={false}
       >
         <LocationMapBridge location={reportLocation} mapRef={mapRef} />
+        <ManualPinMapEvents onManualPin={onManualPin} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -128,6 +141,7 @@ function normalizeSelectedLocation(location) {
 function createExifLocation(draft) {
   const exifLat = Number(draft?.exifLat);
   const exifLng = Number(draft?.exifLng);
+  const exifAccuracy = Number(draft?.exif?.gps?.accuracy);
 
   if (!draft?.hasExifGps || !Number.isFinite(exifLat) || !Number.isFinite(exifLng)) {
     return null;
@@ -136,34 +150,12 @@ function createExifLocation(draft) {
   return {
     lat: exifLat,
     lng: exifLng,
-    accuracy: null,
+    accuracy: Number.isFinite(exifAccuracy) ? Math.round(exifAccuracy) : null,
     address: 'Photo location detected',
     source: 'exif',
     // TODO: Add reverse geocoding for human-readable EXIF photo address
     subAddress: `Lat: ${exifLat.toFixed(5)}, Lng: ${exifLng.toFixed(5)}`
   };
-}
-
-function getGeolocationMessage(error) {
-  if (error?.code === 1) {
-    return 'Location permission is blocked for this browser. Please allow location access in your phone settings or enter the address manually.';
-  }
-
-  if (error?.code === 2) {
-    return 'GPS signal is unavailable. Move near a window or outdoors, then try again.';
-  }
-
-  if (error?.code === 3) {
-    return 'GPS is taking too long to respond. Move near a window or outdoors, then try again.';
-  }
-
-  return 'GPS unavailable. Please allow location access or enter the address manually.';
-}
-
-function requestBrowserPosition(options) {
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(resolve, reject, options);
-  });
 }
 
 export default function CreateReportLocationPage() {
@@ -183,12 +175,15 @@ export default function CreateReportLocationPage() {
         exifLocation: createExifLocation(draft),
         deviceLocation: draft.deviceLocation,
         manualLocation: draft.location?.source === 'manual' ? draft.location : null,
-        selectedLocation: draft.location
+        selectedLocation: draft.location,
+        directCameraCapture: Boolean(draft.directCameraCapture),
+        exif: draft.exif
       })
   ));
   const [isManualAddressOpen, setIsManualAddressOpen] = useState(false);
   const [manualAddress, setManualAddress] = useState(() => draft.location?.source === 'manual' ? draft.location.address : '');
   const [isGeocodingManualAddress, setIsGeocodingManualAddress] = useState(false);
+  const [isResolvingMapPin, setIsResolvingMapPin] = useState(false);
   const [locationError, setLocationError] = useState('');
   const mapRef = useRef(null);
   const hasRequestedBrowserLocationRef = useRef(false);
@@ -197,6 +192,7 @@ export default function CreateReportLocationPage() {
   const isGpsLocation = reportLocation?.source === 'gps';
   const isExifLocation = reportLocation?.source === 'exif';
   const hasAccuracy = Number.isFinite(Number(reportLocation?.accuracy));
+  const gpsAccuracyLevel = getGpsAccuracyLevel(deviceLocation?.accuracy ?? reportLocation?.accuracy);
   const LocationValidationIcon = ['danger', 'warning'].includes(locationValidation?.tone)
     ? FaExclamationTriangle
     : FaCheckCircle;
@@ -210,7 +206,9 @@ export default function CreateReportLocationPage() {
       exifLocation: nextExifLocation,
       deviceLocation: nextDeviceLocation,
       manualLocation: nextSelectedLocation?.source === 'manual' ? nextSelectedLocation : null,
-      selectedLocation: nextSelectedLocation
+      selectedLocation: nextSelectedLocation,
+      directCameraCapture: Boolean(draft.directCameraCapture),
+      exif: draft.exif
     });
 
     setLocationValidation(nextValidation);
@@ -233,6 +231,39 @@ export default function CreateReportLocationPage() {
     }
   }, [hasPhoto, navigate]);
 
+  const enrichLocationAddress = useCallback(async (locationData) => {
+    try {
+      return await reverseGeocodeLocation(locationData) || locationData;
+    } catch (error) {
+      console.warn('Reverse geocoding failed.', error);
+      return locationData;
+    }
+  }, []);
+
+  const applySelectedLocation = useCallback(({
+    nextLocation,
+    nextDeviceLocation = deviceLocation,
+    nextExifLocation = createExifLocation(draft)
+  }) => {
+    const normalizedLocation = normalizeSelectedLocation(nextLocation);
+
+    if (!normalizedLocation) {
+      return;
+    }
+
+    setReportLocation(normalizedLocation);
+    updateLocation(normalizedLocation);
+    updateLocationValidationState({
+      nextExifLocation,
+      nextDeviceLocation,
+      nextSelectedLocation: normalizedLocation
+    });
+    mapRef.current?.flyTo([normalizedLocation.lat, normalizedLocation.lng], normalizedLocation.source === 'manual' ? 17 : 16, {
+      animate: true,
+      duration: 0.8
+    });
+  }, [deviceLocation, draft, updateLocation, updateLocationValidationState]);
+
   const requestUserLocation = useCallback(async () => {
     if (!navigator.geolocation) {
       setLocationError('GPS is not supported by this browser. Please enter the address manually.');
@@ -240,87 +271,42 @@ export default function CreateReportLocationPage() {
     }
 
     try {
-      let position = null;
+      const position = await getBestDevicePosition({
+        sampleMs: 8000,
+        timeout: 16000,
+        targetAccuracy: 25
+      });
+      const sampledLocation = normalizePositionLocation(position, 'gps');
 
-      try {
-        position = await requestBrowserPosition({
-          enableHighAccuracy: true,
-          timeout: 20000,
-          maximumAge: 0
+      if (sampledLocation) {
+        const nextLocation = await enrichLocationAddress({
+          ...sampledLocation,
+          gpsAccuracyLabel: getGpsAccuracyLevel(sampledLocation.accuracy).label
         });
-      } catch (firstError) {
-        if (firstError?.code === 1) {
-          throw firstError;
-        }
+        const normalizedDeviceLocation = normalizeSelectedLocation(nextLocation);
 
-        position = await requestBrowserPosition({
-          enableHighAccuracy: false,
-          timeout: 30000,
-          maximumAge: 120000
-        });
-      }
-
-      if (position) {
-        const nextLocation = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          accuracy: Math.round(position.coords.accuracy),
-          address: 'Location detected',
-          source: 'gps',
-          // TODO: Add reverse geocoding for human-readable address
-          subAddress: `Lat: ${position.coords.latitude.toFixed(5)}, Lng: ${position.coords.longitude.toFixed(5)}`
-        };
-
-        const normalizedLocation = normalizeSelectedLocation(nextLocation);
-        setDeviceLocation(normalizedLocation);
+        setDeviceLocation(normalizedDeviceLocation);
         setLocationError('');
+
         const exifLocation = createExifLocation(draft);
 
-        if (exifLocation) {
-          const normalizedExifLocation = normalizeSelectedLocation(exifLocation);
-          setReportLocation(normalizedExifLocation);
-          updateLocation(normalizedExifLocation);
-          updateLocationValidationState({
-            nextExifLocation: normalizedExifLocation,
-            nextDeviceLocation: normalizedLocation,
-            nextSelectedLocation: normalizedExifLocation
-          });
-          mapRef.current?.flyTo([normalizedExifLocation.lat, normalizedExifLocation.lng], 16, {
-            animate: true,
-            duration: 0.8
-          });
-          return;
-        }
-
-        setReportLocation(normalizedLocation);
-        updateLocation(normalizedLocation);
-        updateLocationValidationState({
-          nextExifLocation: null,
-          nextDeviceLocation: normalizedLocation,
-          nextSelectedLocation: normalizedLocation
-        });
-        mapRef.current?.flyTo([normalizedLocation.lat, normalizedLocation.lng], 16, {
-          animate: true,
-          duration: 0.8
+        applySelectedLocation({
+          nextLocation: exifLocation || normalizedDeviceLocation,
+          nextDeviceLocation: normalizedDeviceLocation,
+          nextExifLocation: exifLocation
         });
       }
     } catch (error) {
         const exifLocation = createExifLocation(draft);
 
         if (exifLocation) {
-          const normalizedExifLocation = normalizeSelectedLocation(exifLocation);
-          setReportLocation(normalizedExifLocation);
-          updateLocation(normalizedExifLocation);
-          updateLocationValidationState({
-            nextExifLocation: normalizedExifLocation,
+          const resolvedExifLocation = await enrichLocationAddress(exifLocation);
+          applySelectedLocation({
+            nextLocation: resolvedExifLocation,
             nextDeviceLocation: null,
-            nextSelectedLocation: normalizedExifLocation
+            nextExifLocation: resolvedExifLocation
           });
           setLocationError('Device GPS unavailable. Photo GPS is being used for this report.');
-          mapRef.current?.flyTo([normalizedExifLocation.lat, normalizedExifLocation.lng], 16, {
-            animate: true,
-            duration: 0.8
-          });
           return;
         }
 
@@ -331,9 +317,44 @@ export default function CreateReportLocationPage() {
           nextDeviceLocation: null,
           nextSelectedLocation: null
         });
-        setLocationError(getGeolocationMessage(error));
+        setLocationError(geolocationErrorMessage(error));
     }
-  }, [draft, updateLocation, updateLocationValidationState]);
+  }, [applySelectedLocation, draft, enrichLocationAddress, updateLocation, updateLocationValidationState]);
+
+  const handleManualMapPin = useCallback(async (latlng) => {
+    if (!latlng) {
+      return;
+    }
+
+    const manualPinLocation = {
+      lat: latlng.lat,
+      lng: latlng.lng,
+      accuracy: null,
+      address: 'Manual map pin selected',
+      source: 'manual',
+      subAddress: `Lat: ${latlng.lat.toFixed(5)}, Lng: ${latlng.lng.toFixed(5)}`
+    };
+
+    setIsResolvingMapPin(true);
+    setLocationError('');
+
+    try {
+      const resolvedLocation = await enrichLocationAddress(manualPinLocation);
+
+      applySelectedLocation({
+        nextLocation: {
+          ...resolvedLocation,
+          source: 'manual'
+        },
+        nextDeviceLocation: deviceLocation,
+        nextExifLocation: createExifLocation(draft)
+      });
+      setManualAddress(resolvedLocation.address || '');
+      setIsManualAddressOpen(false);
+    } finally {
+      setIsResolvingMapPin(false);
+    }
+  }, [applySelectedLocation, deviceLocation, draft, enrichLocationAddress]);
 
   useEffect(() => {
     if (hasPhoto && !hasRequestedBrowserLocationRef.current) {
@@ -469,7 +490,12 @@ export default function CreateReportLocationPage() {
       </section>
 
       <section className="location-map-preview" aria-label="Live location map preview">
-        <SafeCreateLocationMap hasLocation={hasLocation} mapRef={mapRef} reportLocation={reportLocation} />
+        <SafeCreateLocationMap
+          hasLocation={hasLocation}
+          mapRef={mapRef}
+          onManualPin={handleManualMapPin}
+          reportLocation={reportLocation}
+        />
 
         <div className={hasLocation ? 'gps-verified-pill' : 'gps-verified-pill gps-verified-pill--waiting'}>
           {hasLocation && <FaCheckCircle aria-hidden="true" />}
@@ -493,6 +519,7 @@ export default function CreateReportLocationPage() {
             <button onClick={requestUserLocation} type="button">
               Use Current Location
             </button>
+            <small>Tap anywhere on the map to drop a manual pin.</small>
             {locationError && <small>{locationError}</small>}
           </div>
         )}
@@ -514,9 +541,20 @@ export default function CreateReportLocationPage() {
         <div className="location-accuracy-box">
           <FaInfoCircle aria-hidden="true" />
           <p>
-            Exact location data helps municipal authorities identify and respond to infrastructure issues 30% faster.
+            Tap the map to drop a manual pin, or use GPS for a precise device reading.
           </p>
         </div>
+
+        {isResolvingMapPin && (
+          <div className="location-validation-card location-validation-card--neutral">
+            <FaInfoCircle aria-hidden="true" />
+            <div>
+              <span>Map Pin</span>
+              <strong>Resolving selected map location...</strong>
+              <p>The selected coordinates will be saved with the closest readable address.</p>
+            </div>
+          </div>
+        )}
 
         <div className={`location-validation-card location-validation-card--${locationValidation?.tone || 'neutral'}`}>
           <LocationValidationIcon aria-hidden="true" />
@@ -526,6 +564,42 @@ export default function CreateReportLocationPage() {
             <p>{locationValidation?.helper || 'Upload a photo and allow GPS to compare location accuracy.'}</p>
           </div>
         </div>
+
+        {!hasLocation && (
+          <div className="location-validation-card location-validation-card--warning">
+            <FaInfoCircle aria-hidden="true" />
+            <div>
+              <span>Enable GPS for accurate reporting</span>
+              <strong>Location access is needed when photo GPS is unavailable.</strong>
+              <p>Turn on Location Services, enable Camera Location Tags, allow browser location permission, then retry GPS.</p>
+              <button className="retry-gps-button" onClick={requestUserLocation} type="button">
+                <FaRedo aria-hidden="true" />
+                Retry GPS
+              </button>
+            </div>
+          </div>
+        )}
+
+        {hasLocation && isGpsLocation && (
+          <div className={`location-validation-card location-validation-card--${gpsAccuracyLevel.tone}`}>
+            <FaLocationArrow aria-hidden="true" />
+            <div>
+              <span>GPS Accuracy</span>
+              <strong>{gpsAccuracyLevel.label}{hasAccuracy ? ` (+/- ${reportLocation.accuracy}m)` : ''}</strong>
+              {Number(reportLocation.accuracy) > 100 ? (
+                <p>Weak GPS signal. Move outdoors or tap Retry GPS.</p>
+              ) : (
+                <p>Device GPS is being used as the report location fallback.</p>
+              )}
+              {Number(reportLocation.accuracy) > 50 && (
+                <button className="retry-gps-button" onClick={requestUserLocation} type="button">
+                  <FaRedo aria-hidden="true" />
+                  Retry GPS
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         <button
           className="confirm-location-button"

@@ -166,11 +166,26 @@ export default function CreateReportDetailsPage() {
       status: 'under_review',
       selectedFile: draft.selectedFile,
       photoFile: draft.selectedFile,
-      exif: {
+      exif: draft.exif || {
+        hasExif: Boolean(draft.hasExifGps || draft.exifTimestamp),
         hasGps: Boolean(draft.hasExifGps),
-        lat: draft.exifLat ?? null,
-        lng: draft.exifLng ?? null,
-        timestamp: draft.exifTimestamp || ''
+        hasTimestamp: Boolean(draft.exifTimestamp),
+        hasCameraInfo: false,
+        gps: draft.hasExifGps ? { lat: draft.exifLat ?? null, lng: draft.exifLng ?? null, altitude: null } : null,
+        timestamp: draft.exifTimestamp || '',
+        timestamps: {
+          original: draft.exifTimestamp || '',
+          created: '',
+          modified: '',
+          gps: '',
+          primary: draft.exifTimestamp || ''
+        },
+        camera: { make: '', model: '', software: '', lensMake: '', lensModel: '' },
+        image: { width: null, height: null, orientation: null, name: '', type: '', size: null, lastModified: '' },
+        rawExif: null,
+        rawExifSummary: { keyCount: 0, keys: [], values: {} },
+        warnings: [],
+        validationStatus: draft.hasExifGps ? 'photo_gps_detected' : 'no_gps_data'
       }
     });
 

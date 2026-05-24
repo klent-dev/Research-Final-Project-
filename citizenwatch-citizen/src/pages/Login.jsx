@@ -30,7 +30,11 @@ export default function Login() {
     event.preventDefault();
     setErrorMessage('');
 
-    if (!formData.email.trim() || !formData.password) {
+    const form = new FormData(event.currentTarget);
+    const email = String(form.get('email') || formData.email || '').trim();
+    const password = String(form.get('password') || formData.password || '');
+
+    if (!email || !password) {
       setErrorMessage('Please enter your email and password.');
       return;
     }
@@ -39,8 +43,8 @@ export default function Login() {
 
     try {
       await loginCitizen({
-        email: formData.email.trim(),
-        password: formData.password
+        email,
+        password
       });
       navigate('/home', { replace: true });
     } catch (error) {
@@ -64,7 +68,7 @@ export default function Login() {
           </div>
 
           <section className="login-panel">
-            <form className="login-form" onSubmit={handleSubmit} noValidate>
+            <form className="login-form" onSubmit={handleSubmit}>
               <label>
                 <span>Email Address</span>
                 <div className="login-input">
@@ -74,6 +78,7 @@ export default function Login() {
                     name="email"
                     onChange={handleChange}
                     placeholder="name@agency.gov"
+                    required
                     type="email"
                     value={formData.email}
                   />
@@ -91,6 +96,7 @@ export default function Login() {
                     autoComplete="current-password"
                     name="password"
                     onChange={handleChange}
+                    required
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                   />

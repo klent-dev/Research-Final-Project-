@@ -10,10 +10,13 @@ const initialDraft = {
   fileName: '',
   fileSize: '',
   metadataPreview: null,
+  exif: null,
   exifLat: null,
   exifLng: null,
   exifTimestamp: '',
   hasExifGps: false,
+  captureSource: '',
+  directCameraCapture: false,
   location: {
     lat: null,
     lng: null,
@@ -114,10 +117,13 @@ export function ReportDraftProvider({ children }) {
       fileName: file?.name || '',
       fileSize: file?.size ? formatFileSize(file.size) : '',
       metadataPreview: null,
+      exif: null,
       exifLat: null,
       exifLng: null,
       exifTimestamp: '',
       hasExifGps: false,
+      captureSource: '',
+      directCameraCapture: false,
       evidenceCapturedAt: previewUrl ? new Date().toISOString() : ''
     });
   }, [updateDraft]);
@@ -186,10 +192,13 @@ export function useReportDraft() {
           fileName: file?.name || '',
           fileSize: file?.size ? formatFileSize(file.size) : '',
           metadataPreview: null,
+          exif: null,
           exifLat: null,
           exifLng: null,
           exifTimestamp: '',
           hasExifGps: false,
+          captureSource: '',
+          directCameraCapture: false,
           evidenceCapturedAt: previewUrl ? new Date().toISOString() : ''
         });
         persistDraft(nextDraft);
