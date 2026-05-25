@@ -16,11 +16,7 @@ const statusActions = [
   { label: 'Resolved', value: 'resolved' },
   { label: 'Rejected', value: 'rejected' }
 ];
-const severityOrder = {
-  critical: 0,
-  moderate: 1,
-  minor: 2
-};
+const REPORTS_PER_PAGE = 10;
 
 function getStatusClass(status) {
   return status.toLowerCase().replaceAll('_', '-').replaceAll(' ', '-');
@@ -106,6 +102,7 @@ export default function ReportQueuePage() {
   const [reports, setReports] = useState([]);
   const [selectedReportId, setSelectedReportId] = useState('');
   const [statusMessage, setStatusMessage] = useState('Loading reports...');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     return subscribeReportsForModeration(
@@ -123,16 +120,28 @@ export default function ReportQueuePage() {
 
     return reports
       .filter((report) => !category || report.category === category)
-      .filter((report) => activeStatus === 'All Statuses' || report.displayStatus === activeStatus)
-      .sort((first, second) => severityOrder[first.normalizedSeverity] - severityOrder[second.normalizedSeverity]);
+      .filter((report) => activeStatus === 'All Statuses' || report.displayStatus === activeStatus);
   }, [activeCategory, activeStatus, reports]);
 
-  const selectedReport = reports.find((report) => report.id === selectedReportId) || filteredReports[0] || null;
+  const totalPages = Math.max(1, Math.ceil(filteredReports.length / REPORTS_PER_PAGE));
+  const pageStart = (currentPage - 1) * REPORTS_PER_PAGE;
+  const paginatedReports = filteredReports.slice(pageStart, pageStart + REPORTS_PER_PAGE);
+  const selectedReport = reports.find((report) => report.id === selectedReportId) || paginatedReports[0] || filteredReports[0] || null;
   const totalReports = reports.length || 1;
   const summary = statusOrder.map((status) => ({
     status,
     count: reports.filter((report) => report.displayStatus === status).length
   }));
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory, activeStatus]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
+
+  const pageEnd = Math.min(pageStart + paginatedReports.length, filteredReports.length);
 
   function handleStatusAction(status) {
     if (!selectedReport) return;
@@ -224,7 +233,7 @@ export default function ReportQueuePage() {
               </tr>
             </thead>
             <tbody>
-              {filteredReports.map((report) => (
+              {paginatedReports.map((report) => (
                 <tr
                   className={selectedReport?.id === report.id ? 'selected' : ''}
                   key={report.id}
@@ -263,7 +272,28 @@ export default function ReportQueuePage() {
             </div>
           )}
           <footer>
-            <span>Showing {filteredReports.length} progress reports</span>
+            <span>
+              Showing {filteredReports.length === 0 ? 0 : pageStart + 1}-{pageEnd} of {filteredReports.length} progress reports
+            </span>
+            {filteredReports.length > REPORTS_PER_PAGE && (
+              <div className="report-pagination" aria-label="Report pagination">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  type="button"
+                >
+                  Previous
+                </button>
+                <strong>Page {currentPage} of {totalPages}</strong>
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  type="button"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </footer>
         </section>
 

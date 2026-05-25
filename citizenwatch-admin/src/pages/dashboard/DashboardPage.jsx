@@ -317,16 +317,19 @@ export default function DashboardPage() {
                     onClick={() => setSelectedReportId(report.id)}
                     type="button"
                   >
-                    <div>
-                      <span>{report.category}</span>
-                      <time>{formatRelativeTime(report.createdAt || report.updatedAt)}</time>
+                    <span className="urgent-item__indicator" aria-hidden="true" />
+                    <div className="urgent-item__body">
+                      <div className="urgent-item__meta">
+                        <span>{report.category}</span>
+                        <time>{formatRelativeTime(report.createdAt || report.updatedAt)}</time>
+                      </div>
+                      <h3>{getReportTitle(report)}</h3>
+                      <p>{report.description || 'No description provided.'}</p>
+                      <footer>
+                        <small>{report.normalizedSeverity}</small>
+                        <small>{report.district}</small>
+                      </footer>
                     </div>
-                    <h3>{getReportTitle(report)}</h3>
-                    <p>{report.description || 'No description provided.'}</p>
-                    <footer>
-                      <small>{report.normalizedSeverity}</small>
-                      <small>{report.district}</small>
-                    </footer>
                   </button>
                 ))
               ) : (
