@@ -51,6 +51,7 @@ function LocationMapBridge({ location, mapRef }) {
   return null;
 }
 
+// Leaflet click bridge for manual pin placement on the Step 2 map.
 function ManualPinMapEvents({ onManualPin }) {
   useMapEvents({
     click(event) {
@@ -138,6 +139,7 @@ function normalizeSelectedLocation(location) {
   };
 }
 
+// Builds a usable map location from the photo GPS saved during Step 1.
 function createExifLocation(draft) {
   const exifLat = Number(draft?.exifLat);
   const exifLng = Number(draft?.exifLng);
@@ -153,7 +155,6 @@ function createExifLocation(draft) {
     accuracy: Number.isFinite(exifAccuracy) ? Math.round(exifAccuracy) : null,
     address: 'Photo location detected',
     source: 'exif',
-    // TODO: Add reverse geocoding for human-readable EXIF photo address
     subAddress: `Lat: ${exifLat.toFixed(5)}, Lng: ${exifLng.toFixed(5)}`
   };
 }
@@ -161,7 +162,6 @@ function createExifLocation(draft) {
 export default function CreateReportLocationPage() {
   const navigate = useNavigate();
   const { draft, updateDraft, updateLocation } = useReportDraft();
-  // TODO: Add reverse geocoding for human-readable address
   const [reportLocation, setReportLocation] = useState(() => (
     normalizeSelectedLocation(draft.location) || createExifLocation(draft)
   ));
@@ -240,6 +240,7 @@ export default function CreateReportLocationPage() {
     }
   }, []);
 
+  // Applies the chosen location and immediately refreshes the validation result.
   const applySelectedLocation = useCallback(({
     nextLocation,
     nextDeviceLocation = deviceLocation,
@@ -264,6 +265,7 @@ export default function CreateReportLocationPage() {
     });
   }, [deviceLocation, draft, updateLocation, updateLocationValidationState]);
 
+  // Samples device GPS for several seconds, then falls back to photo GPS if the device cannot lock.
   const requestUserLocation = useCallback(async () => {
     if (!navigator.geolocation) {
       setLocationError('GPS is not supported by this browser. Please enter the address manually.');
@@ -321,6 +323,7 @@ export default function CreateReportLocationPage() {
     }
   }, [applySelectedLocation, draft, enrichLocationAddress, updateLocation, updateLocationValidationState]);
 
+  // Lets the user tap the map when indoor GPS or camera EXIF cannot provide a good location.
   const handleManualMapPin = useCallback(async (latlng) => {
     if (!latlng) {
       return;
@@ -411,7 +414,6 @@ export default function CreateReportLocationPage() {
       return;
     }
 
-    // TODO: Connect real GPS verification and map coordinates after UI is completed
     updateLocation(normalizeSelectedLocation(reportLocation));
     updateLocationValidationState({
       nextExifLocation: createExifLocation(draft),

@@ -1,3 +1,5 @@
+// Device GPS helper used by report creation. It samples browser GPS readings
+// and keeps the most accurate result for Android/iPhone fallback location.
 export function geolocationErrorMessage(error) {
   if (error?.code === 1) {
     return 'Location permission is blocked for this browser. Please allow location access in your phone settings or enter the address manually.';
@@ -14,6 +16,8 @@ export function geolocationErrorMessage(error) {
   return 'GPS unavailable. Please allow location access or enter the address manually.';
 }
 
+// Converts the browser GeolocationPosition object into the location shape used
+// by the draft, validation engine, Firestore, and admin map.
 export function normalizePositionLocation(position, source = 'gps') {
   const coords = position?.coords || {};
   const lat = Number(coords.latitude);
@@ -48,6 +52,7 @@ export function normalizePositionLocation(position, source = 'gps') {
   };
 }
 
+// Lower accuracy means a smaller uncertainty radius, so it is the better GPS reading.
 function isBetterPosition(candidate, currentBest) {
   if (!currentBest) {
     return true;
@@ -67,6 +72,8 @@ function isBetterPosition(candidate, currentBest) {
   return candidateAccuracy < currentAccuracy;
 }
 
+// watchPosition is more reliable than one getCurrentPosition call on low-end phones:
+// it listens for a few seconds and returns the strongest GPS reading found.
 export function getBestDevicePosition({
   sampleMs = 7500,
   timeout = 15000,

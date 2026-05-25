@@ -85,6 +85,7 @@ function applyFirestoreFilters(snapshot, filters = {}) {
   );
 }
 
+// Converts different citizen/admin status words into the small set used by the dashboard.
 export function normalizeReportStatus(status = '') {
   const normalized = String(status).toLowerCase().replaceAll('_', ' ');
 
@@ -161,6 +162,7 @@ function toCoordinate(value) {
   return Number.isFinite(coordinate) ? coordinate : null;
 }
 
+// Pulls GPS, EXIF, camera, and trust-score fields into one admin-friendly metadata object.
 export function normalizeLocationValidation(report = {}) {
   const validation = report.locationValidation || {};
   const exif = report.exif || {};
@@ -257,6 +259,7 @@ export function getReportCoordinates(report = {}) {
   return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
 }
 
+// Normalizes raw Firestore reports so table rows, cards, and maps can read the same fields.
 export function normalizeAdminReport(report = {}) {
   const category = normalizeReportCategory(report);
   const coordinates = getReportCoordinates(report);
@@ -305,6 +308,7 @@ export async function getReportsForModeration(filters = {}) {
   return applyFirestoreFilters(snapshot, filters);
 }
 
+// Live admin queue listener; every Firestore change updates the moderation table immediately.
 export function subscribeReportsForModeration(filters = {}, onReports, onError) {
   clearLocalReportStorage();
 
@@ -326,6 +330,7 @@ export function subscribeReportsForModeration(filters = {}, onReports, onError) 
   );
 }
 
+// Saves admin review decisions such as assigned team, progress, notes, and status.
 export function updateReportStatus({
   reportId,
   status,

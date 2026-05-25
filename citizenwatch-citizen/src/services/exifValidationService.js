@@ -1,6 +1,7 @@
 import exifr from 'exifr';
 import { haversineDistanceMeters, isWithinRadius } from '../utils/gpsValidation.js';
 
+// Reads image metadata and normalizes it into a compact EXIF object that is safe to store.
 const EXIF_PARSE_OPTIONS = {
   gps: true,
   exif: true,
@@ -39,6 +40,7 @@ function pickFirst(...values) {
   return values.find((value) => value !== undefined && value !== null && value !== '');
 }
 
+// Android and iPhone cameras may store GPS as decimal coordinates or DMS arrays; this accepts both.
 function normalizeGps(metadata = {}, fallbackGps = {}) {
   const latitude = normalizeDms(
     pickFirst(
@@ -165,6 +167,7 @@ function getImageDimension(metadata, ...keys) {
   return toNumber(pickFirst(...keys.map((key) => metadata?.[key])));
 }
 
+// Keep a compact raw summary for research/debugging without risking Firestore document size.
 function summarizeRawExif(metadata = {}) {
   const keys = Object.keys(metadata);
   const selectedKeys = [
@@ -221,6 +224,7 @@ function buildTimestampMetadata(metadata = {}, fallbackGps = {}) {
   };
 }
 
+// Main EXIF reader used in Step 1 before the preview image is compressed.
 export async function readImageExif(file) {
   const warnings = [];
 

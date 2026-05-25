@@ -100,6 +100,7 @@ function dataUrlToBlob(dataUrl) {
   return new Blob([bytes], { type: mimeType });
 }
 
+// Firestore rejects undefined values, so convert them before saving nested report data.
 function sanitizeForFirestore(value) {
   if (value === undefined) {
     return null;
@@ -131,6 +132,7 @@ function summarizeRawExif(rawExif = {}) {
   };
 }
 
+// Store useful EXIF fields but remove bulky raw metadata from the Firestore document.
 function compactExifForStorage(exif = {}) {
   const rawExifSummary = exif.rawExifSummary || summarizeRawExif(exif.rawExif);
 
@@ -161,6 +163,7 @@ async function resolvePhotoFile(payload, reportId) {
   });
 }
 
+// Converts the draft from the multi-step form into one consistent Firestore report record.
 function normalizeReportPayload(payload = {}, photoUrl = '') {
   const id = payload.id || createId();
   const trackingId = payload.trackingId || generateTrackingId();
@@ -239,6 +242,7 @@ function sortReportsByNewest(reports) {
   ));
 }
 
+// Final citizen submission flow: validate inputs, upload photo, then save the report document.
 export async function createInfrastructureReport(reportDraft = {}) {
   const reportsRef = getReportsRef();
 

@@ -9,6 +9,6 @@ This repository contains two separate React + Vite applications:
 
 Both apps are structured around Firebase Auth, Firestore, Firebase Storage, Leaflet.js maps, EXIF validation through `exifr`, browser geolocation checks, and React Router DOM.
 
-For defense and skill-test preparation, read `SYSTEM_DOCUMENTATION.md`.
+For defense and skill-test preparation, read `SYSTEM_DOCUMENTATION.md` and `CODE_WALKTHROUGH.md`.
 
 Klent and Keinth Research Project double k connection

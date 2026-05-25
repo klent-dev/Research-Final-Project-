@@ -1,3 +1,4 @@
+// Location validation engine for comparing photo GPS, device GPS, and manual locations.
 const EARTH_RADIUS_METERS = 6371000;
 
 function toRadians(value) {
@@ -43,6 +44,7 @@ function getAccuracyLabel(accuracy) {
   return 'Poor';
 }
 
+// Converts the EXIF/device distance into the status shown to citizen and admin users.
 function getValidationBand(distanceMeters) {
   if (!Number.isFinite(Number(distanceMeters))) {
     return null;
@@ -87,6 +89,7 @@ function getValidationBand(distanceMeters) {
   };
 }
 
+// Haversine formula: calculates real-world distance between two GPS coordinates.
 export function calculateDistanceMeters(pointA, pointB) {
   const firstPoint = normalizePoint(pointA);
   const secondPoint = normalizePoint(pointB);
@@ -129,6 +132,7 @@ export function getGpsAccuracyLevel(accuracy) {
   };
 }
 
+// Trust score is a confidence signal for reviewers, not an automatic approval.
 export function calculateVerificationScore({
   exifLocation,
   deviceLocation,
@@ -149,6 +153,7 @@ export function calculateVerificationScore({
   return Math.max(0, Math.min(100, score));
 }
 
+// Builds one validation result from all available location signals.
 export function validatePhotoLocation({
   exifLocation,
   deviceLocation,
@@ -216,6 +221,7 @@ export function validatePhotoLocation({
     };
   }
 
+  // Reports are sent to review when key credibility signals are missing or weak.
   const requiresReview = (
     !exifPoint ||
     source === 'manual' ||

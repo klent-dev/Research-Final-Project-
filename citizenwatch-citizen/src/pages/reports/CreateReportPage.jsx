@@ -226,7 +226,6 @@ export default function CreateReportPage() {
   const [previewUrl, setPreviewUrl] = useState(() => draft.photoPreview || '');
   const [stepError, setStepError] = useState(() => location.state?.validationError || '');
   const [isSamplingDeviceGps, setIsSamplingDeviceGps] = useState(false);
-  // TODO: Replace with real EXIF/GPS metadata after report submission
   const hasSelectedPhoto = Boolean(previewUrl || draft.photoPreview);
   const hasLocation = Boolean(
     Number.isFinite(Number(draft?.location?.lat)) &&
@@ -259,7 +258,6 @@ export default function CreateReportPage() {
   }, []);
 
   function handleUseCamera() {
-    // TODO: Compare EXIF GPS with browser GPS for validation scoring
     scrollPositionRef.current = window.scrollY;
     pendingCaptureSourceRef.current = 'camera';
     if (cameraInputRef.current) {
@@ -309,6 +307,7 @@ export default function CreateReportPage() {
     void processSelectedPhoto(file);
   }
 
+  // Step 1 photo pipeline: create a preview, extract EXIF, then sample device GPS as fallback.
   async function processSelectedPhoto(file) {
     try {
       const photoPreview = await createPreviewDataUrl(file);
@@ -332,6 +331,7 @@ export default function CreateReportPage() {
     }
   }
 
+  // Captures early device GPS so Step 1 can already show accuracy when the photo has no GPS EXIF.
   async function captureStepOneDeviceLocation({ useAsFallbackLocation = false } = {}) {
     if (!navigator.geolocation) {
       return;
@@ -367,6 +367,7 @@ export default function CreateReportPage() {
     }
   }
 
+  // Reads the original uploaded file, because compressed previews usually lose EXIF metadata.
   async function extractPhotoMetadata(file, photoPreview = '') {
     try {
       const exifMetadata = await readImageExif(file);
