@@ -386,6 +386,7 @@ export default function CreateReportPage() {
             subAddress: `Lat: ${exifLat.toFixed(5)}, Lng: ${exifLng.toFixed(5)}`
           }
         : null;
+      const resolvedExifLocation = exifLocation ? await enrichLocationAddress(exifLocation) : null;
       const captureSource = pendingCaptureSourceRef.current || 'gallery';
 
       updateDraft({
@@ -400,14 +401,14 @@ export default function CreateReportPage() {
         captureSource,
         directCameraCapture: captureSource === 'camera',
         exif: exifMetadata,
-        ...(exifLocation ? { location: exifLocation } : {}),
+        ...(resolvedExifLocation ? { location: resolvedExifLocation } : {}),
         metadataPreview: {
-          location: hasExifGps ? 'Photo GPS detected' : 'Metadata pending validation',
+          location: resolvedExifLocation?.address || (hasExifGps ? 'Photo GPS detected' : 'Metadata pending validation'),
           warnings: exifMetadata.warnings || []
         }
       });
 
-      return { hasExifGps, exifLocation };
+      return { hasExifGps, exifLocation: resolvedExifLocation };
     } catch (error) {
       console.warn('Unable to read image EXIF metadata.', error);
       updateDraft({

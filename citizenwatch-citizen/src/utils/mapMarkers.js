@@ -4,13 +4,53 @@ import { getSeverityTone } from './severity.js';
 const REPORT_MARKER_SIZE = [22, 28];
 const REPORT_MARKER_ANCHOR = [11, 27];
 const REPORT_POPUP_ANCHOR = [0, -24];
+const HOME_MARKER_SIZE = [16, 16];
+const HOME_MARKER_ANCHOR = [8, 8];
 
 export const HomePreviewMarker = L.divIcon({
   className: 'home-preview-map-marker',
   html: '',
-  iconAnchor: [8, 8],
-  iconSize: [16, 16]
+  iconAnchor: HOME_MARKER_ANCHOR,
+  iconSize: HOME_MARKER_SIZE
 });
+
+export const HomeUserLocationMarker = L.divIcon({
+  className: 'home-user-map-marker',
+  html: '',
+  iconAnchor: HOME_MARKER_ANCHOR,
+  iconSize: HOME_MARKER_SIZE
+});
+
+function getHomeCategoryTone(category = '') {
+  const normalized = String(category).toLowerCase();
+
+  if (normalized.includes('drain') || normalized.includes('sewage') || normalized.includes('water')) {
+    return 'drainage';
+  }
+
+  if (normalized.includes('street') || normalized.includes('light')) {
+    return 'light';
+  }
+
+  if (normalized.includes('flood')) {
+    return 'flood';
+  }
+
+  if (normalized.includes('waste') || normalized.includes('trash') || normalized.includes('garbage')) {
+    return 'waste';
+  }
+
+  return 'other';
+}
+
+export function HomeReportPreviewMarker(category = '') {
+  return L.divIcon({
+    className: `home-preview-map-marker home-preview-map-marker--${getHomeCategoryTone(category)}`,
+    html: '',
+    iconAnchor: HOME_MARKER_ANCHOR,
+    iconSize: HOME_MARKER_SIZE
+  });
+}
 
 export function ReportMapMarker(urgency = 'Moderate') {
   const tone = getSeverityTone(urgency);

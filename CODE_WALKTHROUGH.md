@@ -1,4 +1,4 @@
-# CitizenWatch Code Walkthrough
+ # CitizenWatch Code Walkthrough
 
 Use this guide when explaining the system during defense or a skill test. The source code now has short comments in the complex parts, and this document explains the important files and function roles in plain language.
 
@@ -35,6 +35,7 @@ The most important technical flow is:
 - `citizenwatch-citizen/src/services/` contains Firebase, EXIF, geocoding, storage, and report data functions.
 - `citizenwatch-citizen/src/utils/` contains reusable logic such as GPS validation and map marker helpers.
 - `citizenwatch-citizen/src/context/` stores shared state such as the report draft and authentication state.
+
 - `citizenwatch-citizen/src/styles/` contains app styling.
 
 ### Admin App

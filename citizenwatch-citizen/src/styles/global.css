@@ -3267,10 +3267,10 @@ textarea {
 }
 
 .home-preview-map-marker {
-  background: #16a34a;
+  background: var(--home-marker-color, #16a34a);
   border: 3px solid #ffffff;
   border-radius: 999px;
-  box-shadow: 0 0 0 0.45rem rgba(22, 163, 74, 0.18), 0 8px 18px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 0 0 0.45rem var(--home-marker-ring, rgba(22, 163, 74, 0.18)), 0 8px 18px rgba(15, 23, 42, 0.18);
   display: block;
   height: 1rem;
   width: 1rem;
@@ -3280,14 +3280,43 @@ textarea {
   border: 3px solid #ffffff;
 }
 
+.home-preview-map-marker--drainage {
+  --home-marker-color: #0891b2;
+  --home-marker-ring: rgba(8, 145, 178, 0.22);
+}
+
+.home-preview-map-marker--light {
+  --home-marker-color: #f59e0b;
+  --home-marker-ring: rgba(245, 158, 11, 0.24);
+}
+
+.home-preview-map-marker--flood {
+  --home-marker-color: #2563eb;
+  --home-marker-ring: rgba(37, 99, 235, 0.22);
+}
+
+.home-preview-map-marker--waste {
+  --home-marker-color: #65a30d;
+  --home-marker-ring: rgba(101, 163, 13, 0.22);
+}
+
+.home-preview-map-marker--other {
+  --home-marker-color: #7c3aed;
+  --home-marker-ring: rgba(124, 58, 237, 0.22);
+}
+
 .home-user-map-marker {
-  background: #16a34a;
+  background: #0f172a;
   border: 3px solid #ffffff;
   border-radius: 999px;
-  box-shadow: 0 0 0 0.45rem rgba(22, 163, 74, 0.18), 0 8px 18px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 0 0 0.45rem rgba(14, 165, 233, 0.26), 0 8px 18px rgba(15, 23, 42, 0.22);
   display: block;
   height: 1rem;
   width: 1rem;
+}
+
+.home-user-map-marker.leaflet-div-icon {
+  border: 3px solid #ffffff;
 }
 
 @keyframes severityCriticalPulse {

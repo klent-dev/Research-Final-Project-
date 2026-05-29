@@ -144,6 +144,7 @@ function createExifLocation(draft) {
   const exifLat = Number(draft?.exifLat);
   const exifLng = Number(draft?.exifLng);
   const exifAccuracy = Number(draft?.exif?.gps?.accuracy);
+  const savedExifLocation = draft?.location?.source === 'exif' ? draft.location : {};
 
   if (!draft?.hasExifGps || !Number.isFinite(exifLat) || !Number.isFinite(exifLng)) {
     return null;
@@ -153,9 +154,9 @@ function createExifLocation(draft) {
     lat: exifLat,
     lng: exifLng,
     accuracy: Number.isFinite(exifAccuracy) ? Math.round(exifAccuracy) : null,
-    address: 'Photo location detected',
+    address: savedExifLocation.address || 'Photo location detected',
     source: 'exif',
-    subAddress: `Lat: ${exifLat.toFixed(5)}, Lng: ${exifLng.toFixed(5)}`
+    subAddress: savedExifLocation.subAddress || `Lat: ${exifLat.toFixed(5)}, Lng: ${exifLng.toFixed(5)}`
   };
 }
 

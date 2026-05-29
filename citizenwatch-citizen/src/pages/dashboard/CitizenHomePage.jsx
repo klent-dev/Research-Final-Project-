@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -17,8 +17,8 @@ import {
 } from 'react-icons/fa';
 import PageContainer from '../../components/PageContainer.jsx';
 import { useReports } from '../../hooks/useReports.js';
-import { hasValidCoordinates } from '../../services/mapService.js';
-import { HomePreviewMarker } from '../../utils/mapMarkers.js';
+import { filterReports, hasValidCoordinates } from '../../services/mapService.js';
+import { HomeReportPreviewMarker, HomeUserLocationMarker } from '../../utils/mapMarkers.js';
 
 const LAHUG_CENTER = {
   lat: 10.3403,
@@ -26,7 +26,7 @@ const LAHUG_CENTER = {
 };
 
 const categories = [
-  { label: 'Drainage', icon: FaTint, active: true },
+  { label: 'Drainage', icon: FaTint },
   { label: 'Street Light', icon: FaLightbulb },
   { label: 'Flooding', icon: FaTint },
   { label: 'Waste', icon: FaTrash },
@@ -51,10 +51,17 @@ function HomeMapBridge({ mapRef }) {
 }
 
 export default function CitizenHomePage() {
+  const [activeCategory, setActiveCategory] = useState('Drainage');
   const [userLocation, setUserLocation] = useState(null);
   const mapRef = useRef(null);
   const { reports } = useReports();
-  const nearbyReports = reports.filter(hasValidCoordinates).slice(0, 3);
+  // Only reports with real coordinates can appear on the home map preview.
+  const validReports = useMemo(() => reports.filter(hasValidCoordinates), [reports]);
+  // Category chips update this filtered list so the preview reacts to the selected issue type.
+  const nearbyReports = useMemo(
+    () => filterReports(validReports, activeCategory).slice(0, 3),
+    [activeCategory, validReports]
+  );
   const impactStats = [
     { label: 'Submitted', value: reports.length.toString() },
     {
@@ -150,8 +157,11 @@ export default function CitizenHomePage() {
       <section className="citizen-category-strip" aria-label="Report categories">
         {categories.map((category) => (
           <button
-            className={category.active ? 'citizen-category-chip active' : 'citizen-category-chip'}
+            aria-pressed={activeCategory === category.label}
+            className={activeCategory === category.label ? 'citizen-category-chip active' : 'citizen-category-chip'}
             key={category.label}
+            // Makes the dashboard category chip functional instead of only visually active.
+            onClick={() => setActiveCategory(category.label)}
             type="button"
           >
             <category.icon aria-hidden="true" />
@@ -192,11 +202,11 @@ export default function CitizenHomePage() {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
               {userLocation && (
-                <Marker icon={HomePreviewMarker} position={[userLocation.lat, userLocation.lng]} />
+                <Marker icon={HomeUserLocationMarker} position={[userLocation.lat, userLocation.lng]} />
               )}
               {nearbyReports.map((report) => (
                 <Marker
-                  icon={HomePreviewMarker}
+                  icon={HomeReportPreviewMarker(report.category || report.issueType)}
                   key={report.id}
                   position={[report.location.lat, report.location.lng]}
                 />
@@ -206,7 +216,7 @@ export default function CitizenHomePage() {
             {nearbyReports.length === 0 && (
               <div className="citizen-map-empty-state">
                 <FaMapMarkerAlt aria-hidden="true" />
-                <h3>No map reports available.</h3>
+                <h3>No {activeCategory.toLowerCase()} reports available.</h3>
                 <p>Live district activity will appear here.</p>
               </div>
             )}

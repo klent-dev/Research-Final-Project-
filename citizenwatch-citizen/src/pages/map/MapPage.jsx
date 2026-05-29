@@ -18,6 +18,7 @@ import {
 } from 'react-icons/fa';
 import PageContainer from '../../components/PageContainer.jsx';
 import communityImage from '../../assets/images/Community.png';
+import { reverseGeocodeLocation } from '../../services/geocodingService.js';
 import { formatStatusLabel } from '../../services/localReportService.js';
 import {
   DEFAULT_MAP_CENTER,
@@ -50,6 +51,11 @@ const userLocationIcon = L.divIcon({
   iconAnchor: [10, 10],
   iconSize: [20, 20]
 });
+
+function hasPlaceholderAddress(address = '') {
+  const normalized = String(address).trim().toLowerCase();
+  return normalized === '' || normalized === 'photo location detected' || normalized === 'location detected';
+}
 
 function MapBridge({ mapRef }) {
   const map = useMap();
@@ -101,6 +107,7 @@ export default function MapPage() {
   const { reports } = useReports();
   const [userLocation, setUserLocation] = useState(null);
   const [mapMessage, setMapMessage] = useState('');
+  const [resolvedReportAddresses, setResolvedReportAddresses] = useState({});
   const mapRef = useRef(null);
 
   const validReports = useMemo(() => reports.filter(hasValidCoordinates), [reports]);
@@ -109,6 +116,45 @@ export default function MapPage() {
     () => sortReportsByDistance(filteredReports, userLocation).slice(0, 3),
     [filteredReports, userLocation]
   );
+  const mapReports = validReports;
+
+  useEffect(() => {
+    let cancelled = false;
+    const reportsNeedingAddress = mapReports.filter((report) => (
+      report?.id &&
+      hasPlaceholderAddress(report.location?.address) &&
+      !resolvedReportAddresses[report.id]
+    ));
+
+    if (reportsNeedingAddress.length === 0) {
+      return undefined;
+    }
+
+    async function resolveAddresses() {
+      const entries = await Promise.all(reportsNeedingAddress.map(async (report) => {
+        try {
+          const resolvedLocation = await reverseGeocodeLocation(report.location);
+          return [report.id, resolvedLocation?.address || 'Location detected'];
+        } catch (error) {
+          console.warn('Unable to reverse geocode report marker.', error);
+          return [report.id, report.location?.subAddress || 'Location detected'];
+        }
+      }));
+
+      if (!cancelled) {
+        setResolvedReportAddresses((currentAddresses) => ({
+          ...currentAddresses,
+          ...Object.fromEntries(entries)
+        }));
+      }
+    }
+
+    void resolveAddresses();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mapReports, resolvedReportAddresses]);
 
   function handleZoomIn() {
     mapRef.current?.zoomIn();
@@ -198,7 +244,7 @@ export default function MapPage() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
 
-            {filteredReports.map((report) => (
+            {mapReports.map((report) => (
               <Marker
                 icon={ReportMapMarker(report.urgency)}
                 key={report.id}
@@ -212,7 +258,9 @@ export default function MapPage() {
                         {formatStatusLabel(report.status)}
                       </span>
                     </div>
-                    <p>{report.location?.address || 'Location detected'}</p>
+                    <p>
+                      {resolvedReportAddresses[report.id] || report.location?.address || 'Location detected'}
+                    </p>
                     {report.description && <small>{report.description}</small>}
                   </div>
                 </Popup>
