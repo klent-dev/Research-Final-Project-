@@ -214,31 +214,63 @@
 }
 
 .report-details-location-list {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 0.5rem;
+  line-height: 1.5;
   margin-bottom: 0.9rem;
+  text-align: left;
 }
 
-.report-details-location-list p {
+.report-details-location-address {
+  min-width: 0;
+}
+
+.report-details-location-label {
+  color: #64748b;
+  display: block;
+  font-size: clamp(0.78rem, 3vw, 0.85rem);
+  font-weight: 500;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.report-details-location-value {
   color: var(--text);
-  flex: 1 0 100%;
-  font-weight: 850;
-  margin: 0 0 0.1rem;
+  display: block;
+  font-size: clamp(0.82rem, 3.2vw, 0.92rem);
+  font-weight: 400;
+  line-height: 1.5;
+  margin: 0;
+  min-width: 0;
   overflow-wrap: anywhere;
+  white-space: normal;
+  word-break: break-word;
 }
 
-.report-details-location-list span {
-  background: #ffffff;
-  border-radius: 999px;
+.report-details-location-coordinates {
+  align-items: flex-start;
+  display: grid;
+  gap: 0.25rem;
+  margin-left: 0;
+  margin-top: 0.55rem;
+  min-width: 0;
+  padding-left: 0;
+}
+
+.report-details-location-coordinates span {
+  background: transparent;
+  border-radius: 0;
   color: #475569;
-  font-size: clamp(0.72rem, 3vw, 0.84rem);
-  font-weight: 800;
+  font-size: clamp(0.78rem, 3vw, 0.88rem);
+  font-weight: 400;
+  line-height: 1.5;
+  margin-left: 0;
   max-width: 100%;
   overflow: hidden;
-  padding: 0.42rem 0.6rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding: 0;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .report-details-map-preview {

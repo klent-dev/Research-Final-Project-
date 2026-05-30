@@ -7,7 +7,6 @@ import {
   FaArrowRight,
   FaCheckCircle,
   FaExclamationTriangle,
-  FaGavel,
   FaInfoCircle,
   FaLocationArrow,
   FaMapMarkerAlt,
@@ -475,10 +474,7 @@ export default function CreateReportLocationPage() {
         <Link className="create-location-back" to="/reports/create" aria-label="Back to evidence upload">
           <FaArrowLeft aria-hidden="true" />
         </Link>
-        <Link className="create-location-brand" to="/home" aria-label="CitizenWatch home">
-          <FaGavel aria-hidden="true" />
-          <span>CitizenWatch</span>
-        </Link>
+        <span aria-hidden="true" />
         <span aria-hidden="true" />
       </header>
 

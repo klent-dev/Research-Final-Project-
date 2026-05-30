@@ -4,52 +4,27 @@ import { getSeverityTone } from './severity.js';
 const REPORT_MARKER_SIZE = [22, 28];
 const REPORT_MARKER_ANCHOR = [11, 27];
 const REPORT_POPUP_ANCHOR = [0, -24];
-const HOME_MARKER_SIZE = [16, 16];
-const HOME_MARKER_ANCHOR = [8, 8];
+const USER_MARKER_SIZE = [20, 20];
+const USER_MARKER_ANCHOR = [10, 10];
 
 export const HomePreviewMarker = L.divIcon({
   className: 'home-preview-map-marker',
   html: '',
-  iconAnchor: HOME_MARKER_ANCHOR,
-  iconSize: HOME_MARKER_SIZE
+  iconAnchor: USER_MARKER_ANCHOR,
+  iconSize: USER_MARKER_SIZE
 });
 
-export const HomeUserLocationMarker = L.divIcon({
-  className: 'home-user-map-marker',
+export const UserLocationMarker = L.divIcon({
+  className: 'community-user-marker',
   html: '',
-  iconAnchor: HOME_MARKER_ANCHOR,
-  iconSize: HOME_MARKER_SIZE
+  iconAnchor: USER_MARKER_ANCHOR,
+  iconSize: USER_MARKER_SIZE
 });
 
-function getHomeCategoryTone(category = '') {
-  const normalized = String(category).toLowerCase();
-
-  if (normalized.includes('drain') || normalized.includes('sewage') || normalized.includes('water')) {
-    return 'drainage';
-  }
-
-  if (normalized.includes('street') || normalized.includes('light')) {
-    return 'light';
-  }
-
-  if (normalized.includes('flood')) {
-    return 'flood';
-  }
-
-  if (normalized.includes('waste') || normalized.includes('trash') || normalized.includes('garbage')) {
-    return 'waste';
-  }
-
-  return 'other';
-}
+export const HomeUserLocationMarker = UserLocationMarker;
 
 export function HomeReportPreviewMarker(category = '') {
-  return L.divIcon({
-    className: `home-preview-map-marker home-preview-map-marker--${getHomeCategoryTone(category)}`,
-    html: '',
-    iconAnchor: HOME_MARKER_ANCHOR,
-    iconSize: HOME_MARKER_SIZE
-  });
+  return ReportMapMarker(category);
 }
 
 export function ReportMapMarker(urgency = 'Moderate') {

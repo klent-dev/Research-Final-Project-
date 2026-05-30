@@ -23,6 +23,7 @@ import {
 import { isFirebaseConfigured } from '../../firebase/config.js';
 import { getReportById as getFirebaseReportById } from '../../services/reportService.js';
 import { ReportMapMarker } from '../../utils/mapMarkers.js';
+import { toDisplayText } from '../../utils/displayText.js';
 import '../../styles/reportDetails.css';
 
 function hasValidCoordinates(report) {
@@ -209,7 +210,7 @@ export default function ReportDetailsPage() {
         </button>
         <div>
           <h1>Report Details</h1>
-          <span>{report.trackingId}</span>
+          <span>{toDisplayText(report.trackingId, 'Unavailable')}</span>
         </div>
         <span className={`reports-status-pill reports-status-pill--${statusTone}`}>
           {formatStatusLabel(report.status)}
@@ -218,7 +219,7 @@ export default function ReportDetailsPage() {
 
       <section className="report-details-photo-card">
         {reportPhoto ? (
-          <img src={reportPhoto} alt={`${report.issueType} report evidence`} />
+          <img src={reportPhoto} alt={`${toDisplayText(report.issueType, 'Infrastructure')} report evidence`} />
         ) : (
           <div className="report-details-photo-empty">
             <FaEye aria-hidden="true" />
@@ -228,7 +229,7 @@ export default function ReportDetailsPage() {
         {report.location?.address && (
           <span className="report-details-location-pill">
             <FaMapMarkerAlt aria-hidden="true" />
-            {report.location.address}
+            {toDisplayText(report.location.address, 'Location detected')}
           </span>
         )}
       </section>
@@ -244,7 +245,7 @@ export default function ReportDetailsPage() {
             <div>
               <strong>Not verified by LGU</strong>
               <p>
-                {report.rejectionReason || report.adminNotes || 'This report was reviewed by LGU staff but could not be verified. It has been closed.'}
+                {toDisplayText(report.rejectionReason || report.adminNotes, 'This report was reviewed by LGU staff but could not be verified. It has been closed.')}
               </p>
             </div>
           </div>
@@ -252,7 +253,7 @@ export default function ReportDetailsPage() {
         <div className="report-details-info-grid">
           <div>
             <span>Tracking ID</span>
-            <strong>{report.trackingId || 'Unavailable'}</strong>
+            <strong>{toDisplayText(report.trackingId, 'Unavailable')}</strong>
           </div>
           <div>
             <span>Status</span>
@@ -264,7 +265,7 @@ export default function ReportDetailsPage() {
           </div>
           <div>
             <span>Issue Type</span>
-            <strong>{report.issueType || 'Infrastructure Issue'}</strong>
+            <strong>{toDisplayText(report.issueType || report.category, 'Infrastructure Issue')}</strong>
           </div>
           <div>
             <span>Urgency</span>
@@ -286,12 +287,19 @@ export default function ReportDetailsPage() {
         {hasLocation ? (
           <>
             <div className="report-details-location-list">
-              <p>{report.location?.address || 'Location detected'}</p>
-              <span>Lat: {Number(report.location.lat).toFixed(5)}</span>
-              <span>Lng: {Number(report.location.lng).toFixed(5)}</span>
-              {Number.isFinite(Number(report.location?.accuracy)) && (
-                <span>Accuracy: +/- {report.location.accuracy}m</span>
-              )}
+              <div className="report-details-location-address">
+                <span className="report-details-location-label">Address</span>
+                <p className="report-details-location-value">
+                  {toDisplayText(report.location?.address, 'Location detected')}
+                </p>
+              </div>
+              <div className="report-details-location-coordinates">
+                <span>Latitude: {Number(report.location.lat).toFixed(5)}</span>
+                <span>Longitude: {Number(report.location.lng).toFixed(5)}</span>
+                {Number.isFinite(Number(report.location?.accuracy)) && (
+                  <span>Accuracy: +/- {toDisplayText(report.location.accuracy, '0')}m</span>
+                )}
+              </div>
             </div>
             <div className="report-details-map-preview">
               <MapContainer
@@ -325,7 +333,7 @@ export default function ReportDetailsPage() {
           <FaFileAlt aria-hidden="true" />
           <h2>Description</h2>
         </header>
-        <p className="report-details-description">{report.description || 'No description provided.'}</p>
+        <p className="report-details-description">{toDisplayText(report.description, 'No description provided.')}</p>
       </section>
 
       <section className="report-details-card">
@@ -348,7 +356,7 @@ export default function ReportDetailsPage() {
           <FaCalendarAlt aria-hidden="true" />
           Back to Reports
         </Link>
-        <Link to="/map">
+        <Link to={`/map?reportId=${encodeURIComponent(report.id || id)}`}>
           <FaMapMarkedAlt aria-hidden="true" />
           View on Map
         </Link>

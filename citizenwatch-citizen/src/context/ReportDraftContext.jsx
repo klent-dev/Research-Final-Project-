@@ -42,7 +42,29 @@ const initialDraft = {
 };
 
 function canUseSessionStorage() {
-  return typeof window !== 'undefined' && Boolean(window.sessionStorage);
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    return Boolean(window.sessionStorage);
+  } catch (error) {
+    console.warn('Session storage is unavailable.', error);
+    return false;
+  }
+}
+
+function getSessionStorage() {
+  if (!canUseSessionStorage()) {
+    return null;
+  }
+
+  try {
+    return window.sessionStorage;
+  } catch (error) {
+    console.warn('Unable to access session storage.', error);
+    return null;
+  }
 }
 
 function sanitizeDraft(draft = {}) {
@@ -67,11 +89,12 @@ function readStoredDraft() {
   }
 
   try {
-    const rawDraft = window.sessionStorage.getItem(REPORT_DRAFT_STORAGE_KEY);
+    const sessionStorage = getSessionStorage();
+    const rawDraft = sessionStorage?.getItem(REPORT_DRAFT_STORAGE_KEY);
     return rawDraft ? sanitizeDraft(JSON.parse(rawDraft)) : initialDraft;
   } catch (error) {
     console.warn('Unable to read report draft. Resetting corrupted draft.', error);
-    window.sessionStorage.removeItem(REPORT_DRAFT_STORAGE_KEY);
+    getSessionStorage()?.removeItem(REPORT_DRAFT_STORAGE_KEY);
     return initialDraft;
   }
 }
@@ -88,7 +111,7 @@ function persistDraft(draft) {
 
   try {
     // TODO: Replace draft persistence with Firestore draft saving if needed
-    window.sessionStorage.setItem(REPORT_DRAFT_STORAGE_KEY, JSON.stringify(safeDraft));
+    getSessionStorage()?.setItem(REPORT_DRAFT_STORAGE_KEY, JSON.stringify(safeDraft));
   } catch (error) {
     console.warn('Unable to save report draft.', error);
   }
@@ -145,7 +168,7 @@ export function ReportDraftProvider({ children }) {
     setDraft(initialDraft);
 
     if (canUseSessionStorage()) {
-      window.sessionStorage.removeItem(REPORT_DRAFT_STORAGE_KEY);
+      getSessionStorage()?.removeItem(REPORT_DRAFT_STORAGE_KEY);
     }
   }, []);
 
@@ -224,7 +247,7 @@ export function useReportDraft() {
       },
       resetDraft: () => {
         if (canUseSessionStorage()) {
-          window.sessionStorage.removeItem(REPORT_DRAFT_STORAGE_KEY);
+          getSessionStorage()?.removeItem(REPORT_DRAFT_STORAGE_KEY);
         }
       },
       getDraft: readStoredDraft

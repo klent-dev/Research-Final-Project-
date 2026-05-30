@@ -135,6 +135,14 @@ textarea {
   width: 100%;
 }
 
+.app-shell--no-header .page-container {
+  padding-top: 0;
+}
+
+.app-shell--no-header .page-container > :first-child {
+  margin-top: 0;
+}
+
 .stack {
   display: grid;
   gap: 1rem;
@@ -277,20 +285,32 @@ textarea {
 
 .top-header {
   align-items: center;
-  backdrop-filter: blur(20px);
-  background: rgba(255, 255, 255, 0.84);
-  border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.06);
+  background: var(--mint-bg);
+  border: 0;
+  border-bottom: 1px solid rgba(22, 163, 74, 0.08);
+  border-radius: 0;
+  box-shadow: none;
   display: flex;
   gap: 1rem;
+  height: calc(56px + env(safe-area-inset-top));
   justify-content: space-between;
-  margin: 0 auto;
-  max-width: 1120px;
-  padding: calc(0.8rem + env(safe-area-inset-top)) 1rem 0.8rem;
+  margin: 0;
+  max-width: none;
+  padding: env(safe-area-inset-top) 1rem 0;
   position: sticky;
   top: 0;
-  z-index: 30;
+  transform: translateY(0);
+  transition: transform 200ms ease;
+  width: 100%;
+  z-index: 1000;
+}
+
+.top-header--hidden {
+  transform: translateY(-100%);
+}
+
+.top-header--visible {
+  transform: translateY(0);
 }
 
 .app-brand,
@@ -302,21 +322,25 @@ textarea {
 }
 
 .app-brand {
-  gap: 0.75rem;
+  color: #047857;
+  gap: 0.5rem;
+  min-width: 0;
   text-decoration: none;
 }
 
 .app-logo {
   align-items: center;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  border-radius: var(--radius-md);
-  box-shadow: 0 12px 24px rgba(22, 163, 74, 0.24);
-  color: var(--white);
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  color: #047857;
   display: inline-flex;
-  font-weight: 950;
-  height: 44px;
+  flex: 0 0 auto;
+  font-size: 1.45rem;
+  font-weight: 900;
+  height: auto;
   justify-content: center;
-  width: 44px;
+  width: auto;
 }
 
 .auth-logo {
@@ -339,26 +363,22 @@ textarea {
   display: block;
 }
 
+.app-brand strong {
+  color: #047857;
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
 .app-brand small {
   color: var(--muted);
   font-size: 0.72rem;
 }
 
 .top-header__actions {
-  gap: 0.55rem;
-}
-
-.top-header__actions button {
-  align-items: center;
-  background: var(--white);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  color: var(--text);
-  cursor: pointer;
-  display: inline-flex;
-  height: 42px;
-  justify-content: center;
-  width: 42px;
+  gap: 0;
+  margin-left: auto;
 }
 
 .network-chip,
@@ -2236,10 +2256,6 @@ textarea {
     padding: 2rem clamp(1.5rem, 5vw, 3rem) 4rem;
   }
 
-  .top-header {
-    margin-top: 0.75rem;
-  }
-
   .network-chip {
     display: inline-flex;
   }
@@ -2574,7 +2590,7 @@ textarea {
   }
 
   .app-brand strong {
-    font-size: 0.95rem;
+    font-size: 1.25rem;
   }
 
   .stats-grid {
@@ -2741,43 +2757,6 @@ textarea {
   padding-bottom: calc(9rem + env(safe-area-inset-bottom));
 }
 
-.top-header {
-  background: rgba(255, 255, 255, 0.94);
-  border: 0;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.72);
-  border-radius: 0;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
-  max-width: 640px;
-}
-
-.app-brand {
-  color: #047857;
-}
-
-.app-logo {
-  background: transparent;
-  box-shadow: none;
-  color: #047857;
-  font-size: clamp(1.6rem, 6vw, 2.1rem);
-  height: auto;
-  width: auto;
-}
-
-.app-brand strong {
-  color: #047857;
-  font-size: clamp(1.65rem, 6vw, 2.35rem);
-  letter-spacing: -0.04em;
-}
-
-.top-header__actions button {
-  background: transparent;
-  border: 0;
-  color: #33413a;
-  font-size: clamp(1.35rem, 5vw, 1.8rem);
-  height: 2.75rem;
-  width: 2.75rem;
-}
-
 .citizen-avatar {
   align-items: center;
   background:
@@ -2789,10 +2768,10 @@ textarea {
   color: var(--white);
   display: inline-flex;
   font-weight: 950;
-  height: clamp(2.45rem, 9vw, 3.1rem);
+  height: 2.5rem;
   justify-content: center;
   text-decoration: none;
-  width: clamp(2.45rem, 9vw, 3.1rem);
+  width: 2.5rem;
 }
 
 .citizen-greeting {
@@ -3317,6 +3296,20 @@ textarea {
 
 .home-user-map-marker.leaflet-div-icon {
   border: 3px solid #ffffff;
+}
+
+.community-user-marker {
+  background: #2563eb;
+  border: 4px solid #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 0 0 0.5rem rgba(37, 99, 235, 0.18), 0 12px 24px rgba(15, 23, 42, 0.18);
+  display: block;
+  height: 1.25rem;
+  width: 1.25rem;
+}
+
+.community-user-marker.leaflet-div-icon {
+  border: 4px solid #ffffff;
 }
 
 @keyframes severityCriticalPulse {

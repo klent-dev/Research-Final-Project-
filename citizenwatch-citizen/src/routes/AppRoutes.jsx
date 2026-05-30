@@ -35,7 +35,7 @@ export function AppRoutes() {
         <Route path="/map" element={<MapPage />} />
         <Route path="/alerts" element={<AlertsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/profile/edit" element={<Navigate to="/profile" replace />} />
+        <Route path="/profile/edit" element={<ProfilePage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/login" replace />} />

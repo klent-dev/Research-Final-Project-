@@ -17,12 +17,49 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow create: if signedIn() && request.auth.uid == userId;
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.role == 'citizen'
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.keys().hasAll([
+          'uid',
+          'fullName',
+          'email',
+          'role',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'fullName',
+          'email',
+          'phoneNumber',
+          'address',
+          'photoURL',
+          'role',
+          'createdAt',
+          'updatedAt'
+        ]);
+
       allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
-      allow update: if signedIn() && (
-        request.auth.uid == userId ||
-        isAdmin()
+
+      allow update: if isAdmin() || (
+        signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'fullName',
+          'email',
+          'phoneNumber',
+          'address',
+          'photoURL',
+          'updatedAt'
+        ])
       );
+
       allow delete: if false;
     }
 

@@ -38,7 +38,8 @@ export async function registerCitizen({
     fullName: resolvedName,
     email,
     phoneNumber,
-    barangay
+    address: barangay,
+    photoURL: credential.user.photoURL || ''
   });
 
   return credential.user;

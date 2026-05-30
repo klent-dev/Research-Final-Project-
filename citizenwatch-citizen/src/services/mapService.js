@@ -7,8 +7,8 @@ export const DEFAULT_MAP_CENTER = {
 };
 
 export function hasValidCoordinates(report) {
-  const lat = Number(report?.location?.lat);
-  const lng = Number(report?.location?.lng);
+  const lat = Number(report?.location?.lat ?? report?.location?.latitude ?? report?.latitude ?? report?.coordinates?.lat);
+  const lng = Number(report?.location?.lng ?? report?.location?.longitude ?? report?.longitude ?? report?.coordinates?.lng);
 
   return (
     Number.isFinite(lat) &&
@@ -23,6 +23,8 @@ export function hasValidCoordinates(report) {
 
 export function normalizeReport(report) {
   const category = report.category || report.issueType || 'Other';
+  const lat = Number(report.location?.lat ?? report.location?.latitude ?? report.latitude ?? report.coordinates?.lat);
+  const lng = Number(report.location?.lng ?? report.location?.longitude ?? report.longitude ?? report.coordinates?.lng);
 
   return {
     ...report,
@@ -33,8 +35,10 @@ export function normalizeReport(report) {
     description: report.description || 'Infrastructure issue reported nearby.',
     location: {
       ...report.location,
-      lat: Number(report.location?.lat),
-      lng: Number(report.location?.lng),
+      lat,
+      lng,
+      latitude: lat,
+      longitude: lng,
       address: report.location?.address || 'Location pending'
     }
   };
@@ -71,7 +75,7 @@ export function filterReports(reports, activeFilter) {
 }
 
 export function getVisibleCategory(category = '') {
-  const normalized = category.toLowerCase();
+  const normalized = String(category || '').toLowerCase();
 
   if (normalized.includes('drain') || normalized.includes('sewage') || normalized.includes('water')) {
     return 'Drainage';
@@ -93,7 +97,7 @@ export function getVisibleCategory(category = '') {
 }
 
 export function getStatusTone(status = '') {
-  const normalized = status.toLowerCase();
+  const normalized = String(status || '').toLowerCase();
 
   if (normalized.includes('resolved')) {
     return 'resolved';
@@ -107,7 +111,7 @@ export function getStatusTone(status = '') {
 }
 
 export function getCategoryTone(category = '') {
-  const normalized = category.toLowerCase();
+  const normalized = String(category || '').toLowerCase();
 
   if (normalized.includes('flood')) {
     return 'flood';

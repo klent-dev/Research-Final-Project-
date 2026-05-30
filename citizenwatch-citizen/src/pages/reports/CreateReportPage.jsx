@@ -9,7 +9,6 @@ import {
   FaCrosshairs,
   FaExclamationTriangle,
   FaFileUpload,
-  FaGavel,
   FaInfo,
   FaLightbulb,
   FaMapMarkerAlt,
@@ -490,10 +489,7 @@ export default function CreateReportPage() {
   return (
     <main className="create-report-page">
       <header className="create-report-topbar">
-        <Link className="create-report-brand" to="/home" aria-label="CitizenWatch home">
-          <FaGavel aria-hidden="true" />
-          <span>CitizenWatch</span>
-        </Link>
+        <span aria-hidden="true" />
         <Link className="create-report-close" to="/home" aria-label="Close create report">
           <FaTimes aria-hidden="true" />
         </Link>

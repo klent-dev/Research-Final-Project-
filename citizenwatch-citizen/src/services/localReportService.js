@@ -13,6 +13,19 @@ function canUseStorage(storage) {
   return typeof window !== 'undefined' && Boolean(storage);
 }
 
+function getStorage(storageName) {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    return window[storageName] || null;
+  } catch (error) {
+    console.warn(`Unable to access ${storageName}.`, error);
+    return null;
+  }
+}
+
 function readJson(storage, key, fallback) {
   if (!canUseStorage(storage)) {
     return fallback;
@@ -136,7 +149,7 @@ function normalizeReport(report) {
 }
 
 export function getReports() {
-  const reports = readJson(window.localStorage, REPORTS_STORAGE_KEY, []);
+  const reports = readJson(getStorage('localStorage'), REPORTS_STORAGE_KEY, []);
 
   if (!Array.isArray(reports)) {
     return [];
@@ -153,7 +166,7 @@ export function saveReport(report) {
   const nextReports = [nextReport, ...reports.filter((item) => item.id !== nextReport.id)];
 
   // TODO: Replace localStorage with Firestore backend
-  writeJson(window.localStorage, REPORTS_STORAGE_KEY, nextReports);
+  writeJson(getStorage('localStorage'), REPORTS_STORAGE_KEY, nextReports);
   setLastSubmittedReportId(nextReport.id);
   notifyReportsChanged();
 
@@ -174,7 +187,7 @@ export function markReportSynced(localReportId, firestoreReportId) {
       : report
   );
 
-  writeJson(window.localStorage, REPORTS_STORAGE_KEY, nextReports);
+  writeJson(getStorage('localStorage'), REPORTS_STORAGE_KEY, nextReports);
   notifyReportsChanged();
   return nextReports;
 }
@@ -188,14 +201,15 @@ export function deleteReport(id) {
   const nextReports = reports.filter((report) => report.id !== id);
 
   // TODO: Replace localStorage with Firestore backend
-  writeJson(window.localStorage, REPORTS_STORAGE_KEY, nextReports);
+  writeJson(getStorage('localStorage'), REPORTS_STORAGE_KEY, nextReports);
   deleteLinkedAlerts(id);
   notifyReportsChanged();
 
-  if (canUseStorage(window.sessionStorage)) {
-    const lastSubmittedId = window.sessionStorage.getItem(LAST_SUBMITTED_REPORT_KEY);
+  const sessionStorage = getStorage('sessionStorage');
+  if (canUseStorage(sessionStorage)) {
+    const lastSubmittedId = sessionStorage.getItem(LAST_SUBMITTED_REPORT_KEY);
     if (lastSubmittedId === id) {
-      window.sessionStorage.removeItem(LAST_SUBMITTED_REPORT_KEY);
+      sessionStorage.removeItem(LAST_SUBMITTED_REPORT_KEY);
     }
   }
 
@@ -220,7 +234,7 @@ function getReportIdentityKeys(reportOrId) {
 }
 
 export function getHiddenReportIds() {
-  return readJson(window.localStorage, HIDDEN_REPORTS_STORAGE_KEY, []);
+  return readJson(getStorage('localStorage'), HIDDEN_REPORTS_STORAGE_KEY, []);
 }
 
 export function isReportHiddenForCitizen(report) {
@@ -253,18 +267,19 @@ export function hideReportForCitizen(report) {
 
   const hiddenIds = new Set(getHiddenReportIds());
   reportKeys.forEach((key) => hiddenIds.add(key));
-  writeJson(window.localStorage, HIDDEN_REPORTS_STORAGE_KEY, Array.from(hiddenIds));
+  writeJson(getStorage('localStorage'), HIDDEN_REPORTS_STORAGE_KEY, Array.from(hiddenIds));
 
   const reports = getReports();
   const nextReports = reports.filter((savedReport) => !getReportIdentityKeys(savedReport).some((key) => hiddenIds.has(key)));
-  writeJson(window.localStorage, REPORTS_STORAGE_KEY, nextReports);
+  writeJson(getStorage('localStorage'), REPORTS_STORAGE_KEY, nextReports);
   reportKeys.forEach(deleteLinkedAlerts);
   notifyReportsChanged();
 
-  if (canUseStorage(window.sessionStorage)) {
-    const lastSubmittedId = window.sessionStorage.getItem(LAST_SUBMITTED_REPORT_KEY);
+  const sessionStorage = getStorage('sessionStorage');
+  if (canUseStorage(sessionStorage)) {
+    const lastSubmittedId = sessionStorage.getItem(LAST_SUBMITTED_REPORT_KEY);
     if (reportKeys.includes(lastSubmittedId)) {
-      window.sessionStorage.removeItem(LAST_SUBMITTED_REPORT_KEY);
+      sessionStorage.removeItem(LAST_SUBMITTED_REPORT_KEY);
     }
   }
 
@@ -272,19 +287,21 @@ export function hideReportForCitizen(report) {
 }
 
 export function clearReports() {
-  if (!canUseStorage(window.localStorage)) {
+  const localStorage = getStorage('localStorage');
+  const sessionStorage = getStorage('sessionStorage');
+  if (!canUseStorage(localStorage)) {
     return;
   }
 
-  window.localStorage.removeItem(REPORTS_STORAGE_KEY);
-  window.localStorage.removeItem(ALERTS_STORAGE_KEY);
-  window.localStorage.removeItem(HIDDEN_REPORTS_STORAGE_KEY);
-  window.localStorage.removeItem(LAST_SUBMITTED_REPORT_REF_KEY);
+  localStorage.removeItem(REPORTS_STORAGE_KEY);
+  localStorage.removeItem(ALERTS_STORAGE_KEY);
+  localStorage.removeItem(HIDDEN_REPORTS_STORAGE_KEY);
+  localStorage.removeItem(LAST_SUBMITTED_REPORT_REF_KEY);
   notifyReportsChanged();
 
-  if (canUseStorage(window.sessionStorage)) {
-    window.sessionStorage.removeItem(LAST_SUBMITTED_REPORT_KEY);
-    window.sessionStorage.removeItem(LAST_SUBMITTED_REPORT_REF_KEY);
+  if (canUseStorage(sessionStorage)) {
+    sessionStorage.removeItem(LAST_SUBMITTED_REPORT_KEY);
+    sessionStorage.removeItem(LAST_SUBMITTED_REPORT_REF_KEY);
   }
 }
 
@@ -295,7 +312,7 @@ export function updateReportStatus(id, status) {
     report.id === id ? normalizeReport({ ...report, status, updatedAt }) : report
   );
 
-  writeJson(window.localStorage, REPORTS_STORAGE_KEY, nextReports);
+  writeJson(getStorage('localStorage'), REPORTS_STORAGE_KEY, nextReports);
   notifyReportsChanged();
   return nextReports.find((report) => report.id === id) || null;
 }
@@ -355,7 +372,7 @@ export function formatReportDate(value) {
 }
 
 export function getStatusColor(status = '') {
-  const normalized = status.toUpperCase();
+  const normalized = String(status || '').toUpperCase();
 
   if (normalized.includes('REJECT') || normalized.includes('NOT VERIFIED')) {
     return 'rejected';
@@ -404,7 +421,7 @@ export function formatStatusLabel(status = '') {
 }
 
 export function getReportDraft() {
-  return readJson(window.sessionStorage, REPORT_DRAFT_STORAGE_KEY, {});
+  return readJson(getStorage('sessionStorage'), REPORT_DRAFT_STORAGE_KEY, {});
 }
 
 export function saveReportDraft(partialDraft) {
@@ -415,28 +432,31 @@ export function saveReportDraft(partialDraft) {
     updatedAt: new Date().toISOString()
   };
 
-  writeJson(window.sessionStorage, REPORT_DRAFT_STORAGE_KEY, nextDraft);
+  writeJson(getStorage('sessionStorage'), REPORT_DRAFT_STORAGE_KEY, nextDraft);
   return nextDraft;
 }
 
 export function clearReportDraft() {
-  if (!canUseStorage(window.sessionStorage)) {
+  const sessionStorage = getStorage('sessionStorage');
+  if (!canUseStorage(sessionStorage)) {
     return;
   }
 
-  window.sessionStorage.removeItem(REPORT_DRAFT_STORAGE_KEY);
+  sessionStorage.removeItem(REPORT_DRAFT_STORAGE_KEY);
 }
 
 export function setLastSubmittedReportId(id) {
-  if (!canUseStorage(window.sessionStorage)) {
+  const sessionStorage = getStorage('sessionStorage');
+  if (!canUseStorage(sessionStorage)) {
     return;
   }
 
-  window.sessionStorage.setItem(LAST_SUBMITTED_REPORT_KEY, id);
+  sessionStorage.setItem(LAST_SUBMITTED_REPORT_KEY, id);
 }
 
 export function setLastSubmittedReportReference(report) {
-  if (!canUseStorage(window.sessionStorage) || !report) {
+  const sessionStorage = getStorage('sessionStorage');
+  if (!canUseStorage(sessionStorage) || !report) {
     return;
   }
 
@@ -449,26 +469,30 @@ export function setLastSubmittedReportReference(report) {
     createdAt: report.createdAt || new Date().toISOString()
   };
 
-  writeJson(window.sessionStorage, LAST_SUBMITTED_REPORT_REF_KEY, submittedReference);
+  writeJson(sessionStorage, LAST_SUBMITTED_REPORT_REF_KEY, submittedReference);
 
-  if (canUseStorage(window.localStorage)) {
-    writeJson(window.localStorage, LAST_SUBMITTED_REPORT_REF_KEY, submittedReference);
+  const localStorage = getStorage('localStorage');
+  if (canUseStorage(localStorage)) {
+    writeJson(localStorage, LAST_SUBMITTED_REPORT_REF_KEY, submittedReference);
   }
 
   if (report.id || report.reportId) {
-    window.sessionStorage.setItem(LAST_SUBMITTED_REPORT_KEY, report.id || report.reportId);
+    sessionStorage.setItem(LAST_SUBMITTED_REPORT_KEY, report.id || report.reportId);
   }
 }
 
 export function getLastSubmittedReportReference() {
   return (
-    readJson(window.sessionStorage, LAST_SUBMITTED_REPORT_REF_KEY, null) ||
-    readJson(window.localStorage, LAST_SUBMITTED_REPORT_REF_KEY, null)
+    readJson(getStorage('sessionStorage'), LAST_SUBMITTED_REPORT_REF_KEY, null) ||
+    readJson(getStorage('localStorage'), LAST_SUBMITTED_REPORT_REF_KEY, null)
   );
 }
 
 export function getLastSubmittedReport() {
-  if (!canUseStorage(window.sessionStorage) && !canUseStorage(window.localStorage)) {
+  const sessionStorage = getStorage('sessionStorage');
+  const localStorage = getStorage('localStorage');
+
+  if (!canUseStorage(sessionStorage) && !canUseStorage(localStorage)) {
     return null;
   }
 
@@ -477,8 +501,8 @@ export function getLastSubmittedReport() {
     return submittedReference;
   }
 
-  const id = canUseStorage(window.sessionStorage)
-    ? window.sessionStorage.getItem(LAST_SUBMITTED_REPORT_KEY)
+  const id = canUseStorage(sessionStorage)
+    ? sessionStorage.getItem(LAST_SUBMITTED_REPORT_KEY)
     : '';
   return id ? getReportById(id) : null;
 }
@@ -509,12 +533,12 @@ export function buildReportFromDraft(draft) {
 }
 
 function deleteLinkedAlerts(reportId) {
-  const alerts = readJson(window.localStorage, ALERTS_STORAGE_KEY, []);
+  const alerts = readJson(getStorage('localStorage'), ALERTS_STORAGE_KEY, []);
 
   if (!Array.isArray(alerts)) {
     return;
   }
 
   const nextAlerts = alerts.filter((alert) => alert.reportId !== reportId);
-  writeJson(window.localStorage, ALERTS_STORAGE_KEY, nextAlerts);
+  writeJson(getStorage('localStorage'), ALERTS_STORAGE_KEY, nextAlerts);
 }

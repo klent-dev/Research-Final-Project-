@@ -3,12 +3,10 @@ import {
   FaBullhorn,
   FaCheckCircle,
   FaClipboardList,
-  FaGavel,
   FaRegFileAlt
 } from 'react-icons/fa';
 import { FiTrash2 } from 'react-icons/fi';
 import PageContainer from '../../components/PageContainer.jsx';
-import communityImage from '../../assets/images/Community.png';
 import responseImage from '../../assets/images/Response.png';
 import {
   formatStatusLabel,
@@ -19,12 +17,13 @@ import {
 import { isFirebaseConfigured } from '../../firebase/config.js';
 import { useReports } from '../../hooks/useReports.js';
 import { voidInfrastructureReport } from '../../services/reportService.js';
+import { toDisplayText } from '../../utils/displayText.js';
 
 export default function ReportsPage() {
   const navigate = useNavigate();
   const { reports, error, refreshReports } = useReports();
   const syncMessage = error || (!isFirebaseConfigured ? 'Firebase is not configured. Add your Firebase env values to submit and load reports.' : '');
-  const resolvedReports = reports.filter((report) => report.status === 'resolved');
+  const resolvedReports = reports.filter((report) => String(report?.status || '').toLowerCase() === 'resolved');
 
   async function handleDeleteReport(event, report) {
     event.stopPropagation();
@@ -60,14 +59,6 @@ export default function ReportsPage() {
 
   return (
     <PageContainer className="reports-page">
-      <header className="reports-topbar">
-        <div className="reports-brand">
-          <FaGavel aria-hidden="true" />
-          <span>CitizenWatch</span>
-        </div>
-        <img src={communityImage} alt="Citizen profile" />
-      </header>
-
       <section className="reports-title">
         <span className="reports-title__chip">Report Center</span>
         <h1>My Reports</h1>
@@ -123,7 +114,7 @@ export default function ReportsPage() {
                 <img src={report.photoPreview || report.photoUrl || report.imageUrl || responseImage} alt="" />
                 <div className="reports-list-card__body">
                   <div>
-                    <h3>{report.title}</h3>
+                    <h3>{toDisplayText(report.title || report.issueType, 'Infrastructure Report')}</h3>
                     <div className="reports-card-actions">
                       <span className={`reports-status-pill reports-status-pill--${getStatusColor(report.status)}`}>
                         {formatStatusLabel(report.status)}
@@ -139,7 +130,7 @@ export default function ReportsPage() {
                       </button>
                     </div>
                   </div>
-                  <p>{report.trackingId} &bull; {report.description}</p>
+                  <p>{toDisplayText(report.trackingId, 'No tracking ID')} &bull; {toDisplayText(report.description, 'No description provided.')}</p>
                   <time>{formatReportDate(report.createdAt)}</time>
                 </div>
               </article>

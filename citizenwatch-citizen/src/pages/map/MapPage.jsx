@@ -1,12 +1,10 @@
-import { Component, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import L from 'leaflet';
+import { Component, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
   FaCrosshairs,
   FaFilter,
-  FaGavel,
   FaLightbulb,
   FaMapMarkerAlt,
   FaMinus,
@@ -17,9 +15,10 @@ import {
   FaWater
 } from 'react-icons/fa';
 import PageContainer from '../../components/PageContainer.jsx';
-import communityImage from '../../assets/images/Community.png';
 import { reverseGeocodeLocation } from '../../services/geocodingService.js';
 import { formatStatusLabel } from '../../services/localReportService.js';
+import { getReportById as getLocalReportById } from '../../services/localReportService.js';
+import { getReportById as getFirebaseReportById } from '../../services/reportService.js';
 import {
   DEFAULT_MAP_CENTER,
   filterReports,
@@ -28,11 +27,13 @@ import {
   hasValidCoordinates,
   getVisibleCategory,
   getReportDistanceKm,
+  normalizeReport,
   getStatusTone,
   sortReportsByDistance
 } from '../../services/mapService.js';
 import { useReports } from '../../hooks/useReports.js';
-import { ReportMapMarker } from '../../utils/mapMarkers.js';
+import { ReportMapMarker, UserLocationMarker } from '../../utils/mapMarkers.js';
+import { toDisplayText } from '../../utils/displayText.js';
 import '../../styles/map.css';
 
 const filters = ['All', 'Drainage', 'Street Light', 'Flooding', 'Waste', 'Others'];
@@ -45,23 +46,17 @@ const categoryIcons = {
   Others: FaRoad
 };
 
-const userLocationIcon = L.divIcon({
-  className: 'community-user-marker',
-  html: '',
-  iconAnchor: [10, 10],
-  iconSize: [20, 20]
-});
-
 function hasPlaceholderAddress(address = '') {
   const normalized = String(address).trim().toLowerCase();
   return normalized === '' || normalized === 'photo location detected' || normalized === 'location detected';
 }
 
-function MapBridge({ mapRef }) {
+function MapBridge({ mapRef, onMapReady }) {
   const map = useMap();
 
   useEffect(() => {
     mapRef.current = map;
+    onMapReady?.();
     window.setTimeout(() => map.invalidateSize(), 0);
 
     return () => {
@@ -69,7 +64,7 @@ function MapBridge({ mapRef }) {
         mapRef.current = null;
       }
     };
-  }, [map, mapRef]);
+  }, [map, mapRef, onMapReady]);
 
   return null;
 }
@@ -103,20 +98,123 @@ class MapErrorBoundary extends Component {
 }
 
 export default function MapPage() {
+  const [searchParams] = useSearchParams();
+  const selectedReportId = searchParams.get('reportId') || '';
   const [activeFilter, setActiveFilter] = useState('All');
   const { reports } = useReports();
   const [userLocation, setUserLocation] = useState(null);
   const [mapMessage, setMapMessage] = useState('');
   const [resolvedReportAddresses, setResolvedReportAddresses] = useState({});
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [isMapReady, setIsMapReady] = useState(false);
   const mapRef = useRef(null);
+  const markerRefs = useRef({});
+  const hasRequestedInitialLocationRef = useRef(false);
+  const handleMapReady = useCallback(() => setIsMapReady(true), []);
 
   const validReports = useMemo(() => reports.filter(hasValidCoordinates), [reports]);
+  const selectedReportKey = selectedReport?.id || selectedReport?.reportId || selectedReport?.trackingId || '';
+  const mapReports = useMemo(() => {
+    if (!selectedReport || !hasValidCoordinates(selectedReport)) {
+      return validReports;
+    }
+
+    const selectedKeys = [
+      selectedReport.id,
+      selectedReport.reportId,
+      selectedReport.firestoreReportId,
+      selectedReport.trackingId
+    ].filter(Boolean);
+    const alreadyExists = validReports.some((report) => [
+      report.id,
+      report.reportId,
+      report.firestoreReportId,
+      report.trackingId
+    ].some((key) => selectedKeys.includes(key)));
+
+    return alreadyExists ? validReports : [selectedReport, ...validReports];
+  }, [selectedReport, validReports]);
   const filteredReports = useMemo(() => filterReports(validReports, activeFilter), [activeFilter, validReports]);
   const nearbyReports = useMemo(
     () => sortReportsByDistance(filteredReports, userLocation).slice(0, 3),
     [filteredReports, userLocation]
   );
-  const mapReports = validReports;
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadSelectedReport() {
+      if (!selectedReportId) {
+        setSelectedReport(null);
+        return;
+      }
+
+      const matchingReport = reports.find((report) => [
+        report.id,
+        report.reportId,
+        report.firestoreReportId,
+        report.trackingId
+      ].filter(Boolean).includes(selectedReportId));
+
+      if (matchingReport) {
+        setSelectedReport(hasValidCoordinates(matchingReport) ? normalizeReport(matchingReport) : matchingReport);
+        return;
+      }
+
+      const localReport = getLocalReportById(selectedReportId);
+      if (localReport) {
+        setSelectedReport(hasValidCoordinates(localReport) ? normalizeReport(localReport) : localReport);
+        return;
+      }
+
+      try {
+        const firebaseReport = await getFirebaseReportById(selectedReportId);
+
+        if (!ignore) {
+          setSelectedReport(firebaseReport && hasValidCoordinates(firebaseReport) ? normalizeReport(firebaseReport) : firebaseReport);
+        }
+      } catch (error) {
+        console.warn('Unable to load selected map report.', error);
+
+        if (!ignore) {
+          setSelectedReport(null);
+          setMapMessage('Unable to load the selected report location.');
+        }
+      }
+    }
+
+    void loadSelectedReport();
+
+    return () => {
+      ignore = true;
+    };
+  }, [reports, selectedReportId]);
+
+  useEffect(() => {
+    if (!selectedReportId || !isMapReady) {
+      return;
+    }
+
+    if (!selectedReport) {
+      return;
+    }
+
+    if (!hasValidCoordinates(selectedReport)) {
+      setMapMessage('Location not available for this report.');
+      return;
+    }
+
+    const position = [Number(selectedReport.location.lat), Number(selectedReport.location.lng)];
+    setMapMessage('');
+    mapRef.current?.flyTo(position, 17, {
+      animate: true,
+      duration: 0.9
+    });
+
+    window.setTimeout(() => {
+      markerRefs.current[selectedReportKey]?.openPopup?.();
+    }, 700);
+  }, [isMapReady, selectedReport, selectedReportId, selectedReportKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -164,7 +262,7 @@ export default function MapPage() {
     mapRef.current?.zoomOut();
   }
 
-  function handleCurrentLocation() {
+  const handleCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setMapMessage('Geolocation is not supported by this browser.');
       return;
@@ -185,15 +283,24 @@ export default function MapPage() {
         });
       },
       () => {
-        setMapMessage('Location permission was denied or unavailable.');
+        setMapMessage('Location permission is required to show your current location.');
       },
       {
         enableHighAccuracy: true,
-        timeout: 20000,
+        timeout: 10000,
         maximumAge: 0
       }
     );
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!isMapReady || selectedReportId || hasRequestedInitialLocationRef.current) {
+      return;
+    }
+
+    hasRequestedInitialLocationRef.current = true;
+    handleCurrentLocation();
+  }, [handleCurrentLocation, isMapReady, selectedReportId]);
 
   function handleFocusFilters() {
     document.querySelector('.community-map-filters')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -201,14 +308,6 @@ export default function MapPage() {
 
   return (
     <PageContainer className="community-map-page">
-      <header className="community-map-topbar">
-        <div className="community-map-brand">
-          <FaGavel aria-hidden="true" />
-          <span>CitizenWatch</span>
-        </div>
-        <img src={communityImage} alt="Citizen profile" />
-      </header>
-
       <section className="community-map-title">
         <span className="community-map-title__chip">Community Map</span>
         <h1>Community Map</h1>
@@ -238,7 +337,7 @@ export default function MapPage() {
             zoom={13}
             zoomControl={false}
           >
-            <MapBridge mapRef={mapRef} />
+            <MapBridge mapRef={mapRef} onMapReady={handleMapReady} />
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -249,11 +348,25 @@ export default function MapPage() {
                 icon={ReportMapMarker(report.urgency)}
                 key={report.id}
                 position={[report.location.lat, report.location.lng]}
+                ref={(marker) => {
+                  [
+                    report.id,
+                    report.reportId,
+                    report.firestoreReportId,
+                    report.trackingId
+                  ].filter(Boolean).forEach((key) => {
+                    if (marker) {
+                      markerRefs.current[key] = marker;
+                    } else {
+                      delete markerRefs.current[key];
+                    }
+                  });
+                }}
               >
                 <Popup className="report-map-popup" closeButton offset={[0, -12]}>
                   <div className="map-popup-card">
                     <div className="map-popup-header">
-                      <strong>{report.issueType || report.category}</strong>
+                      <strong>{toDisplayText(report.issueType || report.category, 'Infrastructure Report')}</strong>
                       <span className={`community-status-pill community-status-pill--${getStatusTone(report.status)}`}>
                         {formatStatusLabel(report.status)}
                       </span>
@@ -261,14 +374,14 @@ export default function MapPage() {
                     <p>
                       {resolvedReportAddresses[report.id] || report.location?.address || 'Location detected'}
                     </p>
-                    {report.description && <small>{report.description}</small>}
+                    {report.description && <small>{toDisplayText(report.description)}</small>}
                   </div>
                 </Popup>
               </Marker>
             ))}
 
             {userLocation && (
-              <Marker icon={userLocationIcon} position={[userLocation.lat, userLocation.lng]}>
+              <Marker icon={UserLocationMarker} position={[userLocation.lat, userLocation.lng]}>
                 <Popup>Your current location</Popup>
               </Marker>
             )}
@@ -312,7 +425,7 @@ export default function MapPage() {
                     <Icon aria-hidden="true" />
                   </span>
                   <div>
-                    <h3>{report.title}</h3>
+                    <h3>{toDisplayText(report.title || report.issueType, 'Infrastructure Report')}</h3>
                     <p>
                       <FaMapMarkerAlt aria-hidden="true" />
                       {formatDistance(distance)} <span aria-hidden="true">&bull;</span> {formatReportAge(report.createdAt)}

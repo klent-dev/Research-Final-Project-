@@ -2,13 +2,12 @@ import { useState } from 'react';
 import {
   FaClipboardList,
   FaExclamationTriangle,
-  FaGavel,
   FaInfoCircle,
 } from 'react-icons/fa';
 import PageContainer from '../../components/PageContainer.jsx';
-import communityImage from '../../assets/images/Community.png';
 import { useReports } from '../../hooks/useReports.js';
 import { formatRelativeTime } from '../../services/localReportService.js';
+import { toDisplayText } from '../../utils/displayText.js';
 import '../../styles/alerts.css';
 
 const filters = ['All', 'Reports', 'Nearby', 'System'];
@@ -23,13 +22,14 @@ export default function AlertsPage() {
   const { reports } = useReports();
   const alerts = reports.map((report) => {
     const rejected = isRejectedReport(report);
+    const issueType = toDisplayText(report.issueType || report.category, 'infrastructure');
 
     return {
       id: `report-${report.id}`,
       title: rejected ? 'Report Not Verified' : 'Report Submitted',
       message: rejected
-        ? report.rejectionReason || `Your ${report.issueType} report was reviewed by LGU staff but could not be verified. It has been closed.`
-        : `Your ${report.issueType} report has been received and is under review.`,
+        ? toDisplayText(report.rejectionReason) || `Your ${issueType} report was reviewed by LGU staff but could not be verified. It has been closed.`
+        : `Your ${issueType} report has been received and is under review.`,
       time: formatRelativeTime(report.updatedAt || report.createdAt),
       category: 'Reports',
       status: rejected ? 'Closed' : 'Today',
@@ -45,14 +45,6 @@ export default function AlertsPage() {
 
   return (
     <PageContainer className="alerts-page">
-      <header className="alerts-topbar">
-        <div className="alerts-brand">
-          <FaGavel aria-hidden="true" />
-          <span>CitizenWatch</span>
-        </div>
-        <img src={communityImage} alt="Citizen profile" />
-      </header>
-
       <section className="alerts-title">
         <span className="alerts-title__chip">Alert Center</span>
         <h1>Alerts</h1>
@@ -125,11 +117,11 @@ export default function AlertsPage() {
 
                   <footer>
                     <span className={`alert-category-pill alert-category-pill--${alert.tone}`}>
-                      {alert.category.toUpperCase()}
+                      {String(alert.category || '').toUpperCase()}
                     </span>
                     {(alert.status || alert.priority) && (
                       <span className={`alert-meta alert-meta--${alert.tone}`}>
-                        {alert.status || alert.priority}
+                        {toDisplayText(alert.status || alert.priority)}
                       </span>
                     )}
                     {alert.distance && <span className="alert-distance">{alert.distance}</span>}

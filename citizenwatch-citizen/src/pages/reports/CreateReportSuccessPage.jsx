@@ -4,7 +4,6 @@ import {
   FaCheck,
   FaCopy,
   FaEye,
-  FaGavel,
   FaHome,
   FaQuestionCircle
 } from 'react-icons/fa';
@@ -59,10 +58,7 @@ export default function CreateReportSuccessPage() {
   return (
     <main className="create-success-page">
       <header className="create-success-topbar">
-        <Link className="create-success-brand" to="/home" aria-label="CitizenWatch home">
-          <FaGavel aria-hidden="true" />
-          <span>CitizenWatch</span>
-        </Link>
+        <span aria-hidden="true" />
         <button className="create-success-help" type="button" aria-label="Help">
           <FaQuestionCircle aria-hidden="true" />
         </button>

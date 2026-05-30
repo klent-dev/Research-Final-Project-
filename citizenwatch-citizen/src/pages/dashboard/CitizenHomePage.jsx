@@ -19,6 +19,7 @@ import PageContainer from '../../components/PageContainer.jsx';
 import { useReports } from '../../hooks/useReports.js';
 import { filterReports, hasValidCoordinates } from '../../services/mapService.js';
 import { HomeReportPreviewMarker, HomeUserLocationMarker } from '../../utils/mapMarkers.js';
+import { toDisplayText } from '../../utils/displayText.js';
 
 const LAHUG_CENTER = {
   lat: 10.3403,
@@ -66,11 +67,11 @@ export default function CitizenHomePage() {
     { label: 'Submitted', value: reports.length.toString() },
     {
       label: 'Verified',
-      value: reports.filter((report) => report.status.toUpperCase().includes('VERIFIED')).length.toString()
+      value: reports.filter((report) => String(report?.status || '').toUpperCase().includes('VERIFIED')).length.toString()
     },
     {
       label: 'Resolved',
-      value: reports.filter((report) => report.status.toUpperCase().includes('RESOLVED')).length.toString()
+      value: reports.filter((report) => String(report?.status || '').toUpperCase().includes('RESOLVED')).length.toString()
     }
   ];
 
@@ -206,7 +207,7 @@ export default function CitizenHomePage() {
               )}
               {nearbyReports.map((report) => (
                 <Marker
-                  icon={HomeReportPreviewMarker(report.category || report.issueType)}
+                  icon={HomeReportPreviewMarker(report.urgency || report.severity)}
                   key={report.id}
                   position={[report.location.lat, report.location.lng]}
                 />
@@ -231,7 +232,7 @@ export default function CitizenHomePage() {
                 }}
               >
                 <FaMapMarkerAlt aria-hidden="true" />
-                {report.issueType}
+                {toDisplayText(report.issueType || report.category, 'Report')}
               </span>
             ))}
           </div>
