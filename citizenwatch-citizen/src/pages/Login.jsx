@@ -77,7 +77,7 @@ export default function Login() {
                     autoComplete="email"
                     name="email"
                     onChange={handleChange}
-                    placeholder="name@agency.gov"
+                    placeholder="citizen@email.com"
                     required
                     type="email"
                     value={formData.email}

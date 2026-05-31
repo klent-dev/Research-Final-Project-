@@ -6,6 +6,7 @@ import {
   getDocs,
   limit,
   onSnapshot,
+  orderBy,
   query,
   setDoc,
   updateDoc,
@@ -344,6 +345,25 @@ export function subscribeToReports(callback) {
   return onSnapshot(reportsRef, (snapshot) => {
     callback(sortReportsByNewest(snapshot.docs.map((reportDoc) => ({ id: reportDoc.id, ...reportDoc.data() }))));
   });
+}
+
+export function subscribeToLatestReports(callback, onError, maxReports = 5) {
+  const reportsRef = getReportsRef();
+
+  if (!reportsRef) {
+    callback([]);
+    return () => {};
+  }
+
+  const reportsQuery = query(reportsRef, orderBy('createdAt', 'desc'), limit(maxReports));
+
+  return onSnapshot(
+    reportsQuery,
+    (snapshot) => {
+      callback(sortReportsByNewest(snapshot.docs.map((reportDoc) => ({ id: reportDoc.id, ...reportDoc.data() }))));
+    },
+    onError
+  );
 }
 
 export function subscribeToReportsByUser(userId = '', callback, onError) {

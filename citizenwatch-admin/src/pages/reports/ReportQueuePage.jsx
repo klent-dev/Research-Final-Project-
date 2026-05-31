@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   getLocationValidationLabel,
   normalizeLocationValidationStatus,
@@ -260,7 +260,7 @@ export default function ReportQueuePage() {
                   <td>{formatTrustScore(report)}</td>
                   <td>{report.locationValidation?.requiresReview ? 'Required' : 'No'}</td>
                   <td>{formatValidationSource(report)}</td>
-                  <td><button type="button" aria-label={`Open ${report.name}`}>›</button></td>
+                  <td><button type="button" aria-label={`Open ${report.name}`}>�</button></td>
                 </tr>
               ))}
             </tbody>

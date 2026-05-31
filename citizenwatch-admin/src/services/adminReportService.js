@@ -47,6 +47,7 @@ function getReportsCollection() {
   return collection(db, 'reports');
 }
 
+
 function notifyReportListeners() {
   listeners.forEach(({ filters, onReports }) => {
     onReports(applyFilters([], filters));
