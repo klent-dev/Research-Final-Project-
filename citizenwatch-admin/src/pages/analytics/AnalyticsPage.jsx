@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import {
+  deleteReport,
   getLocationValidationLabel,
+  markReportOpened,
   markReportsNotVerified,
   normalizeLocationValidationStatus,
   subscribeReportsForModeration,
@@ -135,11 +137,6 @@ function getValidationSourceLabel(report) {
   return source ? source.replace(/\b\w/g, (letter) => letter.toUpperCase()) : 'Unavailable';
 }
 
-function formatTrustScore(report) {
-  const score = Number(report.locationValidation?.verificationScore);
-  return Number.isFinite(score) ? `${Math.round(score)}/100` : 'Unavailable';
-}
-
 function formatCoordinate(value) {
   const coordinate = Number(value);
   return Number.isFinite(coordinate) ? coordinate.toFixed(5) : 'Unavailable';
@@ -174,6 +171,10 @@ function isVoidedByCitizen(report = {}) {
 
 function isRejectedByAdmin(report = {}) {
   return report.status === REPORT_STATUS.REJECTED || report.rejectedByAdmin || report.adminDeleted;
+}
+
+function isReportUnseen(report = {}) {
+  return !report.adminSeen && !report.adminSeenAt && !report.adminOpenedAt && !report.viewedByAdmin;
 }
 
 function formatDate(value) {
@@ -275,7 +276,7 @@ function ReportDetailMap({ report }) {
   );
 }
 
-function ReportDetailsDrawer({ report, adminId, isSaving, onClose, onSave }) {
+function ReportDetailsDrawer({ report, adminId, isSaving, onClose, onDelete, onSave }) {
   const [nextStatus, setNextStatus] = useState(report?.status || REPORT_STATUS.SUBMITTED);
   const [remarks, setRemarks] = useState(report?.adminNotes || report?.remarks || '');
   const imageUrl = report ? getReportImage(report) : '';
@@ -425,6 +426,11 @@ function ReportDetailsDrawer({ report, adminId, isSaving, onClose, onSave }) {
               <small>{validation.requiresReview ? 'Review metadata before resolution' : 'Metadata is within tolerance'}</small>
             </div>
             <div>
+              <span>GPS Source</span>
+              <strong>{getValidationSourceLabel(report)}</strong>
+              <small>{validation.source || validation.status || 'No validation source'}</small>
+            </div>
+            <div>
               <span>EXIF Timestamp</span>
               <strong>{validation.hasTimestamp ? formatDate(validation.exifTimestamp) : 'Unavailable'}</strong>
               <small>{validation.hasTimestamp ? 'Photo timestamp detected' : 'No photo timestamp found'}</small>
@@ -480,6 +486,16 @@ function ReportDetailsDrawer({ report, adminId, isSaving, onClose, onSave }) {
               <span>{formatDate(report.createdAt)}</span>
             </li>
           </ol>
+          <div className="report-delete-option">
+            <button
+              className="report-delete-button"
+              disabled={isSaving}
+              onClick={() => onDelete(report)}
+              type="button"
+            >
+              {isSaving ? 'Deleting...' : 'Delete Report'}
+            </button>
+          </div>
         </section>
       </aside>
     </div>
@@ -581,6 +597,32 @@ export default function AnalyticsPage() {
     }
   }
 
+  async function handleDeleteReport(report) {
+    if (!report) return;
+
+    const reportLabel = report.trackingId || report.id;
+    const shouldDelete = window.confirm(`Delete ${reportLabel}? This report will be permanently removed from the admin queue.`);
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setIsSaving(true);
+    setErrorMessage('');
+
+    try {
+      await deleteReport(report.id);
+      setReports((currentReports) => currentReports.filter((item) => item.id !== report.id));
+      setSelectedReportIds((currentIds) => currentIds.filter((reportId) => reportId !== report.id));
+      setSelectedReport(null);
+    } catch (error) {
+      console.error('Unable to delete report:', error);
+      setErrorMessage('Unable to delete report.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   function handleToggleReportSelection(reportId) {
     setSelectedReportIds((currentIds) => (
       currentIds.includes(reportId)
@@ -597,6 +639,31 @@ export default function AnalyticsPage() {
 
       return Array.from(new Set([...currentIds, ...selectableReportIds]));
     });
+  }
+
+  async function handleOpenReport(report) {
+    setSelectedReport({ ...report, adminSeen: true });
+
+    if (!isReportUnseen(report)) {
+      return;
+    }
+
+    setReports((currentReports) => (
+      currentReports.map((item) => (
+        item.id === report.id
+          ? { ...item, adminSeen: true, adminSeenAt: new Date().toISOString(), adminSeenBy: admin?.uid || null }
+          : item
+      ))
+    ));
+
+    try {
+      await markReportOpened({
+        reportId: report.id,
+        adminId: admin?.uid
+      });
+    } catch (error) {
+      console.error('Unable to mark report as seen:', error);
+    }
   }
 
   async function handleMarkSelectedNotVerified() {
@@ -757,11 +824,7 @@ export default function AnalyticsPage() {
                   <th>Severity</th>
                   <th>Status</th>
                   <th>Validation</th>
-                  <th>Trust Score</th>
-                  <th>Review</th>
-                  <th>GPS Source</th>
                   <th>Reported Date</th>
-                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -771,7 +834,20 @@ export default function AnalyticsPage() {
                   const validationStatus = getValidationStatus(report);
 
                   return (
-                    <tr key={report.id}>
+                    <tr
+                      aria-label={`Open ${report.trackingId || report.id} details`}
+                      className={isReportUnseen(report) ? 'reports-table-row reports-table-row--unseen' : 'reports-table-row'}
+                      key={report.id}
+                      onClick={() => handleOpenReport(report)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          handleOpenReport(report);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                    >
                       <td>
                         {canSelectReport(report.status) && (
                           <input
@@ -779,6 +855,7 @@ export default function AnalyticsPage() {
                             checked={selectedReportIds.includes(report.id)}
                             onChange={() => handleToggleReportSelection(report.id)}
                             onClick={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => event.stopPropagation()}
                             type="checkbox"
                           />
                         )}
@@ -807,11 +884,7 @@ export default function AnalyticsPage() {
                           {getValidationLabel(report)}
                         </span>
                       </td>
-                      <td>{formatTrustScore(report)}</td>
-                      <td>{report.locationValidation?.requiresReview ? 'Required' : 'No'}</td>
-                      <td>{getValidationSourceLabel(report)}</td>
                       <td>{formatDate(report.createdAt)}</td>
-                      <td><button type="button" onClick={() => setSelectedReport(report)}>View Details</button></td>
                     </tr>
                   );
                 })}
@@ -840,6 +913,7 @@ export default function AnalyticsPage() {
         adminId={admin?.uid}
         isSaving={isSaving}
         onClose={() => setSelectedReport(null)}
+        onDelete={handleDeleteReport}
         onSave={handleSaveReportStatus}
         report={selectedReport}
       />

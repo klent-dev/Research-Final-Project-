@@ -102,7 +102,11 @@ export function normalizeReportStatus(status = '') {
     return 'rejected';
   }
 
-  if (normalized.includes('progress') || normalized.includes('review') || normalized.includes('verified')) {
+  if (normalized.includes('pending') || normalized.includes('submit') || normalized.includes('review')) {
+    return 'pending';
+  }
+
+  if (normalized.includes('progress') || normalized.includes('verified')) {
     return 'in_progress';
   }
 
@@ -364,6 +368,23 @@ export function updateReportStatus({
   };
 
   return updateDoc(doc(db, 'reports', reportId), updatePayload);
+}
+
+export function markReportOpened({
+  reportId,
+  adminId
+}) {
+  if (!shouldUseFirestore()) {
+    clearLocalReportStorage();
+    notifyReportListeners();
+    return Promise.resolve();
+  }
+
+  return updateDoc(doc(db, 'reports', reportId), {
+    adminSeen: true,
+    adminSeenAt: serverTimestamp(),
+    adminSeenBy: adminId || null
+  });
 }
 
 export async function markReportNotVerified({
