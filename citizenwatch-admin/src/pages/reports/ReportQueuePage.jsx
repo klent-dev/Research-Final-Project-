@@ -13,10 +13,10 @@ const categoryFilters = ['All Assets', 'Roads', 'Drainage', 'Streetlights', 'Bri
 const statusFilters = ['All Statuses', 'Pending', 'In Progress', 'Completed', 'Voided by Citizen'];
 const statusOrder = ['Pending', 'In Progress', 'Completed', 'Voided by Citizen'];
 const statusActions = [
-  { label: 'Under Review', value: 'under_review' },
-  { label: 'Verified', value: 'verified' },
-  { label: 'Resolved', value: 'resolved' },
-  { label: 'Rejected', value: 'rejected' }
+  { label: 'Mark Pending', value: 'pending' },
+  { label: 'Mark In Progress', value: 'in_progress' },
+  { label: 'Mark Completed', value: 'resolved' },
+  { label: 'Mark Rejected', value: 'rejected' }
 ];
 const REPORTS_PER_PAGE = 10;
 
@@ -57,11 +57,15 @@ function formatValidationSource(report) {
 }
 
 function formatValidationTimestamp(report) {
-  const timestamp = report.locationValidation?.exifTimestamp;
+  return formatReportDate(report.locationValidation?.exifTimestamp, 'Unavailable');
+}
+
+function formatReportDate(value, fallback = 'Recently') {
+  const timestamp = value?.toDate ? value.toDate() : value;
   const date = timestamp ? new Date(timestamp) : null;
 
   if (!date || Number.isNaN(date.getTime())) {
-    return 'Unavailable';
+    return fallback;
   }
 
   return date.toLocaleString('en-US', {
@@ -71,6 +75,14 @@ function formatValidationTimestamp(report) {
     hour: '2-digit',
     minute: '2-digit'
   });
+}
+
+function getTimelineStatus(report) {
+  if (report.normalizedStatus === 'completed') return 'Completed';
+  if (report.normalizedStatus === 'in_progress') return 'In Review';
+  if (report.normalizedStatus === 'rejected') return 'Rejected';
+  if (report.normalizedStatus === 'voided') return 'Voided by Citizen';
+  return 'Pending';
 }
 
 function formatValidationCamera(report) {
@@ -105,6 +117,7 @@ export default function ReportQueuePage() {
   const [selectedReportId, setSelectedReportId] = useState('');
   const [statusMessage, setStatusMessage] = useState('Loading reports...');
   const [currentPage, setCurrentPage] = useState(1);
+  const [showSelectedReportDetails, setShowSelectedReportDetails] = useState(false);
 
   useEffect(() => {
     return subscribeReportsForModeration(
@@ -138,6 +151,10 @@ export default function ReportQueuePage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [activeCategory, activeStatus]);
+
+  useEffect(() => {
+    setShowSelectedReportDetails(false);
+  }, [selectedReportId]);
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages));
@@ -227,30 +244,29 @@ export default function ReportQueuePage() {
         </div>
       </section>
 
-      <section className="infra-filter-row" aria-label="Report category filters">
-        {categoryFilters.map((filter) => (
-          <button
-            className={activeCategory === filter ? 'active' : ''}
-            key={filter}
-            onClick={() => setActiveCategory(filter)}
-            type="button"
+      <section className="infra-filter-row" aria-label="Infrastructure report filters">
+        <label className="infra-filter-select">
+          <select
+            aria-label="Filter by asset"
+            onChange={(event) => setActiveCategory(event.target.value)}
+            value={activeCategory}
           >
-            {filter}
-          </button>
-        ))}
-      </section>
-
-      <section className="infra-filter-row infra-filter-row--status" aria-label="Report status filters">
-        {statusFilters.map((filter) => (
-          <button
-            className={activeStatus === filter ? 'active' : ''}
-            key={filter}
-            onClick={() => setActiveStatus(filter)}
-            type="button"
+            {categoryFilters.map((filter) => (
+              <option key={filter} value={filter}>{filter}</option>
+            ))}
+          </select>
+        </label>
+        <label className="infra-filter-select">
+          <select
+            aria-label="Filter by status"
+            onChange={(event) => setActiveStatus(event.target.value)}
+            value={activeStatus}
           >
-            {filter}
-          </button>
-        ))}
+            {statusFilters.map((filter) => (
+              <option key={filter} value={filter}>{filter}</option>
+            ))}
+          </select>
+        </label>
       </section>
 
       <section className="infra-workspace">
@@ -264,9 +280,6 @@ export default function ReportQueuePage() {
                 <th>Progress</th>
                 <th>Severity</th>
                 <th>Validation</th>
-                <th>Trust Score</th>
-                <th>Review</th>
-                <th>GPS Source</th>
                 <th aria-label="Open report" />
               </tr>
             </thead>
@@ -298,7 +311,7 @@ export default function ReportQueuePage() {
                   <td>{formatTrustScore(report)}</td>
                   <td>{report.locationValidation?.requiresReview ? 'Required' : 'No'}</td>
                   <td>{formatValidationSource(report)}</td>
-                  <td><button type="button" aria-label={`Open ${report.name}`}>�</button></td>
+                  <td><button type="button" aria-label={`Open ${report.name}`}>›</button></td>
                 </tr>
               ))}
             </tbody>
@@ -311,24 +324,36 @@ export default function ReportQueuePage() {
           )}
           <footer>
             <span>
-              Showing {filteredReports.length === 0 ? 0 : pageStart + 1}-{pageEnd} of {filteredReports.length} progress reports
+              Showing {filteredReports.length === 0 ? 0 : pageStart + 1}-{pageEnd} of {filteredReports.length} reports
             </span>
             {filteredReports.length > REPORTS_PER_PAGE && (
               <div className="report-pagination" aria-label="Report pagination">
                 <button
+                  aria-label="Previous page"
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                   type="button"
                 >
-                  Previous
+                  â€¹
                 </button>
-                <strong>Page {currentPage} of {totalPages}</strong>
+                {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                  <button
+                    aria-current={currentPage === pageNumber ? 'page' : undefined}
+                    className={currentPage === pageNumber ? 'active' : ''}
+                    key={pageNumber}
+                    onClick={() => setCurrentPage(pageNumber)}
+                    type="button"
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
                 <button
+                  aria-label="Next page"
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                   type="button"
                 >
-                  Next
+                  â€º
                 </button>
               </div>
             )}
@@ -337,7 +362,91 @@ export default function ReportQueuePage() {
 
         <aside className="selected-asset-card">
           {selectedReport ? (
-            <>
+            showSelectedReportDetails ? (
+              <>
+                <header>
+                  <div>
+                    <h2>Selected Report</h2>
+                  </div>
+                  <span className={`asset-status asset-status--${getStatusClass(selectedReport.normalizedStatus)}`}>
+                    {selectedReport.displayStatus}
+                  </span>
+                </header>
+                <section className="asset-detail-copy">
+                  <h3>{selectedReport.name}</h3>
+                  <p>{selectedReport.locationText}</p>
+                </section>
+                <section className="report-detail-grid">
+                  <div>
+                    <span>Category</span>
+                    <strong>{selectedReport.category}</strong>
+                  </div>
+                  <div>
+                    <span>Severity</span>
+                    <strong>{selectedReport.normalizedSeverity}</strong>
+                  </div>
+                  <div>
+                    <span>Location Check</span>
+                    <strong>{getValidationLabel(selectedReport)}</strong>
+                  </div>
+                  <div>
+                    <span>GPS Difference</span>
+                    <strong>{formatValidationDistance(selectedReport)}</strong>
+                  </div>
+                  <div>
+                    <span>Trust Score</span>
+                    <strong>{formatTrustScore(selectedReport)}</strong>
+                  </div>
+                  <div>
+                    <span>Review Needed</span>
+                    <strong>{selectedReport.locationValidation?.requiresReview ? 'Yes' : 'No'}</strong>
+                  </div>
+                  <div>
+                    <span>GPS Source</span>
+                    <strong>{formatValidationSource(selectedReport)}</strong>
+                  </div>
+                  <div>
+                    <span>EXIF Timestamp</span>
+                    <strong>{formatValidationTimestamp(selectedReport)}</strong>
+                  </div>
+                  <div>
+                    <span>Camera Metadata</span>
+                    <strong>{formatValidationCamera(selectedReport)}</strong>
+                  </div>
+                </section>
+                <section className={`validation-summary validation-summary--${getValidationStatus(selectedReport)}`}>
+                  <strong>{selectedReport.locationValidation?.message || 'Location validation has not been completed.'}</strong>
+                  <p>{selectedReport.locationValidation?.helper || 'EXIF/device GPS details will appear here when available.'}</p>
+                </section>
+                <section className="degradation report-progress-panel">
+                  <span>Progress</span>
+                  {selectedReport.normalizedStatus === 'rejected' ? (
+                    <p className="report-rejected-note">{REJECTED_REPORT_REASON}</p>
+                  ) : selectedReport.normalizedStatus === 'voided' ? (
+                    <p className="report-voided-note">This report was deleted by the citizen and is now marked void.</p>
+                  ) : (
+                    <>
+                      <div><i style={{ width: `${selectedReport.progress}%` }} /></div>
+                      <small>{selectedReport.displayStatus} <strong>{selectedReport.progress}%</strong></small>
+                    </>
+                  )}
+                </section>
+                <section className="maintenance-history">
+                  <h3>Short Description</h3>
+                  <article>
+                    <span aria-hidden="true" />
+                    <div>
+                      <strong>{selectedReport.sourceType || selectedReport.source || 'Citizen App'}</strong>
+                      <p>{selectedReport.description}</p>
+                    </div>
+                  </article>
+                </section>
+                <button className="report-back-summary" onClick={() => setShowSelectedReportDetails(false)} type="button">
+                  Back to Summary
+                </button>
+              </>
+            ) : (
+            <section className="selected-report-summary">
               <header>
                 <h2>Selected Report</h2>
                 <span className={`asset-status asset-status--${getStatusClass(selectedReport.normalizedStatus)}`}>
@@ -355,63 +464,53 @@ export default function ReportQueuePage() {
                 </div>
                 <div>
                   <span>Severity</span>
-                  <strong>{selectedReport.normalizedSeverity}</strong>
+                  <strong>
+                    <i className={`summary-dot summary-dot--${selectedReport.normalizedSeverity}`} />
+                    {selectedReport.normalizedSeverity}
+                  </strong>
                 </div>
                 <div>
                   <span>Location Check</span>
-                  <strong>{getValidationLabel(selectedReport)}</strong>
+                  <strong>
+                    <i className={`summary-dot summary-dot--${getValidationStatus(selectedReport)}`} />
+                    {getValidationLabel(selectedReport)}
+                  </strong>
                 </div>
                 <div>
                   <span>GPS Difference</span>
                   <strong>{formatValidationDistance(selectedReport)}</strong>
                 </div>
-                <div>
-                  <span>Trust Score</span>
-                  <strong>
-                    {Number.isFinite(Number(selectedReport.locationValidation?.verificationScore))
-                      ? `${selectedReport.locationValidation.verificationScore}/100`
-                      : 'Unavailable'}
-                  </strong>
-                </div>
-                <div>
-                  <span>Review Needed</span>
-                  <strong>{selectedReport.locationValidation?.requiresReview ? 'Yes' : 'No'}</strong>
-                </div>
-                <div>
-                  <span>EXIF Timestamp</span>
-                  <strong>{formatValidationTimestamp(selectedReport)}</strong>
-                </div>
-                <div>
-                  <span>Camera Metadata</span>
-                  <strong>{formatValidationCamera(selectedReport)}</strong>
-                </div>
               </section>
               <section className={`validation-summary validation-summary--${getValidationStatus(selectedReport)}`}>
+                <span>Validation</span>
                 <strong>{selectedReport.locationValidation?.message || 'Location validation has not been completed.'}</strong>
                 <p>{selectedReport.locationValidation?.helper || 'EXIF/device GPS details will appear here when available.'}</p>
               </section>
-              <section className="degradation report-progress-panel">
-                <span>Progress</span>
-                {selectedReport.normalizedStatus === 'rejected' ? (
-                  <p className="report-rejected-note">{REJECTED_REPORT_REASON}</p>
-                ) : selectedReport.normalizedStatus === 'voided' ? (
-                  <p className="report-voided-note">This report was deleted by the citizen and is now marked void.</p>
-                ) : (
-                  <>
-                    <div><i style={{ width: `${selectedReport.progress}%` }} /></div>
-                    <small>{selectedReport.displayStatus} <strong>{selectedReport.progress}%</strong></small>
-                  </>
-                )}
-              </section>
-              <section className="maintenance-history">
-                <h3>Short Description</h3>
+              <section className="maintenance-history report-timeline">
+                <h3>Timeline</h3>
                 <article>
                   <span aria-hidden="true" />
                   <div>
-                    <strong>{selectedReport.sourceType || selectedReport.source || 'Citizen App'}</strong>
-                    <p>{selectedReport.description}</p>
+                    <strong>Report Submitted</strong>
+                    <p>{formatReportDate(selectedReport.createdAt || selectedReport.timestamp || selectedReport.submittedAt)}</p>
                   </div>
                 </article>
+                <article>
+                  <span aria-hidden="true" />
+                  <div>
+                    <strong>{getTimelineStatus(selectedReport)}</strong>
+                    <p>{formatReportDate(selectedReport.updatedAt || selectedReport.createdAt)}</p>
+                  </div>
+                </article>
+                {selectedReport.normalizedStatus === 'completed' && (
+                  <article>
+                    <span aria-hidden="true" />
+                    <div>
+                      <strong>Completed</strong>
+                      <p>{formatReportDate(selectedReport.resolvedAt || selectedReport.updatedAt || selectedReport.createdAt)}</p>
+                    </div>
+                  </article>
+                )}
               </section>
               <section className="report-status-actions">
                 <h3>Status Actions</h3>
@@ -438,7 +537,11 @@ export default function ReportQueuePage() {
                   </button>
                 </div>
               </section>
-            </>
+              <button className="schedule-button report-view-details-button" onClick={() => setShowSelectedReportDetails(true)} type="button">
+                View Full Details â†—
+              </button>
+            </section>
+            )
           ) : (
             <div className="reports-table-state">
               <h2>No selected report</h2>

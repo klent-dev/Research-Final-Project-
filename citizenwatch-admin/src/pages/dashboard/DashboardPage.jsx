@@ -14,7 +14,7 @@ const severityOrder = {
   moderate: 1,
   minor: 2
 };
-
+  
 function toDate(value) {
   if (value?.toDate) return value.toDate();
   if (!value) return null;

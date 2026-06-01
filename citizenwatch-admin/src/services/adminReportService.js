@@ -112,7 +112,11 @@ export function normalizeReportStatus(status = '') {
     return 'rejected';
   }
 
-  if (normalized.includes('progress') || normalized.includes('review') || normalized.includes('verified')) {
+  if (normalized.includes('pending') || normalized.includes('submit') || normalized.includes('review')) {
+    return 'pending';
+  }
+
+  if (normalized.includes('progress') || normalized.includes('verified')) {
     return 'in_progress';
   }
 
@@ -555,6 +559,23 @@ async function getReportSnapshotData(reportId) {
 async function publicReportExists(reportId) {
   const publicSnapshot = await getDoc(doc(db, 'publicReports', reportId));
   return publicSnapshot.exists() ? publicSnapshot.data() : null;
+}
+
+export function markReportOpened({
+  reportId,
+  adminId
+}) {
+  if (!shouldUseFirestore()) {
+    clearLocalReportStorage();
+    notifyReportListeners();
+    return Promise.resolve();
+  }
+
+  return updateDoc(doc(db, 'reports', reportId), {
+    adminSeen: true,
+    adminSeenAt: serverTimestamp(),
+    adminSeenBy: adminId || null
+  });
 }
 
 export async function markReportNotVerified({

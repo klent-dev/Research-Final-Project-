@@ -40,7 +40,10 @@ function Icon({ name }) {
     close: 'm6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5Z',
     image: 'M5 5h14v14H5V5Zm2 2v8.6l3-3 2.2 2.2 3.4-4.2L17 12.4V7H7Zm0 10h10v-1.4l-1.5-2-3.1 3.8-2.4-2.4-3 3V17Z',
     phone: 'M7.4 4h3l1.1 4-1.8 1.2a10.8 10.8 0 0 0 5.1 5.1l1.2-1.8 4 1.1v3a2 2 0 0 1-2.1 2A14.5 14.5 0 0 1 5.4 6.1 2 2 0 0 1 7.4 4Z',
-    layers: 'm12 3 8 4-8 4-8-4 8-4Zm-8 8 8 4 8-4v2l-8 4-8-4v-2Zm0 5 8 4 8-4v2l-8 4-8-4v-2Z'
+    layers: 'm12 3 8 4-8 4-8-4 8-4Zm-8 8 8 4 8-4v2l-8 4-8-4v-2Zm0 5 8 4 8-4v2l-8 4-8-4v-2Z',
+    sliders: 'M4 7h7v2H4V7Zm9-.5a2.5 2.5 0 1 1 0 3 2.5 2.5 0 0 1 0-3ZM17 7h3v2h-3V7ZM4 15h3v2H4v-2Zm5-.5a2.5 2.5 0 1 1 0 3 2.5 2.5 0 0 1 0-3Zm7 .5h4v2h-4v-2Z',
+    chevronDown: 'm7.4 8.6 4.6 4.6 4.6-4.6L18 10l-6 6-6-6 1.4-1.4Z',
+    chevronUp: 'M7.4 15.4 6 14l6-6 6 6-1.4 1.4-4.6-4.6-4.6 4.6Z'
   };
 
   return (
@@ -455,6 +458,7 @@ function ReportDetailsPanel({ report, onClose }) {
 export default function ReportMapPage() {
   const mapRef = useRef(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [activeStatusFilters, setActiveStatusFilters] = useState({
     actionable: false,
     closed: false
@@ -494,72 +498,70 @@ export default function ReportMapPage() {
   }, [activeStatusFilters, mapReports, selectedCategory]);
 
   function handleToggleStatusFilter(filterId) {
-    setActiveStatusFilters((currentFilters) => ({
-      ...currentFilters,
-      [filterId]: !currentFilters[filterId]
-    }));
+    setActiveStatusFilters((currentFilters) => (
+      reportStatusFilters.reduce((nextFilters, filter) => ({
+        ...nextFilters,
+        [filter.id]: filter.id === filterId ? !currentFilters[filterId] : false
+      }), {})
+    ));
   }
 
   return (
     <main className="gis-tracking-page">
-      <header className="gis-topbar">
-        <div>
-          <h1>Infrastructure</h1>
-          <p>Monitoring</p>
-        </div>
-        <label className="gis-search">
-          <Icon name="search" />
-          <input placeholder="Search coordinates, street names, or asset ID..." type="search" />
-        </label>
-        <button className="gis-icon-button" type="button" aria-label="Notifications"><Icon name="bell" /></button>
-        <button className="gis-icon-button" type="button" aria-label="Refresh map"><Icon name="refresh" /></button>
-        <button className="gis-icon-button" type="button" aria-label="Messages"><Icon name="message" /></button>
-        <button className="gis-emergency-button" type="button">Emergency Alert</button>
-        <span className="gis-admin-avatar" aria-hidden="true">AU</span>
-      </header>
-
       <section className={selectedReport ? 'gis-shell' : 'gis-shell gis-shell--map-only'}>
         <section className="gis-map-area">
           <GisMap mapRef={mapRef} onSelectReport={setSelectedReport} reports={filteredReports} />
 
           {mapMessage && filteredReports.length === 0 && <p className="gis-map-status">{mapMessage}</p>}
 
-          <aside className="map-categories-panel">
-            <section className="map-status-filter-panel" aria-label="Report status map filters">
-              <header>
-                <h2>Map Filters</h2>
-              </header>
-              <div className="map-status-toggle-list">
-                {reportStatusFilters.map((filter) => (
-                  <label className={`map-status-toggle map-status-toggle--${filter.tone}`} key={filter.id}>
-                    <input
-                      checked={activeStatusFilters[filter.id]}
-                      onChange={() => handleToggleStatusFilter(filter.id)}
-                      type="checkbox"
-                    />
-                    <span aria-hidden="true" />
-                    <strong>{filter.label}</strong>
-                  </label>
-                ))}
-              </div>
-            </section>
+          <aside className={isFilterPanelOpen ? 'map-categories-panel map-categories-panel--open' : 'map-categories-panel'}>
+            <button
+              aria-expanded={isFilterPanelOpen}
+              className="map-filter-dropdown"
+              onClick={() => setIsFilterPanelOpen((isOpen) => !isOpen)}
+              type="button"
+            >
+              <Icon name="sliders" />
+              <span>Map Filters</span>
+              <Icon name={isFilterPanelOpen ? 'chevronUp' : 'chevronDown'} />
+            </button>
 
-            <header>
-              <h2>Categories</h2>
-            </header>
-            <div className="gis-category-list">
-              {categoryOptions.map((category) => (
-                <button
-                  className={selectedCategory === category ? 'active' : ''}
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  type="button"
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-            <p>Showing {filteredReports.length} reports</p>
+            {isFilterPanelOpen && (
+              <>
+                <section className="map-status-filter-panel" aria-label="Report status map filters">
+                <div className="map-status-toggle-list">
+                  {reportStatusFilters.map((filter) => (
+                    <label className={`map-status-toggle map-status-toggle--${filter.tone}`} key={filter.id}>
+                      <input
+                        checked={activeStatusFilters[filter.id]}
+                        onChange={() => handleToggleStatusFilter(filter.id)}
+                        type="checkbox"
+                      />
+                      <span aria-hidden="true" />
+                      <strong>{filter.label}</strong>
+                    </label>
+                  ))}
+                </div>
+                </section>
+
+                <header>
+                  <h2>Categories</h2>
+                </header>
+                <div className="gis-category-list">
+                  {categoryOptions.map((category) => (
+                    <button
+                      className={selectedCategory === category ? 'active' : ''}
+                      key={category}
+                      onClick={() => setSelectedCategory(category)}
+                      type="button"
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+                <p>Showing {filteredReports.length} reports</p>
+              </>
+            )}
           </aside>
         </section>
 
