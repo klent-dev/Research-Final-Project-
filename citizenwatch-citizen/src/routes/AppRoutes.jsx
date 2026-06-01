@@ -9,6 +9,8 @@ import CreateReportDetailsPage from '../pages/reports/CreateReportDetailsPage.js
 import CreateReportSuccessPage from '../pages/reports/CreateReportSuccessPage.jsx';
 import ReportsPage from '../pages/reports/ReportsPage.jsx';
 import ReportDetailsPage from '../pages/reports/ReportDetailsPage.jsx';
+import PublicReportsPage from '../pages/reports/PublicReportsPage.jsx';
+import PublicReportDetailsPage from '../pages/reports/PublicReportDetailsPage.jsx';
 import AlertsPage from '../pages/alerts/AlertsPage.jsx';
 import MapPage from '../pages/map/MapPage.jsx';
 import { ProtectedRoute } from '../components/common/ProtectedRoute.jsx';
@@ -30,6 +32,8 @@ export function AppRoutes() {
         <Route path="/reports/create/success" element={<CreateReportSuccessPage />} />
         <Route path="/reports/create/review" element={<Navigate to="/reports/create/details" replace />} />
         <Route path="/my-reports" element={<Navigate to="/reports" replace />} />
+        <Route path="/public-reports" element={<PublicReportsPage />} />
+        <Route path="/public-reports/:reportId" element={<PublicReportDetailsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/reports/:id" element={<ReportDetailsPage />} />
         <Route path="/map" element={<MapPage />} />

@@ -1,32 +1,29 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import {
-  FaBullhorn,
-  FaChartLine,
-  FaCircle,
-  FaExpandAlt,
-  FaLightbulb,
-  FaMapMarkerAlt,
-  FaPlus,
-  FaPlusCircle,
-  FaRoad,
-  FaTint,
-  FaTrash
-} from 'react-icons/fa';
+import { FaBullhorn, FaChartLine, FaCircle, FaLightbulb, FaPlusCircle, FaRoad, FaTint, FaTrash } from 'react-icons/fa';
 import PageContainer from '../../components/PageContainer.jsx';
+import { isFirebaseConfigured } from '../../firebase/config.js';
 import { useReports } from '../../hooks/useReports.js';
-import { filterReports, hasValidCoordinates } from '../../services/mapService.js';
-import { HomeReportPreviewMarker, HomeUserLocationMarker } from '../../utils/mapMarkers.js';
+import {
+  formatRelativeTime,
+  formatStatusLabel,
+  getStatusColor,
+  getReports,
+  isReportVisibleForCitizen
+} from '../../services/localReportService.js';
+import {
+  formatPublicReportDate,
+  formatPublicStatusLabel,
+  getPublicStatusColor,
+  subscribeToPublicReports
+} from '../../services/publicReportService.js';
 import { toDisplayText } from '../../utils/displayText.js';
 
-const LAHUG_CENTER = {
-  lat: 10.3403,
-  lng: 123.9065
-};
+const LIVE_REPORT_LIMIT = 20;
+const ALL_CATEGORY = 'All';
 
 const categories = [
+  { label: ALL_CATEGORY, icon: FaCircle },
   { label: 'Drainage', icon: FaTint },
   { label: 'Street Light', icon: FaLightbulb },
   { label: 'Flooding', icon: FaTint },
@@ -34,35 +31,52 @@ const categories = [
   { label: 'Others', icon: FaRoad }
 ];
 
-function HomeMapBridge({ mapRef }) {
-  const map = useMap();
+function getCategoryIcon(report) {
+  const reportCategory = String(report?.issueType || report?.category || '').toLowerCase();
+  const matchedCategory = categories.find((category) => reportCategory.includes(category.label.toLowerCase()));
+  return matchedCategory?.icon || FaRoad;
+}
 
-  useEffect(() => {
-    mapRef.current = map;
-    window.setTimeout(() => map.invalidateSize(), 0);
+function getReportTitle(report) {
+  const category = toDisplayText(report?.issueType || report?.category, 'Infrastructure');
+  return toDisplayText(report?.title, `${category} Report`);
+}
 
-    return () => {
-      if (mapRef.current === map) {
-        mapRef.current = null;
-      }
-    };
-  }, [map, mapRef]);
+function getReportLocation(report) {
+  return toDisplayText(
+    report?.addressPreview ||
+      report?.address ||
+      report?.barangay ||
+      report?.city ||
+      report?.location?.address ||
+      report?.location?.subAddress,
+    'Location unavailable'
+  );
+}
 
-  return null;
+function getReportTimestamp(report) {
+  if (report?.published || report?.reportId) {
+    return formatPublicReportDate(report?.createdAt || report?.publishedAt || report?.updatedAt);
+  }
+
+  return formatRelativeTime(report?.createdAt || report?.submittedAt || report?.updatedAt);
+}
+
+function getReportImage(report) {
+  return report?.photoUrl || report?.imageUrl || report?.evidenceImage || report?.photoPreview || '';
+}
+
+function getReportPreview(report) {
+  const location = getReportLocation(report);
+  const description = toDisplayText(report?.shortDescription || report?.description, '');
+  return location !== 'Location unavailable' ? location : description || 'Report details pending';
 }
 
 export default function CitizenHomePage() {
-  const [activeCategory, setActiveCategory] = useState('Drainage');
-  const [userLocation, setUserLocation] = useState(null);
-  const mapRef = useRef(null);
+  const [liveReports, setLiveReports] = useState([]);
+  const [isLiveReportsLoading, setIsLiveReportsLoading] = useState(true);
+  const [liveReportsError, setLiveReportsError] = useState('');
   const { reports } = useReports();
-  // Only reports with real coordinates can appear on the home map preview.
-  const validReports = useMemo(() => reports.filter(hasValidCoordinates), [reports]);
-  // Category chips update this filtered list so the preview reacts to the selected issue type.
-  const nearbyReports = useMemo(
-    () => filterReports(validReports, activeCategory).slice(0, 3),
-    [activeCategory, validReports]
-  );
   const impactStats = [
     { label: 'Submitted', value: reports.length.toString() },
     {
@@ -76,44 +90,40 @@ export default function CitizenHomePage() {
   ];
 
   useEffect(() => {
-    if (!navigator.geolocation) {
-      return undefined;
+    if (!isFirebaseConfigured) {
+      const updateLocalReports = () => {
+        setLiveReports(getReports().filter(isReportVisibleForCitizen).slice(0, LIVE_REPORT_LIMIT));
+        setLiveReportsError('');
+        setIsLiveReportsLoading(false);
+      };
+
+      updateLocalReports();
+      window.addEventListener('storage', updateLocalReports);
+      window.addEventListener('citizenwatch:reports-updated', updateLocalReports);
+
+      return () => {
+        window.removeEventListener('storage', updateLocalReports);
+        window.removeEventListener('citizenwatch:reports-updated', updateLocalReports);
+      };
     }
 
-    let cancelled = false;
+    setIsLiveReportsLoading(true);
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        if (cancelled) {
-          return;
-        }
-
-        const nextLocation = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        };
-
-        setUserLocation(nextLocation);
-        mapRef.current?.setView([nextLocation.lat, nextLocation.lng], 14);
+    return subscribeToPublicReports(
+      (nextReports) => {
+        setLiveReports(nextReports.slice(0, LIVE_REPORT_LIMIT));
+        setLiveReportsError('');
+        setIsLiveReportsLoading(false);
       },
-      () => {},
-      {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 0
-      }
+      (error) => {
+        console.warn('Unable to subscribe to live reports.', error);
+        setLiveReports([]);
+        setLiveReportsError('Unable to load live reports.');
+        setIsLiveReportsLoading(false);
+      },
+      LIVE_REPORT_LIMIT
     );
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
-
-  useEffect(() => {
-    if (userLocation) {
-      mapRef.current?.setView([userLocation.lat, userLocation.lng], 14);
-    }
-  }, [userLocation]);
 
   return (
     <PageContainer className="citizen-home">
@@ -137,6 +147,66 @@ export default function CitizenHomePage() {
         <FaBullhorn className="citizen-report-card__watermark" aria-hidden="true" />
       </section>
 
+      <section className="citizen-nearby-card">
+        <header className="nearby-header">
+          <div className="nearby-title-group">
+            <h2>
+              Public Reports
+            </h2>
+            <p>Verified reports approved by admin</p>
+          </div>
+          <Link className="expand-map-button" to="/public-reports">
+            <span className="expand-map-text">View All</span>
+          </Link>
+        </header>
+
+        <div className="citizen-live-reports">
+          {isLiveReportsLoading && <p className="citizen-live-message">Loading live reports...</p>}
+
+          {!isLiveReportsLoading && liveReportsError && (
+            <p className="citizen-live-message citizen-live-message--error">{liveReportsError}</p>
+          )}
+
+          {!isLiveReportsLoading && !liveReportsError && liveReports.length === 0 && (
+            <p className="citizen-live-message">
+              No verified reports available yet.
+              <span>Approved reports will appear here after admin verification.</span>
+            </p>
+          )}
+
+          {!isLiveReportsLoading && !liveReportsError && liveReports.map((report) => {
+            const ReportIcon = getCategoryIcon(report);
+            const reportImage = getReportImage(report);
+            const isPublicReport = Boolean(report.published || report.reportId);
+            const statusTone = isPublicReport ? getPublicStatusColor(report.status) : getStatusColor(report.status);
+
+            return (
+              <Link className="citizen-live-report" key={report.id} to={isPublicReport ? `/public-reports/${report.id}` : `/reports/${report.id}`}>
+                {reportImage ? (
+                  <span className="citizen-live-report__photo">
+                    <img src={reportImage} alt="" loading="lazy" />
+                  </span>
+                ) : (
+                  <span className="citizen-live-report__photo citizen-live-report__photo--empty">
+                    <ReportIcon aria-hidden="true" />
+                  </span>
+                )}
+                <span className="citizen-live-report__content">
+                  <span className="citizen-live-report__heading">
+                    <strong>{getReportTitle(report)}</strong>
+                    <span className={`citizen-live-report__status citizen-live-report__status--${statusTone}`}>
+                      {isPublicReport ? formatPublicStatusLabel(report.status) : formatStatusLabel(report.status)}
+                    </span>
+                  </span>
+                  <small>{getReportPreview(report)}</small>
+                  <em>{getReportTimestamp(report)}</em>
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
       <section className="citizen-impact-card">
         <header>
           <p>Your Impact</p>
@@ -152,93 +222,6 @@ export default function CitizenHomePage() {
               <strong>{item.value}</strong>
             </div>
           ))}
-        </div>
-      </section>
-
-      <section className="citizen-category-strip" aria-label="Report categories">
-        {categories.map((category) => (
-          <button
-            aria-pressed={activeCategory === category.label}
-            className={activeCategory === category.label ? 'citizen-category-chip active' : 'citizen-category-chip'}
-            key={category.label}
-            // Makes the dashboard category chip functional instead of only visually active.
-            onClick={() => setActiveCategory(category.label)}
-            type="button"
-          >
-            <category.icon aria-hidden="true" />
-            {category.label}
-          </button>
-        ))}
-      </section>
-
-      <section className="citizen-nearby-card">
-        <header className="nearby-header">
-          <div className="nearby-title-group">
-            <h2>Map Reports</h2>
-            <p>Live activity in your current district</p>
-          </div>
-          <Link className="expand-map-button" to="/map">
-            <span className="expand-map-text">
-              <span>Expand</span>
-              <span>Map</span>
-            </span>
-            <FaExpandAlt aria-hidden="true" />
-          </Link>
-        </header>
-
-        <div className="citizen-map-preview">
-          <div className="citizen-map-board citizen-map-board--live">
-            <MapContainer
-              attributionControl={false}
-              center={[LAHUG_CENTER.lat, LAHUG_CENTER.lng]}
-              className="home-leaflet-preview"
-              dragging
-              scrollWheelZoom={false}
-              zoom={14}
-              zoomControl={false}
-            >
-              <HomeMapBridge mapRef={mapRef} />
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              {userLocation && (
-                <Marker icon={HomeUserLocationMarker} position={[userLocation.lat, userLocation.lng]} />
-              )}
-              {nearbyReports.map((report) => (
-                <Marker
-                  icon={HomeReportPreviewMarker(report.urgency || report.severity)}
-                  key={report.id}
-                  position={[report.location.lat, report.location.lng]}
-                />
-              ))}
-            </MapContainer>
-
-            {nearbyReports.length === 0 && (
-              <div className="citizen-map-empty-state">
-                <FaMapMarkerAlt aria-hidden="true" />
-                <h3>No {activeCategory.toLowerCase()} reports available.</h3>
-                <p>Live district activity will appear here.</p>
-              </div>
-            )}
-
-            {nearbyReports.slice(0, 2).map((report, index) => (
-              <span
-                className="citizen-map-label"
-                key={report.id}
-                style={{
-                  left: index === 0 ? '26%' : '44%',
-                  top: index === 0 ? '34%' : '58%'
-                }}
-              >
-                <FaMapMarkerAlt aria-hidden="true" />
-                {toDisplayText(report.issueType || report.category, 'Report')}
-              </span>
-            ))}
-          </div>
-          <Link className="citizen-map-add" to="/reports/create" aria-label="Create report">
-            <FaPlus aria-hidden="true" />
-          </Link>
         </div>
       </section>
     </PageContainer>

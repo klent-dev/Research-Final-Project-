@@ -1,9 +1,11 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   getLocationValidationLabel,
   normalizeLocationValidationStatus,
+  publishReportToLiveReports,
   REJECTED_REPORT_REASON,
   subscribeReportsForModeration,
+  unpublishReportFromLiveReports,
   updateReportStatus
 } from '../../services/adminReportService.js';
 
@@ -143,14 +145,50 @@ export default function ReportQueuePage() {
 
   const pageEnd = Math.min(pageStart + paginatedReports.length, filteredReports.length);
 
-  function handleStatusAction(status) {
+  async function handleStatusAction(status) {
     if (!selectedReport) return;
 
-    updateReportStatus({
-      reportId: selectedReport.id,
-      status,
-      adminId: 'local-admin'
-    });
+    try {
+      await updateReportStatus({
+        reportId: selectedReport.id,
+        status,
+        adminId: 'local-admin'
+      });
+      setStatusMessage('Report status updated.');
+    } catch (error) {
+      console.warn('Unable to update report status.', error);
+      setStatusMessage('Unable to update report status.');
+    }
+  }
+
+  async function handlePublishAction() {
+    if (!selectedReport) return;
+
+    try {
+      await publishReportToLiveReports({
+        reportId: selectedReport.id,
+        adminId: 'local-admin'
+      });
+      setStatusMessage('Report published to Live Reports.');
+    } catch (error) {
+      console.warn('Unable to publish report.', error);
+      setStatusMessage('Unable to publish report to Live Reports.');
+    }
+  }
+
+  async function handleUnpublishAction() {
+    if (!selectedReport) return;
+
+    try {
+      await unpublishReportFromLiveReports({
+        reportId: selectedReport.id,
+        adminId: 'local-admin'
+      });
+      setStatusMessage('Report removed from Live Reports.');
+    } catch (error) {
+      console.warn('Unable to unpublish report.', error);
+      setStatusMessage('Unable to remove report from Live Reports.');
+    }
   }
 
   return (
@@ -260,7 +298,7 @@ export default function ReportQueuePage() {
                   <td>{formatTrustScore(report)}</td>
                   <td>{report.locationValidation?.requiresReview ? 'Required' : 'No'}</td>
                   <td>{formatValidationSource(report)}</td>
-                  <td><button type="button" aria-label={`Open ${report.name}`}>›</button></td>
+                  <td><button type="button" aria-label={`Open ${report.name}`}>�</button></td>
                 </tr>
               ))}
             </tbody>
@@ -387,6 +425,17 @@ export default function ReportQueuePage() {
                       {action.label}
                     </button>
                   ))}
+                </div>
+              </section>
+              <section className="report-status-actions">
+                <h3>Live Reports</h3>
+                <div>
+                  <button onClick={handlePublishAction} type="button">
+                    Publish to Live Reports
+                  </button>
+                  <button onClick={handleUnpublishAction} type="button">
+                    Unpublish from Live Reports
+                  </button>
                 </div>
               </section>
             </>

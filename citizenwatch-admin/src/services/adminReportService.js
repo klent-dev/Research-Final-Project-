@@ -1,12 +1,15 @@
 import {
+  addDoc,
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../firebase/config.js';
@@ -45,6 +48,14 @@ function clearLocalReportStorage() {
 
 function getReportsCollection() {
   return collection(db, 'reports');
+}
+
+function getPublicReportsCollection() {
+  return collection(db, 'publicReports');
+}
+
+function getAdminLogsCollection() {
+  return collection(db, 'adminLogs');
 }
 
 function notifyReportListeners() {
@@ -331,10 +342,116 @@ export function subscribeReportsForModeration(filters = {}, onReports, onError) 
 }
 
 // Saves admin review decisions such as assigned team, progress, notes, and status.
-export function updateReportStatus({
+export async function publishReportToLiveReports({
+  reportId,
+  adminId,
+  adminEmail
+}) {
+  if (!shouldUseFirestore()) {
+    clearLocalReportStorage();
+    notifyReportListeners();
+    return;
+  }
+
+  const report = await getReportSnapshotData(reportId);
+
+  if (!report) {
+    throw new Error('Report not found.');
+  }
+
+  const existingPublicData = await publicReportExists(reportId);
+  const publicPayload = buildPublicReportPayload(report, existingPublicData || {});
+
+  await setDoc(doc(getPublicReportsCollection(), reportId), publicPayload, { merge: true });
+  await logAdminAction('public_report_published', {
+    reportId,
+    adminId,
+    adminEmail,
+    details: {
+      status: publicPayload.status,
+      category: publicPayload.category
+    }
+  });
+}
+
+export async function unpublishReportFromLiveReports({
+  reportId,
+  adminId,
+  adminEmail,
+  reason = 'Admin unpublished this report from Live Reports.'
+}) {
+  if (!shouldUseFirestore()) {
+    clearLocalReportStorage();
+    notifyReportListeners();
+    return;
+  }
+
+  const existingPublicData = await publicReportExists(reportId);
+
+  if (existingPublicData) {
+    await setDoc(doc(getPublicReportsCollection(), reportId), {
+      hidden: true,
+      published: false,
+      unpublishedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  }
+
+  await logAdminAction('public_report_unpublished', {
+    reportId,
+    adminId,
+    adminEmail,
+    details: { reason }
+  });
+}
+
+async function syncPublicReportAfterStatusChange({ reportId, status, adminId, adminEmail }) {
+  if (!shouldUseFirestore() || status === undefined) return;
+
+  const normalizedStatus = String(status || '').toLowerCase();
+
+  if (normalizedStatus === 'rejected') {
+    await unpublishReportFromLiveReports({
+      reportId,
+      adminId,
+      adminEmail,
+      reason: 'Report was rejected by admin.'
+    });
+    return;
+  }
+
+  if (['verified', 'resolved', 'in_progress'].includes(normalizedStatus)) {
+    await publishReportToLiveReports({ reportId, adminId, adminEmail });
+    await logAdminAction('public_report_status_synced', {
+      reportId,
+      adminId,
+      adminEmail,
+      details: { status: normalizedStatus }
+    });
+    return;
+  }
+
+  const existingPublicData = await publicReportExists(reportId);
+
+  if (existingPublicData) {
+    await setDoc(doc(getPublicReportsCollection(), reportId), {
+      status: normalizedStatus,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    await logAdminAction('public_report_status_synced', {
+      reportId,
+      adminId,
+      adminEmail,
+      details: { status: normalizedStatus }
+    });
+  }
+}
+
+export async function updateReportStatus({
   reportId,
   status,
   adminId,
+  adminEmail,
   notes = '',
   remarks = '',
   assignedTeam,
@@ -362,12 +479,88 @@ export function updateReportStatus({
     updatedAt: serverTimestamp()
   };
 
-  return updateDoc(doc(db, 'reports', reportId), updatePayload);
+  await updateDoc(doc(db, 'reports', reportId), updatePayload);
+  await syncPublicReportAfterStatusChange({ reportId, status, adminId, adminEmail });
+}
+
+function roundApproximateCoordinate(value) {
+  const coordinate = Number(value);
+  return Number.isFinite(coordinate) ? Number(coordinate.toFixed(3)) : null;
+}
+
+function getSafeReportArea(report = {}) {
+  return report.barangay ||
+    report.location?.barangay ||
+    report.district ||
+    report.location?.district ||
+    report.address ||
+    report.location?.address ||
+    'Area unavailable';
+}
+
+function getSafeDescription(report = {}) {
+  const description = String(report.shortDescription || report.description || 'No description provided.').trim();
+  return description.length > 220 ? `${description.slice(0, 217)}...` : description;
+}
+
+function getSafePhotoUrl(report = {}) {
+  return report.photoUrl || report.imageUrl || report.evidenceImage || '';
+}
+
+function buildPublicReportPayload(report = {}, existingData = {}) {
+  const normalizedReport = normalizeAdminReport(report);
+  const coordinates = getReportCoordinates(report);
+  const publicStatus = String(report.status || normalizedReport.status || 'verified').toLowerCase();
+
+  return {
+    reportId: report.id,
+    trackingId: report.trackingId || report.reportId || report.id,
+    category: normalizedReport.category,
+    title: normalizedReport.title,
+    shortDescription: getSafeDescription(report),
+    barangay: report.barangay || report.location?.barangay || report.district || report.location?.district || '',
+    city: report.city || report.location?.city || '',
+    addressPreview: getSafeReportArea(report),
+    approximateLatitude: roundApproximateCoordinate(coordinates?.lat),
+    approximateLongitude: roundApproximateCoordinate(coordinates?.lng),
+    status: publicStatus === 'rejected' ? 'rejected' : publicStatus,
+    createdAt: report.createdAt || existingData.createdAt || serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    publishedAt: existingData.publishedAt || serverTimestamp(),
+    photoUrl: getSafePhotoUrl(report),
+    supportCount: Number(existingData.supportCount || 0),
+    hidden: false,
+    published: true
+  };
+}
+
+async function logAdminAction(action, { reportId, adminId, adminEmail, details = {} } = {}) {
+  if (!shouldUseFirestore()) return;
+
+  await addDoc(getAdminLogsCollection(), {
+    action,
+    reportId: reportId || '',
+    adminId: adminId || null,
+    adminEmail: adminEmail || null,
+    details,
+    createdAt: serverTimestamp()
+  });
+}
+
+async function getReportSnapshotData(reportId) {
+  const reportSnapshot = await getDoc(doc(db, 'reports', reportId));
+  return reportSnapshot.exists() ? { id: reportSnapshot.id, ...reportSnapshot.data() } : null;
+}
+
+async function publicReportExists(reportId) {
+  const publicSnapshot = await getDoc(doc(db, 'publicReports', reportId));
+  return publicSnapshot.exists() ? publicSnapshot.data() : null;
 }
 
 export async function markReportNotVerified({
   reportId,
   adminId,
+  adminEmail,
   reason = REJECTED_REPORT_REASON
 }) {
   if (!shouldUseFirestore()) {
@@ -386,6 +579,13 @@ export async function markReportNotVerified({
     reviewedBy: adminId || null,
     updatedBy: adminId || null,
     updatedAt: serverTimestamp()
+  });
+
+  await unpublishReportFromLiveReports({
+    reportId,
+    adminId,
+    adminEmail,
+    reason
   });
 }
 

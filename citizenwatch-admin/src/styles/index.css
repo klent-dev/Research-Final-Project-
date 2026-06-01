@@ -5950,3 +5950,315 @@ select:focus-visible {
   }
 }
 
+/* Premium Green Edition admin system layer */
+:root {
+  --admin-bg:
+    radial-gradient(circle at 18% 0%, rgba(16, 185, 129, 0.14), transparent 24rem),
+    radial-gradient(circle at 96% 8%, rgba(4, 120, 87, 0.10), transparent 26rem),
+    linear-gradient(180deg, #eef8f2 0%, #f7fbf8 48%, #eef4f2 100%);
+  --admin-surface: rgba(255, 255, 255, 0.92);
+  --admin-surface-solid: #ffffff;
+  --admin-surface-soft: #f4fbf7;
+  --admin-border: rgba(187, 247, 208, 0.72);
+  --admin-border-strong: rgba(16, 185, 129, 0.28);
+  --admin-text: #0f172a;
+  --admin-muted: #64748b;
+  --admin-green: #047857;
+  --admin-green-dark: #064e3b;
+  --admin-gradient: linear-gradient(135deg, #064e3b 0%, #047857 55%, #10b981 100%);
+  --admin-shadow: 0 20px 46px rgba(15, 23, 42, 0.085);
+  --admin-shadow-soft: 0 12px 28px rgba(15, 23, 42, 0.055);
+}
+
+body,
+.admin-layout {
+  background: var(--admin-bg);
+}
+
+.sidebar {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(16, 185, 129, 0.18), transparent 14rem),
+    linear-gradient(180deg, #0b1f19 0%, #102923 100%);
+  box-shadow: 18px 0 50px rgba(6, 78, 59, 0.16);
+}
+
+.sidebar-brand h1 {
+  color: #ffffff;
+}
+
+.sidebar-brand p,
+.sidebar-account p {
+  color: rgba(220, 252, 231, 0.72);
+}
+
+.sidebar-nav a {
+  border: 1px solid transparent;
+  color: rgba(240, 253, 244, 0.88);
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.sidebar-nav a:hover,
+.sidebar-nav a.active {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(187, 247, 208, 0.16);
+  color: #ffffff;
+  transform: translateX(2px);
+}
+
+.sidebar-nav a.active {
+  box-shadow: inset 4px 0 0 #34d399;
+}
+
+.sidebar-nav a span,
+.sidebar-account > span,
+.sidebar-brand > span {
+  background: rgba(209, 250, 229, 0.12);
+  color: #bbf7d0;
+}
+
+.sidebar-signout,
+.button,
+.dispatch-button,
+.contact-button,
+.admin-login-submit,
+.infra-heading button,
+.reports-title-actions button,
+.bulk-update-button {
+  background: var(--admin-gradient);
+  border: 1px solid rgba(187, 247, 208, 0.18);
+  box-shadow: 0 14px 28px rgba(4, 120, 87, 0.20);
+  color: #ffffff;
+}
+
+.button:hover,
+.dispatch-button:hover,
+.contact-button:hover,
+.admin-login-submit:hover,
+.infra-heading button:hover,
+.reports-title-actions button:hover,
+.bulk-update-button:hover {
+  box-shadow: 0 18px 36px rgba(4, 120, 87, 0.26);
+  transform: translateY(-1px);
+}
+
+.admin-main,
+.command-dashboard,
+.infrastructure-page,
+.gis-tracking-page,
+.reports-management-page,
+.settings-page,
+.user-management-page,
+.analytics-page {
+  background: var(--admin-bg);
+}
+
+.command-content,
+.reports-management-content,
+.infrastructure-page,
+.settings-page {
+  color: var(--admin-text);
+}
+
+.command-heading,
+.infra-heading,
+.reports-title-row,
+.settings-heading,
+.admin-settings-heading {
+  background:
+    radial-gradient(circle at 95% 10%, rgba(16, 185, 129, 0.12), transparent 12rem),
+    rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(187, 247, 208, 0.42);
+  border-radius: 18px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
+  padding: clamp(1rem, 2.2vw, 1.35rem);
+}
+
+.command-heading h1,
+.infra-heading h2,
+.reports-title-row h2,
+.settings-heading h2,
+.admin-settings-heading h2 {
+  color: #071522;
+  letter-spacing: 0;
+}
+
+.command-heading p,
+.infra-heading p,
+.reports-title-row p,
+.settings-heading p,
+.admin-settings-heading p {
+  color: var(--admin-muted);
+}
+
+.command-kpi-card,
+.progress-summary-card,
+.command-progress-card,
+.command-map-card,
+.urgent-card,
+.asset-table-card,
+.selected-asset-card,
+.reports-table-card,
+.map-categories-panel,
+.incident-detail-panel,
+.admin-settings-card,
+.admin-settings-users article,
+.report-review-card,
+.review-panel,
+.status-summary,
+.report-table-panel,
+.admin-login-card {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 18px;
+  box-shadow: var(--admin-shadow-soft);
+  backdrop-filter: blur(14px);
+}
+
+.command-kpi-card,
+.infra-stat-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 251, 247, 0.92));
+  border-color: var(--admin-border);
+}
+
+.command-kpi-card span,
+.infra-stat-card span,
+.dashboard-user-strip button {
+  background: rgba(16, 185, 129, 0.13);
+  color: var(--admin-green);
+}
+
+.asset-table-card th,
+.reports-table-card th,
+.report-table-panel th {
+  background: #eef8f2;
+  color: #475569;
+  letter-spacing: 0.08em;
+}
+
+.asset-table-card td,
+.reports-table-card td,
+.report-table-panel td {
+  border-color: rgba(226, 232, 240, 0.8);
+}
+
+.asset-table-card tbody tr:hover,
+.reports-table-card tbody tr:hover,
+.report-table-panel tbody tr:hover {
+  background: #f3fbf7;
+}
+
+.asset-table-card tr.selected,
+.reports-table-card tr.selected {
+  background: linear-gradient(90deg, rgba(209, 250, 229, 0.55), rgba(255, 255, 255, 0.92));
+}
+
+.infra-filter-row button,
+.reports-filter-select select,
+.reports-status-filter select,
+.command-filter-row select,
+.map-status-toggle,
+.admin-settings-tabs button,
+.admin-settings-form input,
+.admin-settings-form select,
+.admin-settings-form textarea,
+.reports-search,
+.infra-search {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: var(--admin-border);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.035);
+}
+
+.infra-filter-row button.active,
+.admin-settings-tabs button.active,
+.map-status-toggle:has(input:checked) {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: var(--admin-border-strong);
+  color: var(--admin-green);
+}
+
+.asset-status,
+.severity-pill,
+.status-badge,
+.report-status,
+.reports-status-pill,
+.validation-chip {
+  border-radius: 999px;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+  padding-inline: 0.7rem;
+}
+
+.asset-status--completed,
+.asset-status--verified,
+.asset-status--resolved,
+.status-badge--resolved,
+.reports-status-pill--resolved,
+.validation-chip--verified {
+  background: rgba(16, 185, 129, 0.15);
+  color: #047857;
+}
+
+.asset-status--in-progress,
+.status-badge--in_progress {
+  background: rgba(14, 165, 233, 0.14);
+  color: #0369a1;
+}
+
+.asset-status--pending,
+.status-badge--submitted,
+.status-badge--under_review,
+.reports-status-pill--review,
+.validation-chip--needs-review {
+  background: rgba(245, 158, 11, 0.16);
+  color: #b45309;
+}
+
+.asset-status--rejected,
+.status-badge--rejected,
+.reports-status-pill--rejected,
+.validation-chip--suspicious {
+  background: rgba(239, 68, 68, 0.13);
+  color: #b91c1c;
+}
+
+.dashboard-leaflet-shell,
+.gis-map-canvas,
+.asset-map-preview {
+  border: 1px solid var(--admin-border);
+  box-shadow: var(--admin-shadow-soft);
+}
+
+.selected-asset-card,
+.incident-detail-panel {
+  border-top: 4px solid rgba(16, 185, 129, 0.62);
+}
+
+.report-status-actions button {
+  background: rgba(4, 120, 87, 0.10);
+  border: 1px solid rgba(4, 120, 87, 0.16);
+  color: #047857;
+}
+
+.report-status-actions button:hover {
+  background: rgba(4, 120, 87, 0.16);
+  transform: translateY(-1px);
+}
+
+.admin-login-page {
+  background:
+    radial-gradient(circle at 15% 12%, rgba(16, 185, 129, 0.24), transparent 22rem),
+    linear-gradient(135deg, #eef8f2, #f8fbf8);
+}
+
+.admin-login-card {
+  box-shadow: var(--admin-shadow);
+}
+
+@media (max-width: 860px) {
+  .sidebar-nav a:hover,
+  .sidebar-nav a.active {
+    transform: none;
+  }
+}
+

@@ -9,7 +9,7 @@ service cloud.firestore {
     function isAdmin() {
       return signedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'lgu_admin';
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['lgu_admin', 'admin'];
     }
 
     function ownsReport() {
@@ -72,9 +72,41 @@ service cloud.firestore {
       allow update: if isAdmin() || (
         ownsReport()
         && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'description',
+          'photoUrl',
+          'imageUrl',
+          'evidenceImage',
+          'photoPreview',
+          'updatedAt'
+        ])
       );
 
       allow delete: if false;
+    }
+
+    match /publicReports/{reportId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['supportCount', 'updatedAt'])
+        && request.resource.data.supportCount == resource.data.supportCount + 1
+        && getAfter(/databases/$(database)/documents/publicReports/$(reportId)/supporters/$(request.auth.uid)).data.uid == request.auth.uid;
+    }
+
+    match /publicReports/{reportId}/supporters/{supporterId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.auth.uid == supporterId
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'supportedAt'])
+        && !exists(/databases/$(database)/documents/publicReports/$(reportId)/supporters/$(supporterId));
+      allow update, delete: if false;
+    }
+
+    match /adminLogs/{logId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
     }
 
     match /{document=**} {
